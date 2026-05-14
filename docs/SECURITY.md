@@ -497,11 +497,13 @@ UPSTASH_REDIS_REST_URL=https://...
 UPSTASH_REDIS_REST_TOKEN=...
 ```
 
-4. Instalar:
+4. Instalar (en este proyecto usamos `pnpm`, ver `DEPLOY.md`):
 
 ```bash
-npm install @upstash/ratelimit @upstash/redis
+pnpm add @upstash/ratelimit @upstash/redis
 ```
+
+Nota: el `.npmrc` con `ignore-scripts=true` aplica a todos los packages, incluyendo estos. Estos packages de Upstash no requieren scripts post-install, así que la instalación funciona sin ajustes adicionales.
 
 ### Configuración por endpoint
 

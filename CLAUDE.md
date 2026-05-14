@@ -184,11 +184,54 @@ Para. No "explores" instalando paquetes random. Pide ayuda con contexto claro:
 - Schemas viven en `modules/<dominio>/validations/`.
 - Server actions retornan `Result<T, AppError>`, no hacen throw para errores esperables.
 
-### Dependencias
+### Package manager y supply chain
 
-- **No instales paquetes que no estén en `DEPLOY.md` sin justificación documentada.**
+**Este proyecto usa `pnpm`, NO `npm`.** Reemplaza siempre:
+
+- `npm install <pkg>` → `pnpm add <pkg>`
+- `npm install -D <pkg>` → `pnpm add -D <pkg>`
+- `npm install` → `pnpm install`
+- `npm run <script>` → `pnpm <script>` o `pnpm run <script>`
+- `npm exec` → `pnpm exec`
+- `npx <cmd>` → `pnpm dlx <cmd>` (cuando sea posible)
+
+Aunque algunos docs internos mencionen `npm` por inercia histórica, **siempre traducimos a pnpm en la ejecución**.
+
+**Protecciones de supply chain activas en este proyecto:**
+
+El archivo `.npmrc` en la raíz contiene:
+- `ignore-scripts=true`: bloquea ejecución de scripts post-install maliciosos.
+- `min-release-age=10080`: solo packages publicados hace al menos 7 días.
+- `save-exact=true`: pinea versiones exactas, sin `^` ni `~`.
+- `audit-level=moderate`: alerta sobre vulnerabilidades.
+
+Contexto: existe una campaña activa "Mini Shai-Hulud" (npm supply chain, abril-mayo 2026) que ha comprometido cientos de packages. Estas protecciones son obligatorias.
+
+### Cuando un script post-install falla por `ignore-scripts=true`
+
+Algunos packages legítimos necesitan scripts (compilar binarios, descargar binarios nativos). Si una instalación falla:
+
+1. **NO desactives `ignore-scripts` globalmente.**
+2. Verifica que el package es legítimo (busca en `socket.dev`, revisa el repositorio).
+3. Identifica el script específico que necesita ejecutarse.
+4. Propónme la solución: típicamente `pnpm rebuild <package>` después del install, o configurar `onlyBuiltDependencies` en `package.json` con la lista de paquetes cuyos scripts sí pueden correr.
+5. Espera mi aprobación.
+
+### Verificación antes de instalar cualquier paquete
+
+Antes de hacer `pnpm add <pkg>`:
+
+1. Verifica que `<pkg>` esté listado en `DEPLOY.md` como dependencia aprobada.
+2. Si NO está listado, **detente y propónlo primero**, no instales.
+3. Si está listado pero la versión no se especifica, usa la última estable que tenga al menos 7 días de antigüedad.
+4. Si tienes duda sobre si un package está comprometido, búscalo en `https://socket.dev/npm/package/<nombre>` antes de instalar.
+
+### Dependencias en general
+
+- **No instales paquetes que no estén en `DEPLOY.md`** sin justificación documentada.
 - Si necesitas una nueva dependencia, primero proponla y espera aprobación.
 - Verifica que la dependencia no esté abandonada (último commit < 1 año).
+- Prefiere packages con muchas estrellas y muchos descargas semanales (señal de revisión comunitaria activa).
 
 ---
 
@@ -216,6 +259,9 @@ Para. No "explores" instalando paquetes random. Pide ayuda con contexto claro:
 8. Hacer `fetch()` sin timeout explícito.
 9. Usar `dangerouslySetInnerHTML` con input de usuario.
 10. Saltarte el planning en bloques 0-2.
+11. Usar `npm` en lugar de `pnpm`.
+12. Desactivar `ignore-scripts` de `.npmrc` sin aprobación explícita.
+13. Instalar un paquete que no esté en `DEPLOY.md` sin aprobación.
 
 ---
 

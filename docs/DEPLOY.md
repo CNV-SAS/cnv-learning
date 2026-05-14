@@ -14,7 +14,7 @@
 | Resend | Free (3.000 emails/mes) | Emails transaccionales |
 | Google AI Studio | Free tier | API Gemini Flash para SpeedGrader |
 | Sentry | Developer free | Reporte de errores |
-| Groq (opcional) | Free | Alternativa a Gemini |
+| Anthropic API (opcional) | Pay-as-you-go | Alternativa a Gemini si migran a Claude |
 
 ## Variables de entorno
 
@@ -28,11 +28,13 @@ SUPABASE_SERVICE_ROLE_KEY=ey...
 
 # ===== IA =====
 GEMINI_API_KEY=...
+# Anthropic, opcional para migración futura
+ANTHROPIC_API_KEY=
 
 # ===== Email =====
 RESEND_API_KEY=re_...
 EMAIL_FROM=noreply@lms.cnvsystem.com
-EMAIL_REPLY_TO=cnvcorporate@gmail.com
+EMAIL_REPLY_TO=soporte@cnvsystem.com
 
 # ===== Observabilidad =====
 NEXT_PUBLIC_SENTRY_DSN=https://...@sentry.io/...
@@ -64,16 +66,32 @@ Pasos en orden:
 - Privado.
 - README mínimo, `.gitignore` para Node.
 
-### 2. Bootstrap Next.js
+### 2. Bootstrap Next.js (con pnpm)
+
+**Antes de cualquier comando:** verifica que tienes pnpm activo:
 
 ```bash
-npx create-next-app@latest cnv-learning \
+pnpm --version
+```
+
+Si no, activarlo con corepack (viene incluido con Node.js):
+
+```bash
+corepack enable
+corepack prepare pnpm@latest --activate
+```
+
+Bootstrap del proyecto:
+
+```bash
+pnpm create next-app@latest cnv-learning \
   --typescript \
   --tailwind \
   --app \
   --src-dir \
   --eslint \
-  --no-import-alias
+  --no-import-alias \
+  --use-pnpm
 
 cd cnv-learning
 git init
@@ -82,12 +100,33 @@ git remote add origin https://github.com/CNV/cnv-learning.git
 
 Configurar `tsconfig.json` con `"strict": true` (debería venir así por defecto, verificar).
 
+### 2bis. Crear `.npmrc` con protecciones de supply chain (CRÍTICO)
+
+**Antes de instalar cualquier dependencia**, crear `.npmrc` en la raíz del proyecto con:
+
+```
+ignore-scripts=true
+min-release-age=10080
+audit-level=moderate
+save-exact=true
+```
+
+**Por qué cada línea:**
+- `ignore-scripts=true`: bloquea ejecución de scripts post-install. Mitigación principal contra malware tipo Mini Shai-Hulud (npm supply chain attack activo desde abril-mayo 2026). Recomendado por CISA.
+- `min-release-age=10080`: requiere packages publicados hace al menos 7 días (10080 minutos), dando tiempo a la comunidad para detectar packages comprometidos antes de instalarlos.
+- `save-exact=true`: pinea versiones exactas. Evita que `^1.2.3` permita upgrade silencioso a `1.2.4` comprometido.
+- `audit-level=moderate`: alerta en vulnerabilidades moderadas hacia arriba durante `pnpm install`.
+
+**Tradeoff conocido:** algunos packages legítimos necesitan scripts post-install (compilar binarios). Si la instalación de uno falla con `ignore-scripts=true`, NO desactives la protección globalmente. Habilita el script puntualmente con `pnpm rebuild <package>` tras verificación manual del package, o agrega el paquete a `onlyBuiltDependencies` en `package.json` para permitir su build específico.
+
 ### 3. Instalar dependencias clave
 
 ```bash
-npm install \
+pnpm add \
   @supabase/supabase-js \
   @supabase/ssr \
+  @upstash/ratelimit \
+  @upstash/redis \
   zod \
   react-hook-form \
   @hookform/resolvers \
@@ -99,39 +138,56 @@ npm install \
   @sentry/nextjs \
   resend \
   @react-pdf/renderer \
-  @google/generative-ai
+  @google/generative-ai \
+  react-markdown \
+  remark-gfm \
+  isomorphic-dompurify
 
-npm install -D \
+pnpm add -D \
   vitest \
   @types/node \
   prettier \
-  prettier-plugin-tailwindcss
+  prettier-plugin-tailwindcss \
+  supabase
 ```
+
+**Verificación post-install:**
+
+Después de cada `pnpm add` masivo, verifica que no haya alertas de seguridad:
+
+```bash
+pnpm audit
+```
+
+Si aparece alguna vulnerabilidad de severidad `high` o `critical`, no avances al siguiente paso. Reporta y decide.
 
 ### 4. Configurar shadcn/ui
 
 ```bash
-npx shadcn@latest init
+pnpm dlx shadcn@latest init
 ```
 
 Configuración recomendada:
 - Style: New York
 - Base color: Slate
 - CSS variables: Yes
+- Use pnpm: Yes (debería detectarlo automáticamente)
 
 Luego, instalar componentes base:
 
 ```bash
-npx shadcn@latest add button input label textarea card dialog sheet dropdown-menu avatar badge alert progress tabs select form skeleton
+pnpm dlx shadcn@latest add button input label textarea card dialog sheet dropdown-menu avatar badge alert progress tabs select form skeleton
 ```
 
 ### 5. Configurar Sentry
 
 ```bash
-npx @sentry/wizard@latest -i nextjs
+pnpm dlx @sentry/wizard@latest -i nextjs
 ```
 
 El wizard pide el DSN, lo pegas, crea `sentry.client.config.ts`, `sentry.server.config.ts`, `sentry.edge.config.ts`, e instrumenta el proyecto.
+
+**Nota sobre SENTRY_AUTH_TOKEN:** es opcional para el MVP. Sirve para subir source maps durante el build, lo cual da stack traces legibles en producción. Si lo dejas vacío, el wizard configurará Sentry sin source maps (suficiente para el MVP). Se puede agregar después en el Bloque 18 sin romper nada.
 
 ### 6. Crear proyecto Supabase
 
@@ -149,18 +205,23 @@ Cargar al `.env.local` y a Vercel.
 
 ### 7. Configurar Supabase CLI local
 
+El Supabase CLI ya fue agregado como devDependency en el paso 3 (`pnpm add -D supabase`).
+
+Inicializar y vincular:
+
 ```bash
-npm install -D supabase
-npx supabase init
-npx supabase link --project-ref YOUR_PROJECT_REF
+pnpm dlx supabase init
+pnpm dlx supabase link --project-ref YOUR_PROJECT_REF
 ```
 
 Esto crea `supabase/` en el repo y vincula con el proyecto remoto.
 
 ### 8. Conectar Vercel
 
+Vercel CLI se instala globalmente (excepción justificada porque es CLI de uso recurrente y NO entra al `package.json` del proyecto):
+
 ```bash
-npm install -g vercel
+pnpm add -g vercel
 vercel link
 vercel env pull
 ```
@@ -227,7 +288,7 @@ Ejemplo bueno: `add forum schema: posts and replies, plain hierarchy (no nested 
 ### Aplicar migraciones nuevas en local
 
 ```bash
-npx supabase db reset
+pnpm dlx supabase db reset
 ```
 
 Esto reseta la base local, aplica todas las migraciones de `supabase/migrations/`, y corre el seed.
@@ -235,7 +296,7 @@ Esto reseta la base local, aplica todas las migraciones de `supabase/migrations/
 ### Aplicar migraciones a producción
 
 ```bash
-npx supabase db push
+pnpm dlx supabase db push
 ```
 
 Esto aplica solo las migraciones nuevas (no aplicadas aún) al proyecto remoto.
@@ -247,7 +308,7 @@ Esto aplica solo las migraciones nuevas (no aplicadas aún) al proyecto remoto.
 Tras aplicar migraciones:
 
 ```bash
-npx supabase gen types typescript --linked > src/types/database.generated.ts
+pnpm dlx supabase gen types typescript --linked > src/types/database.generated.ts
 git add src/types/database.generated.ts
 git commit -m "regenerate database types after migration 00XX"
 ```
