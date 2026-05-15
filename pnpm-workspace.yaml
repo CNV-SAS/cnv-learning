@@ -1,0 +1,11 @@
+# Configuración específica de pnpm 11+
+# Las settings de supply chain viven aquí, NO en .npmrc
+
+# Esperar 7 días (10080 minutos) antes de instalar una versión recién publicada.
+# Defensa contra ataques tipo Mini Shai-Hulud donde packages comprometidos
+# son detectados y removidos del registro dentro de horas/días.
+minimumReleaseAge: 10080
+
+# Bloquea subdependencias que vengan de fuentes "exóticas" (git, tarballs URL)
+# en lugar del registry estándar. Reduce vectores de ataque transitivos.
+blockExoticSubdeps: true

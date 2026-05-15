@@ -100,24 +100,39 @@ git remote add origin https://github.com/CNV/cnv-learning.git
 
 Configurar `tsconfig.json` con `"strict": true` (debería venir así por defecto, verificar).
 
-### 2bis. Crear `.npmrc` con protecciones de supply chain (CRÍTICO)
+### 2bis. Crear archivos de configuración de supply chain (CRÍTICO)
 
-**Antes de instalar cualquier dependencia**, crear `.npmrc` en la raíz del proyecto con:
+**Antes de instalar cualquier dependencia**, crea DOS archivos en la raíz del proyecto. Esta separación es necesaria porque pnpm 11 ya NO lee settings non-auth desde `.npmrc`: las settings específicas de pnpm viven en `pnpm-workspace.yaml`.
+
+**Archivo 1: `.npmrc`** (settings que ambos npm y pnpm entienden):
 
 ```
 ignore-scripts=true
-min-release-age=10080
-audit-level=moderate
 save-exact=true
+audit-level=moderate
 ```
 
-**Por qué cada línea:**
-- `ignore-scripts=true`: bloquea ejecución de scripts post-install. Mitigación principal contra malware tipo Mini Shai-Hulud (npm supply chain attack activo desde abril-mayo 2026). Recomendado por CISA.
-- `min-release-age=10080`: requiere packages publicados hace al menos 7 días (10080 minutos), dando tiempo a la comunidad para detectar packages comprometidos antes de instalarlos.
-- `save-exact=true`: pinea versiones exactas. Evita que `^1.2.3` permita upgrade silencioso a `1.2.4` comprometido.
-- `audit-level=moderate`: alerta en vulnerabilidades moderadas hacia arriba durante `pnpm install`.
+**Archivo 2: `pnpm-workspace.yaml`** (settings específicas de pnpm 11+):
 
-**Tradeoff conocido:** algunos packages legítimos necesitan scripts post-install (compilar binarios). Si la instalación de uno falla con `ignore-scripts=true`, NO desactives la protección globalmente. Habilita el script puntualmente con `pnpm rebuild <package>` tras verificación manual del package, o agrega el paquete a `onlyBuiltDependencies` en `package.json` para permitir su build específico.
+```yaml
+# Esperar 7 días (10080 minutos) antes de instalar una versión recién publicada.
+# Defensa principal contra ataques tipo Mini Shai-Hulud donde packages
+# comprometidos son detectados y removidos del registro dentro de horas/días.
+minimumReleaseAge: 10080
+
+# Bloquea subdependencias que vengan de fuentes no estándar (git, tarballs URL).
+blockExoticSubdeps: true
+```
+
+**Por qué cada setting:**
+
+- `ignore-scripts=true` (.npmrc): bloquea ejecución de scripts post-install. Mitigación principal contra malware tipo Mini Shai-Hulud. Recomendado por CISA. Aplica a ambos npm y pnpm.
+- `save-exact=true` (.npmrc): pinea versiones exactas. Evita que `^1.2.3` permita upgrade silencioso a `1.2.4` comprometido.
+- `audit-level=moderate` (.npmrc): alerta en vulnerabilidades moderadas hacia arriba.
+- `minimumReleaseAge: 10080` (pnpm-workspace.yaml): solo packages publicados hace al menos 7 días (10080 minutos). En pnpm 11+ esto es un setting específico de pnpm y se configura en YAML, NO en `.npmrc`. Si lo pones en `.npmrc` con valor numérico, npm intenta leerlo y rompe todas las instalaciones (es un setting introducido por pnpm que npm interpreta como días desnudos).
+- `blockExoticSubdeps: true` (pnpm-workspace.yaml): activado por defecto en pnpm 11, lo dejamos explícito para que sobreviva si en algún momento cambia el default.
+
+**Tradeoff conocido de `ignore-scripts=true`:** algunos packages legítimos necesitan scripts post-install (compilar binarios). Si la instalación de uno falla, NO desactives la protección globalmente. Habilita el script puntualmente con `pnpm rebuild <package>` tras verificación manual del package, o agrega el paquete a `onlyBuiltDependencies` en `package.json` para permitir su build específico.
 
 ### 3. Instalar dependencias clave
 

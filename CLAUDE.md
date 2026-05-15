@@ -199,11 +199,18 @@ Aunque algunos docs internos mencionen `npm` por inercia histórica, **siempre t
 
 **Protecciones de supply chain activas en este proyecto:**
 
-El archivo `.npmrc` en la raíz contiene:
+La configuración de seguridad vive en DOS archivos distintos, porque pnpm 11 separa auth/registry (en `.npmrc`) de las settings del package manager (en `pnpm-workspace.yaml`).
+
+En `.npmrc` (settings que ambos npm y pnpm entienden):
 - `ignore-scripts=true`: bloquea ejecución de scripts post-install maliciosos.
-- `min-release-age=10080`: solo packages publicados hace al menos 7 días.
 - `save-exact=true`: pinea versiones exactas, sin `^` ni `~`.
 - `audit-level=moderate`: alerta sobre vulnerabilidades.
+
+En `pnpm-workspace.yaml` (settings específicas de pnpm 11+):
+- `minimumReleaseAge: 10080`: solo packages publicados hace al menos 7 días (10080 minutos). Defensa principal contra ataques que dependen de instalaciones rápidas de versiones recién comprometidas.
+- `blockExoticSubdeps: true`: bloquea subdependencias que vengan de fuentes no-estándar (git URLs, tarballs directos).
+
+**Importante:** NUNCA pongas `min-release-age` ni `minimumReleaseAge` en `.npmrc`. npm intenta interpretarlo y rompe todas las instalaciones (lo aprendimos a la mala). El valor debe ir en `pnpm-workspace.yaml` en minutos sin sufijo.
 
 Contexto: existe una campaña activa "Mini Shai-Hulud" (npm supply chain, abril-mayo 2026) que ha comprometido cientos de packages. Estas protecciones son obligatorias.
 
