@@ -1,29 +1,34 @@
-# Configuración específica de pnpm 11+
-# Las settings de supply chain viven aquí, NO en .npmrc
+# Settings de supply chain de pnpm 11.
+# IMPORTANTE: pnpm 11 NO lee non-auth settings de .npmrc. Toda config
+# de pnpm vive aquí (camelCase). Solo registry/auth en .npmrc.
 
-# Espera 1 día (1440 minutos) antes de instalar una versión recién publicada.
-# Es el default oficial de pnpm 11, calibrado con datos reales de los ataques
-# recientes (Mini Shai-Hulud, axios). La comunidad de seguridad (Socket, npm
-# security, Wiz) detecta packages comprometidos en horas, no días. Combinado
-# con ignore-scripts=true (.npmrc) que bloquea el vector principal de ataque,
-# esta configuración da defensa razonable sin la fricción de un threshold de
-# 7 días que bloquea deps transitivas oficiales legítimas (caso verificado:
-# baseline-browser-mapping de web-platform-dx/W3C).
+# Ventana de cuarentena: 24h antes de instalar versión nueva.
+# Combinado con ignoreScripts: true y allowBuilds explícito, da defensa
+# razonable contra ataques tipo Mini Shai-Hulud sin la fricción de un
+# threshold de 7 días que bloquea deps transitivas oficiales legítimas
+# (caso verificado: baseline-browser-mapping de web-platform-dx/W3C).
 minimumReleaseAge: 1440
 
-# Bloquea subdependencias que vengan de fuentes "exóticas" (git, tarballs URL)
-# en lugar del registry estándar. Reduce vectores de ataque transitivos.
+# Bloquear deps transitivas de fuentes exóticas (git, tarballs URL).
 blockExoticSubdeps: true
 
-# Whitelist de packages cuyos install scripts SÍ pueden correr aunque
-# ignore-scripts=true en .npmrc. Solo paquetes verificados.
+# Bloquear scripts post-install de TODOS los packages excepto los
+# explícitamente whitelisted abajo. Vector principal de Mini Shai-Hulud.
+ignoreScripts: true
+
+# Pinear versiones exactas (sin ^ ni ~) cuando se agrega un package.
+# Evita upgrades silenciosos a versiones recién publicadas.
+saveExact: true
+
+# Whitelist de packages cuyos install scripts SÍ pueden correr.
+# Solo paquetes verificados que necesitan compilar binarios nativos.
 # pnpm 11 usa allowBuilds (object con booleans), no onlyBuiltDependencies
-# (array). Confirmado experimentalmente: pnpm inyecta el bloque allowBuilds
-# con placeholders cuando detecta packages que necesitan build.
+# (array deprecated).
 allowBuilds:
   sharp: true
   unrs-resolver: true
   "@sentry/cli": true
+  supabase: true   # CLI oficial Supabase, postinstall descarga binario nativo por plataforma desde GitHub releases. Mantenido por kiwicopple (CEO Supabase) + etienne_supa.
 
 # Overrides de versiones para parchar vulnerabilidades antes de que las
 # deps padre suban sus pins. Cada override requiere justificación.
