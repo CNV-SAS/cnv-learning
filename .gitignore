@@ -46,3 +46,12 @@ coverage/
 # IDE
 .vscode/settings.json
 .idea/
+
+# Claude Code: configuración local del agente
+# Versionar solo lo que sea config compartida del proyecto
+# (skills, commands, agents). Lo personal/local va ignorado.
+.claude/settings.local.json
+.claude/.credentials.json
+.claude/cache/
+.claude/logs/
+.claude/history/

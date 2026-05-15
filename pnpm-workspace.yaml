@@ -1,11 +1,34 @@
 # Configuración específica de pnpm 11+
 # Las settings de supply chain viven aquí, NO en .npmrc
 
-# Esperar 7 días (10080 minutos) antes de instalar una versión recién publicada.
-# Defensa contra ataques tipo Mini Shai-Hulud donde packages comprometidos
-# son detectados y removidos del registro dentro de horas/días.
-minimumReleaseAge: 10080
+# Espera 1 día (1440 minutos) antes de instalar una versión recién publicada.
+# Es el default oficial de pnpm 11, calibrado con datos reales de los ataques
+# recientes (Mini Shai-Hulud, axios). La comunidad de seguridad (Socket, npm
+# security, Wiz) detecta packages comprometidos en horas, no días. Combinado
+# con ignore-scripts=true (.npmrc) que bloquea el vector principal de ataque,
+# esta configuración da defensa razonable sin la fricción de un threshold de
+# 7 días que bloquea deps transitivas oficiales legítimas (caso verificado:
+# baseline-browser-mapping de web-platform-dx/W3C).
+minimumReleaseAge: 1440
 
 # Bloquea subdependencias que vengan de fuentes "exóticas" (git, tarballs URL)
 # en lugar del registry estándar. Reduce vectores de ataque transitivos.
 blockExoticSubdeps: true
+
+# Whitelist de packages cuyos install scripts SÍ pueden correr aunque
+# ignore-scripts=true en .npmrc. Solo paquetes verificados.
+# pnpm 11 usa allowBuilds (object con booleans), no onlyBuiltDependencies
+# (array). Confirmado experimentalmente: pnpm inyecta el bloque allowBuilds
+# con placeholders cuando detecta packages que necesitan build.
+allowBuilds:
+  sharp: true
+  unrs-resolver: true
+  "@sentry/cli": true
+
+# Overrides de versiones para parchar vulnerabilidades antes de que las
+# deps padre suban sus pins. Cada override requiere justificación.
+overrides:
+  # postcss < 8.5.10 vulnerable a XSS via </style> en stringify output
+  # (GHSA-qx2v-qp2m-jg93). Riesgo real bajo (build-time, no runtime con
+  # input de usuario), pero el fix es trivial.
+  postcss: "8.5.10"
