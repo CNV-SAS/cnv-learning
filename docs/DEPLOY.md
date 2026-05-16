@@ -102,37 +102,66 @@ Configurar `tsconfig.json` con `"strict": true` (debería venir así por defecto
 
 ### 2bis. Crear archivos de configuración de supply chain (CRÍTICO)
 
-**Antes de instalar cualquier dependencia**, crea DOS archivos en la raíz del proyecto. Esta separación es necesaria porque pnpm 11 ya NO lee settings non-auth desde `.npmrc`: las settings específicas de pnpm viven en `pnpm-workspace.yaml`.
+**Antes de instalar cualquier dependencia**, crea DOS archivos en la raíz del proyecto. Esta separación es necesaria porque pnpm 11 **ya NO lee ninguna setting non-auth desde `.npmrc`**: todas las settings específicas de pnpm viven en `pnpm-workspace.yaml` con sintaxis camelCase.
 
-**Archivo 1: `.npmrc`** (settings que ambos npm y pnpm entienden):
+**Archivo 1: `.npmrc`** (queda como placeholder; solo se usa para registry/auth si se necesita en el futuro):
 
 ```
-ignore-scripts=true
-save-exact=true
-audit-level=moderate
+# pnpm 11 separa config en dos archivos: .npmrc para auth/registry,
+# pnpm-workspace.yaml para todo lo demás. Las settings de supply
+# chain (ignoreScripts, saveExact, minimumReleaseAge, allowBuilds,
+# overrides, etc.) viven en pnpm-workspace.yaml. Este archivo queda
+# solo como placeholder.
 ```
 
-**Archivo 2: `pnpm-workspace.yaml`** (settings específicas de pnpm 11+):
+**Archivo 2: `pnpm-workspace.yaml`** (toda la config de pnpm 11):
 
 ```yaml
-# Esperar 7 días (10080 minutos) antes de instalar una versión recién publicada.
-# Defensa principal contra ataques tipo Mini Shai-Hulud donde packages
-# comprometidos son detectados y removidos del registro dentro de horas/días.
-minimumReleaseAge: 10080
+# Ventana de cuarentena antes de instalar versión recién publicada.
+# 1440 min (24h) combinado con ignoreScripts + allowBuilds explícito da
+# defensa razonable contra Mini Shai-Hulud sin la fricción de un threshold
+# de 7 días que bloquea deps transitivas oficiales legítimas.
+minimumReleaseAge: 1440
 
-# Bloquea subdependencias que vengan de fuentes no estándar (git, tarballs URL).
+# Bloquear deps transitivas de fuentes exóticas (git, tarballs URL).
 blockExoticSubdeps: true
+
+# Bloquear scripts post-install de TODOS los packages excepto los
+# explícitamente whitelisted abajo. Vector principal de Mini Shai-Hulud.
+ignoreScripts: true
+
+# Pinear versiones exactas (sin ^ ni ~) cuando se agrega un package.
+saveExact: true
+
+# Whitelist de packages cuyos install scripts SÍ pueden correr.
+# Solo paquetes verificados que necesitan compilar/descargar binarios.
+# pnpm 11 usa allowBuilds (object con booleans), no onlyBuiltDependencies
+# (array, deprecated).
+allowBuilds:
+  sharp: true
+  unrs-resolver: true
+  "@sentry/cli": true
+  supabase: true
+  esbuild: true
+
+# Overrides de versiones para parchar vulnerabilidades antes de que las
+# deps padre suban sus pins.
+overrides:
+  postcss: "8.5.10"   # GHSA-qx2v-qp2m-jg93 (XSS via </style> en stringify)
 ```
 
 **Por qué cada setting:**
 
-- `ignore-scripts=true` (.npmrc): bloquea ejecución de scripts post-install. Mitigación principal contra malware tipo Mini Shai-Hulud. Recomendado por CISA. Aplica a ambos npm y pnpm.
-- `save-exact=true` (.npmrc): pinea versiones exactas. Evita que `^1.2.3` permita upgrade silencioso a `1.2.4` comprometido.
-- `audit-level=moderate` (.npmrc): alerta en vulnerabilidades moderadas hacia arriba.
-- `minimumReleaseAge: 10080` (pnpm-workspace.yaml): solo packages publicados hace al menos 7 días (10080 minutos). En pnpm 11+ esto es un setting específico de pnpm y se configura en YAML, NO en `.npmrc`. Si lo pones en `.npmrc` con valor numérico, npm intenta leerlo y rompe todas las instalaciones (es un setting introducido por pnpm que npm interpreta como días desnudos).
-- `blockExoticSubdeps: true` (pnpm-workspace.yaml): activado por defecto en pnpm 11, lo dejamos explícito para que sobreviva si en algún momento cambia el default.
+- `minimumReleaseAge: 1440` (24h): solo packages publicados hace al menos 1 día. Defensa primaria contra Mini Shai-Hulud donde packages comprometidos son detectados y removidos del registro dentro de horas. Valor 10080 (7 días) probado y descartado: bloquea deps transitivas legítimas que se publican rápido (ej. `baseline-browser-mapping` de web-platform-dx/W3C). 1440 da un balance pragmático.
+- `blockExoticSubdeps: true`: rechaza dependencias indirectas que vengan de git URLs, tarballs sueltos, etc. Activado por default en pnpm 11; explícito para que sobreviva cambios de default.
+- `ignoreScripts: true`: bloquea ejecución de scripts post-install. Mitigación principal contra malware tipo Mini Shai-Hulud. Recomendado por CISA.
+- `saveExact: true`: pinea versiones exactas. Evita que `^1.2.3` permita upgrade silencioso a `1.2.4` comprometido.
+- `allowBuilds`: object con booleanos (NO el deprecated `onlyBuiltDependencies` array de pnpm 10 y anteriores). Lista de packages cuyo postinstall puede correr. Cada entrada requiere verificación previa del package y justificación inline.
+- `overrides`: fuerza una versión específica de un transitive dep ignorando las ranges declaradas por los padres. Usar solo para parchar vulnerabilidades con CVE conocido.
 
-**Tradeoff conocido de `ignore-scripts=true`:** algunos packages legítimos necesitan scripts post-install (compilar binarios). Si la instalación de uno falla, NO desactives la protección globalmente. Habilita el script puntualmente con `pnpm rebuild <package>` tras verificación manual del package, o agrega el paquete a `onlyBuiltDependencies` en `package.json` para permitir su build específico.
+**Tradeoff conocido de `ignoreScripts: true`:** algunos packages legítimos necesitan postinstall scripts (compilar binarios nativos, descargar binarios externos). Si la instalación de uno falla pidiendo aprobación, NO desactives la protección globalmente. Verifica el package (oficial, mantenedor confiable, sin historial de compromisos) y si pasa, agrégalo a `allowBuilds`. Si es un package transitorio que se usa solo via `pnpm dlx`, igual hay que whitelistearlo porque pnpm dlx aplica las mismas reglas.
+
+**Caso conocido del proyecto:** `supabase` (CLI) se invoca via `pnpm dlx supabase ...` y NO está en devDependencies (su tarball NPM no incluye el binario; el postinstall lo descarga, lo cual generaba warnings ENOENT en CI cuando estaba en devDeps). Ver sección 7 para detalle.
 
 ### 3. Instalar dependencias clave
 
@@ -162,9 +191,10 @@ pnpm add -D \
   vitest \
   @types/node \
   prettier \
-  prettier-plugin-tailwindcss \
-  supabase
+  prettier-plugin-tailwindcss
 ```
+
+`supabase` (CLI) NO se instala como devDep. Ver sección 7 para el detalle.
 
 **Verificación post-install:**
 
@@ -176,23 +206,33 @@ pnpm audit
 
 Si aparece alguna vulnerabilidad de severidad `high` o `critical`, no avances al siguiente paso. Reporta y decide.
 
-### 4. Configurar shadcn/ui
+### 4. Configurar shadcn/ui v4
+
+shadcn v4 abandonó la matriz "Style × BaseColor" (New York/Default × Slate/Gray/Stone/Zinc/Neutral) y la reemplazó por presets monolíticos (Nova, Vega, Maia, Lyra, Mira, Luma, Sera). CNV Learning usa **Radix library + Vega preset** (clásico shadcn/ui, encaja con el tono visual "profesional, calmado" del producto). Ver `docs/BRAND.md` sección "Implementación técnica" para el detalle de la elección.
+
+Comando recomendado (no-interactivo):
 
 ```bash
-pnpm dlx shadcn@latest init
+pnpm dlx shadcn@latest init -t next -b radix -p vega --css-variables --yes
 ```
 
-Configuración recomendada:
-- Style: New York
-- Base color: Slate
-- CSS variables: Yes
-- Use pnpm: Yes (debería detectarlo automáticamente)
+Esto genera `components.json` con `"style": "radix-vega"`, `"baseColor": "neutral"` (campo legacy sin efecto en regeneración), `"cssVariables": true`, e `"iconLibrary": "lucide"`. También crea `src/lib/utils.ts` con el helper `cn()`.
 
-Luego, instalar componentes base:
+Luego, instalar las primitivas base:
 
 ```bash
-pnpm dlx shadcn@latest add button input label textarea card dialog sheet dropdown-menu avatar badge alert progress tabs select form skeleton
+pnpm dlx shadcn@latest add button input label textarea card dialog sheet dropdown-menu avatar badge alert progress tabs select skeleton
 ```
+
+**Gap conocido del registry Vega:** el componente `form` no se sirve correctamente desde el registry Vega en el momento de instalación (Vega es un preset nuevo y algunos primitivos legacy aún viven en el registry "new-york"). Workaround documentado y probado:
+
+```bash
+pnpm dlx shadcn@latest add https://ui.shadcn.com/r/styles/new-york/form.json
+```
+
+Esto descarga el primitivo `form` desde el registry legacy y lo emplaza correctamente en `src/components/ui/form.tsx`. El comportamiento es idéntico al esperado.
+
+**No mezclar otros preset components.** Si surgen más gaps similares, primero verificar que el componente no exista en `pnpm dlx shadcn@latest registry list` antes de caer al workaround legacy.
 
 ### 5. Configurar Sentry
 
