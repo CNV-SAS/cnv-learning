@@ -243,6 +243,22 @@ vercel env pull
 
 Esto vincula el repo local con un proyecto Vercel y descarga variables de entorno.
 
+#### 8.1. Corepack y packageManager en Vercel
+
+El campo `"packageManager": "pnpm@11.1.2"` del `package.json` es necesario para que Vercel use la misma versión de pnpm que el entorno local. Sin esto, Vercel cae al default histórico (pnpm 10), que no respeta la sintaxis camelCase de `allowBuilds` en `pnpm-workspace.yaml` (ni el resto de settings de pnpm 11: `minimumReleaseAge`, `overrides.postcss`, `blockExoticSubdeps`).
+
+Para que Vercel respete el campo `packageManager`, hay que activar Corepack vía environment variable en el proyecto:
+
+```
+ENABLE_EXPERIMENTAL_COREPACK=1
+```
+
+Configurar en Vercel Dashboard → Project Settings → Environment Variables, marcando los 3 scopes (Production, Preview, Development).
+
+**Síntoma si falta la env var:** Vercel ignora `packageManager`, usa pnpm 10, y los builds reportan warnings como `Failed to create bin at /vercel/path0/node_modules/.bin/supabase` porque `allowBuilds` no se interpreta. La app productiva sigue funcionando (el binario CLI es solo para desarrollo local), pero el warning ensucia los logs.
+
+**Nota técnica:** Corepack es marcado como experimental por Node.js. Vercel lo soporta documentadamente desde 2022 (estable hasta hoy), pero si en el futuro cambia o quita su soporte, habría que migrar a alternativa (instalar pnpm 11 manualmente vía Custom Install Command en Vercel). Riesgo bajo en la práctica.
+
 ### 9. Configurar DNS en Cloudflare
 
 En el panel de Cloudflare, en la zona `cnvsystem.com`:
