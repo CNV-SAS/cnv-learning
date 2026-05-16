@@ -1,6 +1,6 @@
 # Modelo de datos de CNV Learning
 
-**Última actualización:** 12 de mayo de 2026
+**Última actualización:** 16 de mayo de 2026
 **Motor:** PostgreSQL 15+ vía Supabase
 
 ## Principios
@@ -67,23 +67,29 @@ comment on column profiles.professional_license is 'Campo preparado para complia
 
 ```sql
 create or replace function public.handle_new_user()
-returns trigger as $$
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
 begin
   insert into public.profiles (id, email, full_name, role)
   values (
     new.id,
     new.email,
     coalesce(new.raw_user_meta_data->>'full_name', new.email),
-    coalesce((new.raw_user_meta_data->>'role')::user_role, 'student')
+    coalesce((new.raw_user_meta_data->>'role')::public.user_role, 'student')
   );
   return new;
 end;
-$$ language plpgsql security definer;
+$$;
 
 create trigger on_auth_user_created
   after insert on auth.users
   for each row execute function public.handle_new_user();
 ```
+
+> Esta función aplica la convención de hardening para funciones `security definer` (ver "Hardening de funciones security definer" más abajo): `set search_path = ''` + identificadores calificados con schema. Previene ataques de search path hijacking.
 
 ### `courses`
 
@@ -488,10 +494,13 @@ Todas las tablas tienen RLS habilitado. Las policies son la línea de defensa pr
 
 ```sql
 create or replace function public.current_user_role()
-returns user_role
-language sql stable security definer
+returns public.user_role
+language sql
+stable
+security definer
+set search_path = ''
 as $$
-  select role from profiles where id = auth.uid()
+  select role from public.profiles where id = auth.uid()
 $$;
 ```
 
@@ -500,10 +509,13 @@ $$;
 ```sql
 create or replace function public.is_enrolled(p_course_id uuid)
 returns boolean
-language sql stable security definer
+language sql
+stable
+security definer
+set search_path = ''
 as $$
   select exists(
-    select 1 from enrollments
+    select 1 from public.enrollments
     where user_id = auth.uid() and course_id = p_course_id and is_active = true
   )
 $$;
@@ -514,176 +526,593 @@ $$;
 ```sql
 create or replace function public.is_course_teacher(p_course_id uuid)
 returns boolean
-language sql stable security definer
+language sql
+stable
+security definer
+set search_path = ''
 as $$
   select exists(
-    select 1 from course_teachers
+    select 1 from public.course_teachers
     where teacher_id = auth.uid() and course_id = p_course_id
   )
 $$;
 ```
 
-### Policies por tabla (muestra representativa)
+### Hardening de funciones `security definer`
 
-**profiles:**
+**Convención obligatoria:** toda función plpgsql o SQL declarada con `security definer` debe incluir `set search_path = ''` y calificar todos los identificadores con su schema (`public.profiles`, `public.user_role`, `auth.uid()`, etc.).
+
+**Por qué:** una función `security definer` se ejecuta con los privilegios del owner (típicamente `postgres`), no del caller. Si el `search_path` queda como default (`"$user", public`), un actor con permiso a crear objetos en otro schema accesible podría introducir versiones maliciosas de tipos o tablas que la función resolvería por path, ejecutando código no autorizado con privilegios elevados. Fijar `search_path = ''` y calificar todo previene este vector (search path hijacking).
+
+**Aplica a:**
+- `public.handle_new_user` (trigger automático de `auth.users` → `profiles`).
+- `public.current_user_role`, `public.is_enrolled`, `public.is_course_teacher` (helpers RLS).
+- Cualquier futura función `security definer` (ej. `core/audit/log` RPCs si se modelan como funciones SQL, generadores de hash de certificados, etc.).
+
+**No aplica a:**
+- Funciones plpgsql sin `security definer` (corren con privilegios del caller). Ej. `public.set_updated_at` es trigger function plain, no necesita hardening.
+- Funciones builtin de Supabase/Postgres (`auth.uid()`, `now()`, etc.).
+
+### Policies por tabla
+
+Todas las 21 tablas del schema `public` tienen RLS habilitado (`alter table ... enable row level security`, se omite en los bloques por brevedad). Sin policy permissive aplicable, una query devuelve filas vacías (anon) o falla (authenticated tratando de mutar). Las policies se invocan con identificadores calificados con `public.<helper>` cuando llaman a los helpers, por coherencia con el hardening de `security definer`.
+
+#### `profiles` (6 policies)
 
 ```sql
-alter table profiles enable row level security;
-
-create policy "Users can view own profile" on profiles
+create policy "Users can view own profile" on public.profiles
   for select using (auth.uid() = id);
 
-create policy "Admins can view all profiles" on profiles
-  for select using (current_user_role() = 'admin');
+create policy "Admins can view all profiles" on public.profiles
+  for select using (public.current_user_role() = 'admin');
 
-create policy "Teachers can view enrolled students" on profiles
+create policy "Teachers can view enrolled students" on public.profiles
   for select using (
-    current_user_role() = 'teacher'
+    public.current_user_role() = 'teacher'
     and exists(
-      select 1 from enrollments e
-      join course_teachers ct on ct.course_id = e.course_id
+      select 1 from public.enrollments e
+      join public.course_teachers ct on ct.course_id = e.course_id
       where e.user_id = profiles.id and ct.teacher_id = auth.uid()
     )
   );
 
-create policy "Users can update own profile" on profiles
+create policy "Enrolled students view their course teachers" on public.profiles
+  for select using (
+    role = 'teacher'
+    and exists(
+      select 1 from public.course_teachers ct
+      join public.enrollments e on e.course_id = ct.course_id
+      where ct.teacher_id = profiles.id and e.user_id = auth.uid()
+    )
+  );
+
+create policy "Users can update own profile" on public.profiles
   for update using (auth.uid() = id)
   with check (auth.uid() = id);
 
-create policy "Admins can update any profile" on profiles
-  for update using (current_user_role() = 'admin');
+create policy "Admins can update any profile" on public.profiles
+  for update using (public.current_user_role() = 'admin');
 
--- Insert and delete solo por service role (no policy = no acceso desde anon/authenticated)
+-- Sin INSERT/DELETE: solo service role. handle_new_user cubre el caso normal de creacion.
 ```
 
-**enrollments:**
+La policy "Enrolled students view their course teachers" permite que un estudiante lea el `profile` del docente de su curso (necesario para mostrar "Tu docente: {full_name}" en UI de Bloque 4). Guard `role = 'teacher'` previene exposición indirecta de otros roles.
+
+#### `courses` (4 policies, restringidas a `authenticated`)
 
 ```sql
-alter table enrollments enable row level security;
+create policy "Authenticated users view published courses" on public.courses
+  for select to authenticated using (is_published = true);
 
-create policy "Users view own enrollments" on enrollments
-  for select using (user_id = auth.uid());
+create policy "Enrolled users view their courses" on public.courses
+  for select to authenticated using (public.is_enrolled(id));
 
-create policy "Teachers view enrollments of their courses" on enrollments
-  for select using (is_course_teacher(course_id));
+create policy "Teachers view their assigned courses" on public.courses
+  for select to authenticated using (public.is_course_teacher(id));
 
-create policy "Admins view all enrollments" on enrollments
-  for select using (current_user_role() = 'admin');
-
-create policy "Admins manage enrollments" on enrollments
-  for all using (current_user_role() = 'admin')
-  with check (current_user_role() = 'admin');
+create policy "Admins manage courses" on public.courses
+  for all to authenticated using (public.current_user_role() = 'admin')
+  with check (public.current_user_role() = 'admin');
 ```
 
-**lessons:**
+MVP no expone catálogo a anon. La policy de anon se agrega en v2 si se implementa landing pública con catálogo abierto.
+
+#### `course_teachers` (4 policies)
 
 ```sql
-alter table lessons enable row level security;
+create policy "Users view own teaching assignments" on public.course_teachers
+  for select using (teacher_id = auth.uid());
 
-create policy "Enrolled students view lessons" on lessons
+create policy "Enrolled students see who teaches their course" on public.course_teachers
+  for select using (public.is_enrolled(course_id));
+
+create policy "Admins view all teaching assignments" on public.course_teachers
+  for select using (public.current_user_role() = 'admin');
+
+create policy "Admins manage course_teachers" on public.course_teachers
+  for all using (public.current_user_role() = 'admin')
+  with check (public.current_user_role() = 'admin');
+```
+
+`teacher_id` se expone a estudiantes enrolled deliberadamente (necesitan saber quién es su docente). El `profile` del docente se resuelve via la policy correspondiente en `profiles`.
+
+#### `modules` (3 policies)
+
+```sql
+create policy "Enrolled students view modules of their courses" on public.modules
+  for select using (public.is_enrolled(course_id));
+
+create policy "Teachers view modules of their courses" on public.modules
+  for select using (public.is_course_teacher(course_id));
+
+create policy "Admins manage modules" on public.modules
+  for all using (public.current_user_role() = 'admin')
+  with check (public.current_user_role() = 'admin');
+```
+
+#### `lessons` (3 policies)
+
+```sql
+create policy "Enrolled students view lessons" on public.lessons
   for select using (
     exists(
-      select 1 from modules m
-      where m.id = lessons.module_id and is_enrolled(m.course_id)
+      select 1 from public.modules m
+      where m.id = lessons.module_id and public.is_enrolled(m.course_id)
     )
   );
 
-create policy "Teachers view lessons of their courses" on lessons
+create policy "Teachers view lessons of their courses" on public.lessons
   for select using (
     exists(
-      select 1 from modules m
-      where m.id = lessons.module_id and is_course_teacher(m.course_id)
+      select 1 from public.modules m
+      where m.id = lessons.module_id and public.is_course_teacher(m.course_id)
     )
   );
 
-create policy "Admins manage lessons" on lessons
-  for all using (current_user_role() = 'admin')
-  with check (current_user_role() = 'admin');
+create policy "Admins manage lessons" on public.lessons
+  for all using (public.current_user_role() = 'admin')
+  with check (public.current_user_role() = 'admin');
 ```
 
-**submissions:**
+#### `lesson_attachments` (3 policies)
 
 ```sql
-alter table submissions enable row level security;
+create policy "Enrolled students view attachments of their lessons" on public.lesson_attachments
+  for select using (
+    exists(
+      select 1 from public.lessons l
+      join public.modules m on m.id = l.module_id
+      where l.id = lesson_attachments.lesson_id and public.is_enrolled(m.course_id)
+    )
+  );
 
-create policy "Students view own submissions" on submissions
+create policy "Teachers view attachments of their course lessons" on public.lesson_attachments
+  for select using (
+    exists(
+      select 1 from public.lessons l
+      join public.modules m on m.id = l.module_id
+      where l.id = lesson_attachments.lesson_id and public.is_course_teacher(m.course_id)
+    )
+  );
+
+create policy "Admins manage lesson_attachments" on public.lesson_attachments
+  for all using (public.current_user_role() = 'admin')
+  with check (public.current_user_role() = 'admin');
+```
+
+La lógica duplica las storage policies del bucket `lesson-materials`: ambas capas (metadata SQL + blob Storage) validan enrollment para defensa en profundidad.
+
+#### `enrollments` (4 policies)
+
+```sql
+create policy "Users view own enrollments" on public.enrollments
   for select using (user_id = auth.uid());
 
-create policy "Students create own submissions" on submissions
+create policy "Teachers view enrollments of their courses" on public.enrollments
+  for select using (public.is_course_teacher(course_id));
+
+create policy "Admins view all enrollments" on public.enrollments
+  for select using (public.current_user_role() = 'admin');
+
+create policy "Admins manage enrollments" on public.enrollments
+  for all using (public.current_user_role() = 'admin')
+  with check (public.current_user_role() = 'admin');
+```
+
+#### `lesson_progress` (4 policies)
+
+```sql
+create policy "Users view own progress" on public.lesson_progress
+  for select using (user_id = auth.uid());
+
+create policy "Teachers view progress of their course students" on public.lesson_progress
+  for select using (
+    exists(
+      select 1 from public.lessons l
+      join public.modules m on m.id = l.module_id
+      where l.id = lesson_progress.lesson_id and public.is_course_teacher(m.course_id)
+    )
+  );
+
+create policy "Admins view all progress" on public.lesson_progress
+  for select using (public.current_user_role() = 'admin');
+
+create policy "Users mark own lesson progress" on public.lesson_progress
+  for insert with check (
+    user_id = auth.uid()
+    and exists(
+      select 1 from public.lessons l
+      join public.modules m on m.id = l.module_id
+      where l.id = lesson_progress.lesson_id and public.is_enrolled(m.course_id)
+    )
+  );
+```
+
+INSERT lleva doble check (`user_id = auth.uid()` AND `is_enrolled`): bloquea marcar progreso en lecciones de cursos no enrolled.
+
+#### `assignments` (3 policies)
+
+```sql
+create policy "Enrolled students view assignments of their courses" on public.assignments
+  for select using (
+    exists(
+      select 1 from public.modules m
+      where m.id = assignments.module_id and public.is_enrolled(m.course_id)
+    )
+  );
+
+create policy "Teachers view assignments of their courses" on public.assignments
+  for select using (
+    exists(
+      select 1 from public.modules m
+      where m.id = assignments.module_id and public.is_course_teacher(m.course_id)
+    )
+  );
+
+create policy "Admins manage assignments" on public.assignments
+  for all using (public.current_user_role() = 'admin')
+  with check (public.current_user_role() = 'admin');
+```
+
+#### `quiz_questions` (3 policies)
+
+```sql
+create policy "Enrolled students view quiz questions" on public.quiz_questions
+  for select using (
+    exists(
+      select 1 from public.assignments a
+      join public.modules m on m.id = a.module_id
+      where a.id = quiz_questions.assignment_id and public.is_enrolled(m.course_id)
+    )
+  );
+
+create policy "Teachers view quiz questions" on public.quiz_questions
+  for select using (
+    exists(
+      select 1 from public.assignments a
+      join public.modules m on m.id = a.module_id
+      where a.id = quiz_questions.assignment_id and public.is_course_teacher(m.course_id)
+    )
+  );
+
+create policy "Admins manage quiz_questions" on public.quiz_questions
+  for all using (public.current_user_role() = 'admin')
+  with check (public.current_user_role() = 'admin');
+```
+
+Las preguntas son contenido del quiz, los estudiantes enrolled las leen normalmente. Las opciones tienen tratamiento aparte (ver `quiz_options`).
+
+#### `quiz_options` (2 policies, sin SELECT para estudiantes)
+
+```sql
+create policy "Teachers view options of their course quizzes" on public.quiz_options
+  for select using (
+    exists(
+      select 1 from public.quiz_questions q
+      join public.assignments a on a.id = q.assignment_id
+      join public.modules m on m.id = a.module_id
+      where q.id = quiz_options.question_id and public.is_course_teacher(m.course_id)
+    )
+  );
+
+create policy "Admins manage quiz_options" on public.quiz_options
+  for all using (public.current_user_role() = 'admin')
+  with check (public.current_user_role() = 'admin');
+```
+
+Sin policy SELECT para estudiantes (acceso bloqueado): la columna `is_correct` es la respuesta correcta del quiz, exponerla trivializa el examen. Ver "Campos secretos en RLS" abajo.
+
+#### Campos secretos en RLS
+
+Postgres RLS opera a nivel de fila, **no de columna**. Cuando una tabla tiene un campo que solo ciertos roles deben leer (mientras otros campos de la misma fila son legítimamente públicos), RLS por sí solo no alcanza. El patrón estándar del proyecto:
+
+1. **Bloquear SELECT** a los roles que no deben ver el campo secreto.
+2. **Servir el dato sin el campo secreto** desde un route handler server-side usando `lib/supabase/admin.ts` (service role) para leer y filtrar antes de enviar al cliente.
+
+**Caso actual: `quiz_options.is_correct`.**
+- Estudiantes sin policy SELECT → cualquier query directa del cliente falla/devuelve cero.
+- El quiz player (Bloque 7) consume un route handler tipo `GET /api/quizzes/{id}/play` que lee las opciones server-side, **omite `is_correct`** del payload, y devuelve el resto.
+- La calificación automática vive en otro route handler `POST /api/quizzes/{id}/submit` que compara respuestas contra `is_correct` server-side, persiste la `submission` + `grading`, y devuelve la nota al cliente.
+
+**Asimetría intencional con `quiz_questions`:** las preguntas SÍ tienen SELECT para estudiantes (no contienen info secreta). En el quiz player conviene unificar el acceso vía el mismo route handler para evitar race conditions, pero técnicamente solo `quiz_options` requiere protección.
+
+**Casos futuros a evaluar con este patrón:** `ai_grading_suggestions.raw_response` si contiene info que no debe filtrarse a estudiantes (en MVP los estudiantes sin SELECT igual no la ven, pero si en v2 se relaja, evaluar este patrón).
+
+#### `submissions` (5 policies)
+
+```sql
+create policy "Students view own submissions" on public.submissions
+  for select using (user_id = auth.uid());
+
+create policy "Students create own submissions" on public.submissions
   for insert with check (user_id = auth.uid());
 
-create policy "Students update own draft submissions" on submissions
+create policy "Students update own draft submissions" on public.submissions
   for update using (user_id = auth.uid() and status = 'draft')
   with check (user_id = auth.uid());
 
-create policy "Teachers view submissions of their courses" on submissions
+create policy "Teachers view submissions of their courses" on public.submissions
   for select using (
     exists(
-      select 1 from assignments a
-      join modules m on m.id = a.module_id
-      where a.id = submissions.assignment_id and is_course_teacher(m.course_id)
+      select 1 from public.assignments a
+      join public.modules m on m.id = a.module_id
+      where a.id = submissions.assignment_id and public.is_course_teacher(m.course_id)
     )
   );
 
-create policy "Admins view all submissions" on submissions
-  for select using (current_user_role() = 'admin');
+create policy "Admins view all submissions" on public.submissions
+  for select using (public.current_user_role() = 'admin');
 ```
 
-**gradings:**
+UPDATE con guard `status = 'draft'`: el estudiante puede editar su entrega solo mientras esté en draft (también puede cambiar el status de `draft` a `submitted`, lo cual sale del filtro `using` pero entra en `with check`).
+
+#### `gradings` (5 policies)
 
 ```sql
-alter table gradings enable row level security;
-
-create policy "Students view gradings of own submissions" on gradings
+create policy "Students view gradings of own submissions" on public.gradings
   for select using (
     exists(
-      select 1 from submissions s
+      select 1 from public.submissions s
       where s.id = gradings.submission_id and s.user_id = auth.uid()
     )
   );
 
-create policy "Teachers create gradings for their courses" on gradings
+create policy "Teachers create gradings for their courses" on public.gradings
   for insert with check (
     graded_by = auth.uid()
     and exists(
-      select 1 from submissions s
-      join assignments a on a.id = s.assignment_id
-      join modules m on m.id = a.module_id
-      where s.id = gradings.submission_id and is_course_teacher(m.course_id)
+      select 1 from public.submissions s
+      join public.assignments a on a.id = s.assignment_id
+      join public.modules m on m.id = a.module_id
+      where s.id = gradings.submission_id and public.is_course_teacher(m.course_id)
     )
   );
 
-create policy "Teachers update own gradings" on gradings
+create policy "Teachers update own gradings" on public.gradings
   for update using (graded_by = auth.uid())
   with check (graded_by = auth.uid());
+
+create policy "Teachers view gradings of their courses" on public.gradings
+  for select using (
+    exists(
+      select 1 from public.submissions s
+      join public.assignments a on a.id = s.assignment_id
+      join public.modules m on m.id = a.module_id
+      where s.id = gradings.submission_id and public.is_course_teacher(m.course_id)
+    )
+  );
+
+create policy "Admins view all gradings" on public.gradings
+  for select using (public.current_user_role() = 'admin');
 ```
 
-**certificates:**
+Las dos últimas policies son críticas: sin "Teachers view gradings of their courses", el docente no puede leer la calificación que él mismo insertó (la UI del panel docente fallaría). Sin "Admins view all gradings", el panel admin de Bloque 14 requeriría service role.
+
+#### `ai_grading_suggestions` (3 policies)
 
 ```sql
-alter table certificates enable row level security;
+create policy "Teachers create AI suggestions for their courses" on public.ai_grading_suggestions
+  for insert with check (
+    generated_by = auth.uid()
+    and exists(
+      select 1 from public.submissions s
+      join public.assignments a on a.id = s.assignment_id
+      join public.modules m on m.id = a.module_id
+      where s.id = ai_grading_suggestions.submission_id and public.is_course_teacher(m.course_id)
+    )
+  );
 
-create policy "Students view own certificates" on certificates
+create policy "Teachers view AI suggestions for their courses" on public.ai_grading_suggestions
+  for select using (
+    exists(
+      select 1 from public.submissions s
+      join public.assignments a on a.id = s.assignment_id
+      join public.modules m on m.id = a.module_id
+      where s.id = ai_grading_suggestions.submission_id and public.is_course_teacher(m.course_id)
+    )
+  );
+
+create policy "Admins view all AI suggestions" on public.ai_grading_suggestions
+  for select using (public.current_user_role() = 'admin');
+```
+
+Sin UPDATE/DELETE: las sugerencias son inmutables por diseño (tabla sin `updated_at`). Sin SELECT para estudiantes: solo ven `gradings.feedback` (la calificación final humana), no las sugerencias IA crudas.
+
+#### `forums` (3 policies)
+
+```sql
+create policy "Enrolled students view forums of their courses" on public.forums
+  for select using (public.is_enrolled(course_id));
+
+create policy "Teachers view forums of their courses" on public.forums
+  for select using (public.is_course_teacher(course_id));
+
+create policy "Admins manage forums" on public.forums
+  for all using (public.current_user_role() = 'admin')
+  with check (public.current_user_role() = 'admin');
+```
+
+Sin INSERT por user: los foros se crean en el seed cuando se crea el curso. Crear foros ad-hoc desde UI no entra en MVP; en v2 se evalúa.
+
+#### `forum_threads` (6 policies)
+
+```sql
+create policy "Enrolled students view forum threads" on public.forum_threads
+  for select using (
+    exists(
+      select 1 from public.forums f
+      where f.id = forum_threads.forum_id and public.is_enrolled(f.course_id)
+    )
+  );
+
+create policy "Teachers view forum threads of their courses" on public.forum_threads
+  for select using (
+    exists(
+      select 1 from public.forums f
+      where f.id = forum_threads.forum_id and public.is_course_teacher(f.course_id)
+    )
+  );
+
+create policy "Enrolled students create forum threads" on public.forum_threads
+  for insert with check (
+    author_id = auth.uid()
+    and exists(
+      select 1 from public.forums f
+      where f.id = forum_threads.forum_id and public.is_enrolled(f.course_id)
+    )
+  );
+
+create policy "Teachers create forum threads of their courses" on public.forum_threads
+  for insert with check (
+    author_id = auth.uid()
+    and exists(
+      select 1 from public.forums f
+      where f.id = forum_threads.forum_id and public.is_course_teacher(f.course_id)
+    )
+  );
+
+create policy "Authors update own threads" on public.forum_threads
+  for update using (author_id = auth.uid())
+  with check (author_id = auth.uid());
+
+create policy "Admins manage forum threads" on public.forum_threads
+  for all using (public.current_user_role() = 'admin')
+  with check (public.current_user_role() = 'admin');
+```
+
+Threads tienen `updated_at` (autor puede editar). Sin DELETE por autor: admin lo hace via service role si se requiere moderación.
+
+#### `forum_replies` (5 policies)
+
+```sql
+create policy "Enrolled students view forum replies" on public.forum_replies
+  for select using (
+    exists(
+      select 1 from public.forum_threads t
+      join public.forums f on f.id = t.forum_id
+      where t.id = forum_replies.thread_id and public.is_enrolled(f.course_id)
+    )
+  );
+
+create policy "Teachers view forum replies of their courses" on public.forum_replies
+  for select using (
+    exists(
+      select 1 from public.forum_threads t
+      join public.forums f on f.id = t.forum_id
+      where t.id = forum_replies.thread_id and public.is_course_teacher(f.course_id)
+    )
+  );
+
+create policy "Enrolled students reply to forum threads" on public.forum_replies
+  for insert with check (
+    author_id = auth.uid()
+    and exists(
+      select 1 from public.forum_threads t
+      join public.forums f on f.id = t.forum_id
+      where t.id = forum_replies.thread_id and public.is_enrolled(f.course_id)
+    )
+  );
+
+create policy "Teachers reply to forum threads of their courses" on public.forum_replies
+  for insert with check (
+    author_id = auth.uid()
+    and exists(
+      select 1 from public.forum_threads t
+      join public.forums f on f.id = t.forum_id
+      where t.id = forum_replies.thread_id and public.is_course_teacher(f.course_id)
+    )
+  );
+
+create policy "Admins manage forum replies" on public.forum_replies
+  for all using (public.current_user_role() = 'admin')
+  with check (public.current_user_role() = 'admin');
+```
+
+Replies sin UPDATE: son inmutables por diseño (tabla sin `updated_at`). Editar implica nueva reply.
+
+#### `announcements` (5 policies)
+
+```sql
+create policy "Authenticated users view global announcements" on public.announcements
+  for select to authenticated using (scope = 'global');
+
+create policy "Enrolled students view course announcements" on public.announcements
+  for select using (scope = 'course' and public.is_enrolled(course_id));
+
+create policy "Teachers view announcements of their courses" on public.announcements
+  for select using (scope = 'course' and public.is_course_teacher(course_id));
+
+create policy "Teachers create course announcements" on public.announcements
+  for insert with check (
+    scope = 'course'
+    and author_id = auth.uid()
+    and public.is_course_teacher(course_id)
+  );
+
+create policy "Admins manage announcements" on public.announcements
+  for all using (public.current_user_role() = 'admin')
+  with check (public.current_user_role() = 'admin');
+```
+
+Globales visibles para todos los authenticated (por definición van a toda la plataforma). Course-scoped filtran por enrollment/teaching. INSERT global solo via admin manage.
+
+#### `notifications` (3 policies)
+
+```sql
+create policy "Users view own notifications" on public.notifications
   for select using (user_id = auth.uid());
 
-create policy "Admins manage certificates" on certificates
-  for all using (current_user_role() = 'admin')
-  with check (current_user_role() = 'admin');
+create policy "Users update own notifications" on public.notifications
+  for update using (user_id = auth.uid())
+  with check (user_id = auth.uid());
 
--- La verificación pública NO usa RLS, va vía service role en route handler
--- que devuelve solo nombre, curso, fecha, estado
+create policy "Admins view all notifications" on public.notifications
+  for select using (public.current_user_role() = 'admin');
 ```
 
-**audit_logs:**
+Sin INSERT por user: las notificaciones las genera el sistema desde service role (handlers de eventos `assignment.graded`, `course.completed`, etc.). UPDATE propio sirve para marcar `read_at`. Sin DELETE: se mantienen para histórico.
+
+#### `certificates` (2 policies)
 
 ```sql
-alter table audit_logs enable row level security;
+create policy "Students view own certificates" on public.certificates
+  for select using (user_id = auth.uid());
 
-create policy "Admins read audit logs" on audit_logs
-  for select using (current_user_role() = 'admin');
-
--- Inserts solo desde service role
+create policy "Admins manage certificates" on public.certificates
+  for all using (public.current_user_role() = 'admin')
+  with check (public.current_user_role() = 'admin');
 ```
+
+La verificación pública `/verify/<id>` NO usa RLS, va via service role en route handler que devuelve solo nombre, curso, fecha, status.
+
+#### `audit_logs` (1 policy)
+
+```sql
+create policy "Admins read audit logs" on public.audit_logs
+  for select using (public.current_user_role() = 'admin');
+```
+
+Sin INSERT/UPDATE/DELETE: inserts solo desde service role (`core/audit/log.ts` usa `lib/supabase/admin.ts`). Inmutabilidad por diseño (regla operativa de seguridad).
 
 ### Buckets de Storage
 
@@ -738,7 +1167,7 @@ create policy "Teachers read submissions of their courses" on storage.objects
 
 ## Seed determinístico
 
-`supabase/seed.sql` crea el estado inicial reproducible:
+`supabase/seed.ts` (script TypeScript ejecutado con `pnpm dlx tsx supabase/seed.ts`) crea el estado inicial reproducible:
 
 - 1 admin: Santiago, `sau.idk001@gmail.com`.
 - 1 docente de prueba: `sau.idk001+teacher@gmail.com`.
@@ -751,13 +1180,26 @@ create policy "Teachers read submissions of their courses" on storage.objects
 - Enrollment del estudiante de prueba al curso.
 - Asignación del docente de prueba al curso.
 
-El seed se ejecuta con `supabase db reset` y siempre produce el mismo resultado, lo cual permite reproducir bugs y demos.
+Los 3 auth users se crean vía `supabase.auth.admin.createUser()` con UUIDs fijos (patrón `00000000-0000-0000-0000-XXXXXXXXXXXX`) y `email_confirm: true`. El trigger `handle_new_user` materializa los `profiles` automáticamente leyendo `role` y `full_name` del `user_metadata`. El resto de la data (curso, módulos, lecciones, etc.) se inserta con service role bypaseando RLS.
+
+Passwords se leen de env vars `SEED_ADMIN_PASSWORD`, `SEED_TEACHER_PASSWORD`, `SEED_STUDENT_PASSWORD` (documentadas en `.env.local.example` sin valor, configuradas en `.env.local` local). El seed asume BD vacía (no idempotente). Uso normal post-reset:
+
+```bash
+$env:NEXT_PUBLIC_SUPABASE_URL = ...
+$env:SUPABASE_SERVICE_ROLE_KEY = ...
+$env:SEED_ADMIN_PASSWORD = ...
+$env:SEED_TEACHER_PASSWORD = ...
+$env:SEED_STUDENT_PASSWORD = ...
+pnpm dlx tsx supabase/seed.ts
+```
+
+Mismo `.env.local` → mismo resultado en cada ejecución (UUIDs fijos), lo cual permite reproducir bugs y demos.
 
 ## Migraciones
 
 Convención de nombres: `NNNN_descripción_corta.sql` con N de 4 dígitos (0001, 0002, etc.).
 
-Plan de migraciones del MVP:
+Migraciones aplicadas al cierre del Bloque 1:
 
 ```
 supabase/migrations/
@@ -774,14 +1216,17 @@ supabase/migrations/
 ├── 0011_announcements_notifications.sql
 ├── 0012_certificates.sql
 ├── 0013_audit_logs.sql
-├── 0014_storage_buckets.sql
-├── 0015_rls_profiles.sql
-├── 0016_rls_courses.sql
-├── 0017_rls_lessons.sql
-├── 0018_rls_submissions_gradings.sql
-├── 0019_rls_certificates_audit.sql
-└── 0020_triggers.sql
+├── 0014_rls_helpers.sql
+├── 0015_storage_buckets.sql
+├── 0016_triggers_updated_at.sql
+├── 0017_rls_profile_content.sql
+├── 0018_rls_enrollments_assignments.sql
+├── 0019_rls_submissions.sql
+├── 0020_rls_remaining.sql
+└── 0021_rls_students_view_teachers.sql
 ```
+
+**Orden importante por dependencias:** los helpers RLS (0014) se crean **antes** que las storage policies (0015) porque las storage policies de los buckets `lesson-materials` y `submissions` consumen `public.is_enrolled` y `public.current_user_role`. Los triggers `updated_at` (0016) van después porque son independientes. Las RLS de tablas (0017-0020) cierran la capa de autorización. La 0021 cierra el gap detectado en el smoke test de cierre de Bloque 1.
 
 **Regla dura:** una vez aplicada en producción, una migración no se modifica. Si necesitas cambiar algo, creas una nueva migración.
 
@@ -800,10 +1245,12 @@ create table public.ai_grading_suggestions (
 
 ## Generación de tipos TypeScript
 
-Tras cada cambio de migración, regenerar tipos:
+Tras cada cambio de migración, regenerar tipos contra la BD remota linkeada:
 
-```bash
-supabase gen types typescript --local > src/types/database.generated.ts
+```powershell
+$env:SUPABASE_ACCESS_TOKEN = (Select-String -Path .env.local -Pattern '^SUPABASE_ACCESS_TOKEN=(.+)$').Matches.Groups[1].Value
+$content = (pnpm dlx supabase gen types typescript --linked) -join "`n"
+[System.IO.File]::WriteAllText((Resolve-Path 'src\types').Path + '\database.generated.ts', $content, [System.Text.UTF8Encoding]::new($false))
 ```
 
-Estos tipos NO se editan a mano y se incluyen en git.
+El patrón con `WriteAllText` + `UTF8Encoding($false)` evita que PowerShell 5.1 escriba el archivo con BOM UTF-16 LE (ESLint lo parsearía como binario). Estos tipos NO se editan a mano y se incluyen en git.
