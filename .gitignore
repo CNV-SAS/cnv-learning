@@ -55,3 +55,5 @@ coverage/
 .claude/cache/
 .claude/logs/
 .claude/history/
+# Sentry Config File
+.env.sentry-build-plugin
