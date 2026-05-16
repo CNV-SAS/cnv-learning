@@ -1,6 +1,6 @@
 # Guía de marca de CNV Learning
 
-**Última actualización:** 12 de mayo de 2026
+**Última actualización:** 16 de mayo de 2026
 
 ## Identidad
 
@@ -9,6 +9,16 @@ CNV Learning es la cara pública del producto. **Learning Core Platform (LCP)** 
 **Tono visual:** rigor científico, claridad, modernidad, calma. Cerca de Notion o Linear en seriedad. Lejos de apps de fitness o academias digitales genéricas. La plataforma comunica que aquí estudian profesionales de salud.
 
 ## Paleta de color
+
+### Implementación técnica: shadcn v4 + CSS vars
+
+**Autoridad cromática:** los tokens primarios de UI son **CSS variables** definidas en `src/app/globals.css`, no clases Tailwind directas. shadcn v4 abandonó la matriz "Style × BaseColor" (New York/Default × Slate/Gray/Stone/Zinc/Neutral) y la reemplazó por presets monolíticos. CNV Learning usa **Radix library + Vega preset** con `baseColor: neutral` (legacy en components.json, sin efecto en regeneración: la paleta efectiva viene del preset Vega).
+
+Las CSS vars de Vega + neutral (declaradas en `globals.css`) son la fuente de verdad para tokens semánticos: `--background`, `--foreground`, `--card`, `--card-foreground`, `--popover`, `--popover-foreground`, `--primary`, `--primary-foreground`, `--secondary`, `--muted`, `--muted-foreground`, `--accent`, `--accent-foreground`, `--destructive`, `--destructive-foreground`, `--border`, `--input`, `--ring`.
+
+**Override brand:** la paleta institucional (emerald para acción, amber para warning, etc.) se aplica overrideando los CSS vars correspondientes en `globals.css` cuando se ejecute el Bloque 3 (layout y branding visual). Hasta ese punto, los primitivos shadcn renderizan con el neutral default de Vega; la paleta brand convive como clases Tailwind explícitas (`bg-emerald-600`, `text-emerald-700`, etc.) en componentes que requieran color institucional fuera del sistema de tokens semánticos.
+
+**Convención:** preferir tokens semánticos shadcn (`bg-background`, `text-foreground`, `bg-card`, `border-border`) sobre tokens Tailwind crudos (`bg-white`, `text-slate-900`, `border-slate-100`) en componentes de UI. Slate-XX y otros tokens Tailwind quedan como recurso explícito solo en patrones brand específicos (hero sections, logo, ilustraciones), no como default.
 
 ### Marca primaria (acción, énfasis)
 
@@ -44,14 +54,19 @@ En Tailwind: `blue-600` y `blue-100`.
 
 ### Neutrales
 
-| Token | Hex | Uso |
-|---|---|---|
-| Texto principal | `#0F172A` | Texto de UI, headings (`slate-900`) |
-| Texto secundario | `#64748B` | Subtítulos, descripciones (`slate-500`) |
-| Texto terciario | `#94A3B8` | Labels, captions (`slate-400`) |
-| Borde sutil | `#F1F5F9` | Separadores, bordes de cards (`slate-100`) |
-| Fondo de sección | `#F8FAFC` | Backgrounds de áreas (`slate-50`) |
-| Fondo principal | `#FFFFFF` | Background base |
+Los neutrales se consumen vía CSS vars de shadcn v4 (Vega preset) como tokens semánticos. Tailwind expone clases equivalentes (`bg-background`, `text-foreground`, etc.) que resuelven a las variables definidas en `globals.css`. Los valores `slate-XX` son referencia visual aproximada para cuando se necesite un override Tailwind directo.
+
+| Token shadcn | Clase Tailwind | Equivalente Tailwind | Uso |
+|---|---|---|---|
+| `--foreground` | `text-foreground` | ~`slate-900` (`#0F172A`) | Texto principal de UI, headings |
+| `--muted-foreground` | `text-muted-foreground` | ~`slate-500` (`#64748B`) | Subtítulos, descripciones |
+| `--muted-foreground` (alpha bajo) | `text-muted-foreground/70` | ~`slate-400` (`#94A3B8`) | Labels, captions |
+| `--border` | `border-border` | ~`slate-100` (`#F1F5F9`) | Separadores, bordes de cards |
+| `--muted` | `bg-muted` | ~`slate-50` (`#F8FAFC`) | Backgrounds de áreas |
+| `--background` | `bg-background` | `#FFFFFF` | Background base |
+| `--card` | `bg-card` | `#FFFFFF` | Background de cards |
+| `--input` | `border-input` | ~`slate-200` | Bordes de inputs |
+| `--ring` | `ring-ring` | brand-primary | Focus rings (override brand en Bloque 3) |
 
 ## Tipografía
 
@@ -154,7 +169,9 @@ Tamaños:
 
 ## Componentes UI base
 
-Toda la primitiva viene de shadcn/ui. Las que se instalan en MVP:
+Toda la primitiva viene de **shadcn/ui v4** con **Radix library + Vega preset** (`components.json` declara `"style": "radix-vega"`). Vega es el preset clásico shadcn (limpio, profesional, calmado), elegido por encajar con el tono visual de la plataforma sin la expresividad de presets más estilizados (Nova, Sera, Luma).
+
+Las primitivas instaladas en MVP:
 
 - `Button`
 - `Input`
@@ -223,7 +240,7 @@ Toda interacción tiene:
 
 ### Logo
 
-En MVP usamos un placeholder textual: `CNVLearning` en `font-display` peso 900, color `emerald-700`, con `Learning` en `slate-800`. Cuando llegue el logo oficial del director (SVG), se reemplaza el archivo en `public/brand/logo.svg`.
+En MVP usamos un placeholder textual: `CNVLearning` en `font-display` peso 900, color `emerald-700` (brand), con `Learning` en `text-foreground` (CSS var). Cuando llegue el logo oficial del director (SVG), se reemplaza el archivo en `public/brand/logo.svg`.
 
 ### Favicon
 
@@ -236,16 +253,16 @@ Placeholder en `public/certificates/templates/v1/seal.png`. Imagen 200x200 px co
 ### Patrones visuales
 
 - **Cards con sombra sutil y bordes redondeados.**
-- **Backgrounds blancos o `slate-50` para diferenciación de áreas.**
+- **Backgrounds `bg-background` o `bg-muted` para diferenciación de áreas.**
 - **Hero sections en `emerald-800` con texto blanco para énfasis.**
-- **Tablas con borde superior emerald y filas alternadas en `slate-50`.**
+- **Tablas con borde superior emerald y filas alternadas con `bg-muted`.**
 
 ## Layout
 
 ### Sidebar de navegación
 
 - Ancho fijo en desktop: `w-72` o `w-80` (288 o 320px). El prototipo usa `w-[380px]` que es excesivo; recomendado bajar a `w-72`.
-- Background blanco con borde derecho `slate-100`.
+- Background `bg-background` con borde derecho `border-border`.
 - Padding interno `p-6` u `p-8`.
 - Items con `rounded-xl` o `rounded-2xl`, NO `rounded-[2rem]`.
 
