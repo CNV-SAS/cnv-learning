@@ -29,6 +29,7 @@ allowBuilds:
   unrs-resolver: true
   "@sentry/cli": true
   supabase: true   # CLI oficial Supabase, postinstall descarga binario nativo por plataforma desde GitHub releases. Mantenido por kiwicopple (CEO Supabase) + etienne_supa.
+  esbuild: true    # Required by tsx, used by supabase/seed.ts y futuros scripts TypeScript. Pidió aprobación interactiva durante Bloque 1.21 (seed). Bundler oficial de Evan Wallace, dep transitiva de Next/Vite/Vitest, miles de millones de descargas semanales.
 
 # Overrides de versiones para parchar vulnerabilidades antes de que las
 # deps padre suban sus pins. Cada override requiere justificación.
