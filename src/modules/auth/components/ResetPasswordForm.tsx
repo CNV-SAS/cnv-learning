@@ -1,0 +1,90 @@
+"use client";
+
+import { useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import {
+  resetPasswordSchema,
+  type ResetPasswordInput,
+} from "@/modules/auth/validations";
+import { resetPasswordAction } from "@/modules/auth/server";
+
+export function ResetPasswordForm() {
+  const router = useRouter();
+  const [loading, setLoading] = useState(false);
+
+  const form = useForm<ResetPasswordInput>({
+    resolver: zodResolver(resetPasswordSchema),
+    defaultValues: { password: "", confirmPassword: "" },
+  });
+
+  async function onSubmit(values: ResetPasswordInput) {
+    setLoading(true);
+    const result = await resetPasswordAction(values);
+    setLoading(false);
+
+    if (!result.ok) {
+      toast.error(result.error.message);
+      return;
+    }
+
+    toast.success("Contraseña actualizada. Inicia sesión.");
+    router.push(result.value.redirectTo);
+  }
+
+  return (
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+        <FormField
+          control={form.control}
+          name="password"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Nueva contraseña</FormLabel>
+              <FormControl>
+                <Input
+                  type="password"
+                  autoComplete="new-password"
+                  {...field}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="confirmPassword"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Confirmar contraseña</FormLabel>
+              <FormControl>
+                <Input
+                  type="password"
+                  autoComplete="new-password"
+                  {...field}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <Button type="submit" disabled={loading} className="w-full">
+          {loading ? "Guardando..." : "Cambiar contraseña"}
+        </Button>
+      </form>
+    </Form>
+  );
+}
