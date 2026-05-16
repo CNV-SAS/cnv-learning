@@ -1,0 +1,36 @@
+"use server";
+
+// Server action: aplicar el nuevo password tras click del email.
+// Requiere sesion activa: cuando el user llega a /reset-password desde
+// el email, el SDK de Supabase crea automaticamente una sesion temporal
+// desde el token del hash fragment. Esa sesion permite el updateUser.
+
+import { authService } from "@/modules/auth/services/auth.service";
+import { resetPasswordSchema } from "@/modules/auth/validations";
+import { AppError, ValidationError } from "@/core/errors/classes";
+import { ErrorCodes } from "@/core/errors/codes";
+import { ok, err, type Result } from "@/lib/utils/result";
+import { withContext } from "@/core/logger/context";
+
+export async function resetPasswordAction(
+  input: unknown,
+): Promise<Result<{ redirectTo: string }, AppError>> {
+  const requestId = crypto.randomUUID();
+
+  return withContext({ requestId }, async () => {
+    const parsed = resetPasswordSchema.safeParse(input);
+    if (!parsed.success) {
+      return err(
+        new ValidationError(
+          ErrorCodes.VALIDATION_FAILED,
+          parsed.error.issues[0]?.message ?? "Datos invalidos",
+        ),
+      );
+    }
+
+    const result = await authService.resetPassword(parsed.data.password);
+    if (!result.ok) return result;
+
+    return ok({ redirectTo: "/login" });
+  });
+}
