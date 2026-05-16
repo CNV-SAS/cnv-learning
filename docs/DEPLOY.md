@@ -220,7 +220,7 @@ Cargar al `.env.local` y a Vercel.
 
 ### 7. Configurar Supabase CLI local
 
-El Supabase CLI ya fue agregado como devDependency en el paso 3 (`pnpm add -D supabase`).
+**El Supabase CLI NO se instala como devDependency.** Siempre se invoca vía `pnpm dlx supabase ...` (init, link, db push, gen types, etc.).
 
 Inicializar y vincular:
 
@@ -230,6 +230,12 @@ pnpm dlx supabase link --project-ref YOUR_PROJECT_REF
 ```
 
 Esto crea `supabase/` en el repo y vincula con el proyecto remoto.
+
+**Por qué no como devDep:** el package `supabase` publica un tarball NPM **sin** el binario nativo; el binario se descarga del repositorio en GitHub durante el `postinstall` del package. pnpm crea los symlinks de `node_modules/.bin/` **antes** de que corra el postinstall, lo que generaba un warning ENOENT en builds de CI (Vercel) cosmético pero recurrente. Como el CLI nunca se invocaba directamente (solo vía `pnpm dlx`), tenerlo en devDependencies era dead weight con ruido. Se eliminó del `package.json`.
+
+**Lo que SÍ se mantiene:** `allowBuilds.supabase: true` en `pnpm-workspace.yaml`. Esa línea es necesaria para que el postinstall corra cuando `pnpm dlx supabase ...` descarga el package temporalmente. Sin ella, el CLI no funcionaría desde dlx (no descargaría el binario).
+
+**Diferencia con `@supabase/supabase-js`:** ese package SÍ está en `dependencies` (no devDeps) porque es el SDK que usa la app productiva. Es independiente del CLI.
 
 ### 8. Conectar Vercel
 
