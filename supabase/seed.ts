@@ -23,6 +23,11 @@
 //   pnpm dlx tsx supabase/seed.ts
 
 import { createClient } from "@supabase/supabase-js";
+import type { Database } from "../src/types/database.generated";
+
+type TableName = keyof Database["public"]["Tables"];
+type InsertRow<T extends TableName> =
+  Database["public"]["Tables"][T]["Insert"];
 
 // ============================================================
 // Env vars y validación
@@ -46,7 +51,7 @@ if (!ADMIN_PW || !TEACHER_PW || !STUDENT_PW) {
   process.exit(1);
 }
 
-const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
+const supabase = createClient<Database>(SUPABASE_URL, SERVICE_ROLE_KEY, {
   auth: { autoRefreshToken: false, persistSession: false },
 });
 
@@ -143,8 +148,18 @@ async function step(label: string, fn: () => Promise<void>): Promise<void> {
   }
 }
 
-async function insertRows<T>(table: string, rows: T[]): Promise<void> {
-  const { error } = await supabase.from(table).insert(rows);
+async function insertRows<T extends TableName>(
+  table: T,
+  rows: InsertRow<T>[]
+): Promise<void> {
+  // Cast localizado: el generic T de la firma publica NO se propaga a
+  // la inferencia interna de supabase.from(table).insert(rows). Es una
+  // limitacion conocida del builder pattern de @supabase/supabase-js
+  // con generics: from(table: T) donde T es no-resuelto devuelve el
+  // union completo de tablas, y .insert(rows) espera el shape del union,
+  // no de T. La firma publica del helper mantiene type-safety end-to-end:
+  // cada caller con literal de tabla valida sus rows contra Insert<T>.
+  const { error } = await supabase.from(table).insert(rows as never);
   if (error) throw new Error(`insert ${table}: ${error.message}`);
 }
 
@@ -154,8 +169,6 @@ async function insertRows<T>(table: string, rows: T[]): Promise<void> {
 async function createAuthUsers(): Promise<void> {
   for (const u of Object.values(USER)) {
     const { error } = await supabase.auth.admin.createUser({
-      // @ts-expect-error: id es válido en admin createUser desde v2.x pero
-      // no aparece en los tipos públicos hasta versiones más recientes.
       id: u.id,
       email: u.email,
       password: u.pw,
@@ -201,7 +214,7 @@ async function createModules(): Promise<void> {
 }
 
 async function createLessons(): Promise<void> {
-  const lessons = [];
+  const lessons: InsertRow<"lessons">[] = [];
   for (let m = 0; m < 10; m++) {
     for (let l = 0; l < 3; l++) {
       lessons.push({
@@ -222,7 +235,7 @@ async function createLessons(): Promise<void> {
 }
 
 async function createAttachments(): Promise<void> {
-  const attachments = [];
+  const attachments: InsertRow<"lesson_attachments">[] = [];
   for (let m = 0; m < 10; m++) {
     for (let l = 0; l < 3; l++) {
       attachments.push({
@@ -240,7 +253,7 @@ async function createAttachments(): Promise<void> {
 }
 
 async function createAssignments(): Promise<void> {
-  const assignments = ASSIGNMENT_TYPES.map((type, m) => ({
+  const assignments: InsertRow<"assignments">[] = ASSIGNMENT_TYPES.map((type, m) => ({
     id: assignId(m),
     module_id: moduleId(m),
     title: `Tarea Módulo ${m + 1}`,
@@ -255,8 +268,8 @@ async function createAssignments(): Promise<void> {
 }
 
 async function createQuizzes(): Promise<void> {
-  const questions = [];
-  const options = [];
+  const questions: InsertRow<"quiz_questions">[] = [];
+  const options: InsertRow<"quiz_options">[] = [];
   for (const m of [7, 8, 9]) {
     for (let q = 0; q < 3; q++) {
       questions.push({
