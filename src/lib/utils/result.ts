@@ -24,6 +24,9 @@ export function ok<T>(value: T): Result<T, never> {
   return { ok: true, value };
 }
 
-export function err<E extends AppError>(error: E): Result<never, E> {
+// Helper genérico para construir Result.failure. Acepta AppError (uso
+// interno de services/repos) o ActionError plain (frontera server action
+// -> client). Sin constraint para que ambos casos compilen.
+export function err<E>(error: E): Result<never, E> {
   return { ok: false, error };
 }

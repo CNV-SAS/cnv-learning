@@ -12,16 +12,20 @@ export function LogoutButton() {
 
   async function handleLogout() {
     setLoading(true);
-    const result = await logoutAction();
-    setLoading(false);
-
-    if (!result.ok) {
-      toast.error(result.error.message);
-      return;
+    try {
+      const result = await logoutAction();
+      if (!result.ok) {
+        toast.error(result.error.message);
+        return;
+      }
+      router.push(result.value.redirectTo);
+      router.refresh();
+    } catch {
+      // Catch defensivo. Mensaje generico (no leak detalles tecnicos).
+      toast.error("Error inesperado. Intenta de nuevo.");
+    } finally {
+      setLoading(false);
     }
-
-    router.push(result.value.redirectTo);
-    router.refresh();
   }
 
   return (

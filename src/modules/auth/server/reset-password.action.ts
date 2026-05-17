@@ -10,30 +10,39 @@
 
 import { authService } from "@/modules/auth/services/auth.service";
 import { resetPasswordSchema } from "@/modules/auth/validations";
-import { AppError, ValidationError } from "@/core/errors/classes";
-import { ErrorCodes } from "@/core/errors/codes";
 import { ok, err, type Result } from "@/lib/utils/result";
+import {
+  type ActionError,
+  toActionError,
+  validationErrorToActionError,
+  unexpectedActionError,
+} from "@/lib/utils/action-error";
+import { logger } from "@/core/logger/logger";
 import { withContext } from "@/core/logger/context";
 
 export async function resetPasswordAction(
   input: unknown,
-): Promise<Result<{ redirectTo: string }, AppError>> {
+): Promise<Result<{ redirectTo: string }, ActionError>> {
   const requestId = crypto.randomUUID();
 
-  return withContext({ requestId }, async () => {
-    const parsed = resetPasswordSchema.safeParse(input);
-    if (!parsed.success) {
-      return err(
-        new ValidationError(
-          ErrorCodes.VALIDATION_FAILED,
-          parsed.error.issues[0]?.message ?? "Datos invalidos",
-        ),
-      );
-    }
+  try {
+    return await withContext({ requestId }, async () => {
+      const parsed = resetPasswordSchema.safeParse(input);
+      if (!parsed.success) {
+        return err(
+          validationErrorToActionError(parsed.error, "Datos invalidos"),
+        );
+      }
 
-    const result = await authService.resetPassword(parsed.data.password);
-    if (!result.ok) return result;
+      const result = await authService.resetPassword(parsed.data.password);
+      if (!result.ok) return err(toActionError(result.error));
 
-    return ok({ redirectTo: "/login" });
-  });
+      return ok({ redirectTo: "/login" });
+    });
+  } catch (e) {
+    logger.error("resetPasswordAction unexpected throw", {
+      error: e instanceof Error ? e.message : String(e),
+    });
+    return err(unexpectedActionError());
+  }
 }

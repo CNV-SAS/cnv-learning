@@ -57,15 +57,21 @@ export function LoginForm() {
 
   async function onSubmit(values: LoginInput) {
     setLoading(true);
-    const result = await loginAction(values);
-    setLoading(false);
-
-    if (!result.ok) {
-      toast.error(result.error.message);
-      return;
+    try {
+      const result = await loginAction(values);
+      if (!result.ok) {
+        toast.error(result.error.message);
+        return;
+      }
+      router.push(result.value.redirectTo);
+    } catch {
+      // Catch defensivo. Cualquier throw inesperado de la action no
+      // capturado por su try-catch top-level llega aqui. Mensaje generico
+      // (no leak detalles tecnicos al user).
+      toast.error("Error inesperado. Intenta de nuevo.");
+    } finally {
+      setLoading(false);
     }
-
-    router.push(result.value.redirectTo);
   }
 
   return (

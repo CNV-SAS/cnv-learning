@@ -32,16 +32,20 @@ export function ResetPasswordForm() {
 
   async function onSubmit(values: ResetPasswordInput) {
     setLoading(true);
-    const result = await resetPasswordAction(values);
-    setLoading(false);
-
-    if (!result.ok) {
-      toast.error(result.error.message);
-      return;
+    try {
+      const result = await resetPasswordAction(values);
+      if (!result.ok) {
+        toast.error(result.error.message);
+        return;
+      }
+      toast.success("Contraseña actualizada. Inicia sesión.");
+      router.push(result.value.redirectTo);
+    } catch {
+      // Catch defensivo. Mensaje generico (no leak detalles tecnicos).
+      toast.error("Error inesperado. Intenta de nuevo.");
+    } finally {
+      setLoading(false);
     }
-
-    toast.success("Contraseña actualizada. Inicia sesión.");
-    router.push(result.value.redirectTo);
   }
 
   return (

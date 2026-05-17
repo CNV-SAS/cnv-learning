@@ -31,18 +31,22 @@ export function ForgotPasswordForm() {
 
   async function onSubmit(values: ForgotPasswordInput) {
     setLoading(true);
-    const result = await forgotPasswordAction(values);
-    setLoading(false);
-
-    if (!result.ok) {
-      // Solo errores de validacion o rate limit llegan aqui (el service
-      // suprime errores de email/Supabase por anti enumeration).
-      toast.error(result.error.message);
-      return;
+    try {
+      const result = await forgotPasswordAction(values);
+      if (!result.ok) {
+        // Solo errores de validacion o rate limit llegan aqui (el service
+        // suprime errores de email/Supabase por anti enumeration).
+        toast.error(result.error.message);
+        return;
+      }
+      // Mensaje generico que NO confirma si el email existe.
+      setSubmitted(true);
+    } catch {
+      // Catch defensivo. Mensaje generico (no leak detalles tecnicos).
+      toast.error("Error inesperado. Intenta de nuevo.");
+    } finally {
+      setLoading(false);
     }
-
-    // Mensaje generico que NO confirma si el email existe.
-    setSubmitted(true);
   }
 
   if (submitted) {

@@ -63,8 +63,17 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  // User autenticado en pagina de auth -> /dashboard
-  if (user && isAuthPath(pathname)) {
+  // User autenticado en pagina de auth -> /dashboard.
+  // Excepcion: si la URL tiene ?error=, NO redirige a /dashboard.
+  // Queremos que el user vea el mensaje en /login, no quede atrapado en
+  // su dashboard con un error invisible. Caso de uso: link de recovery
+  // expirado redirige a /login?error=auth_confirm_failed; sin esta
+  // excepcion, user logueado terminaria en /dashboard?error=... raro.
+  if (
+    user &&
+    isAuthPath(pathname) &&
+    !request.nextUrl.searchParams.has("error")
+  ) {
     const url = request.nextUrl.clone();
     url.pathname = "/dashboard";
     return NextResponse.redirect(url);
