@@ -107,7 +107,10 @@ create table public.courses (
   updated_at timestamptz not null default now()
 );
 
-create index courses_slug_idx on courses(slug);
+-- El "unique" en slug ya crea automaticamente el indice courses_slug_key
+-- (btree unique sobre slug). NO declarar un indice adicional sobre slug
+-- (causa overhead en writes sin beneficio en reads). Removido en
+-- migracion 0022.
 create index courses_published_idx on courses(is_published);
 ```
 
