@@ -144,6 +144,17 @@ export const authService = {
       );
     }
 
+    // Cerrar la sesion temporal de recovery. El user debe re-loguear
+    // con la nueva password. Defensa: previene que un actor con acceso
+    // al inbox quede con sesion activa indefinidamente sin saber la pw.
+    // No bloqueante: si signOut falla, la password ya se actualizo OK.
+    const { error: signOutError } = await supabase.auth.signOut();
+    if (signOutError) {
+      logger.warn("signOut after password reset failed (non-blocking)", {
+        message: signOutError.message,
+      });
+    }
+
     return ok(undefined);
   },
 };

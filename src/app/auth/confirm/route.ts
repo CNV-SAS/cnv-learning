@@ -61,13 +61,33 @@ export async function GET(request: NextRequest) {
     const { error } = await supabase.auth.verifyOtp({ type, token_hash });
 
     if (error) {
-      logger.error("Auth confirm verifyOtp failed", {
+      // QUIRK CONOCIDO del SDK con tokens PKCE en password recovery:
+      // verifyOtp puede REPORTAR error PERO crear sesion valida como
+      // side effect (el SDK escribe cookies de sesion durante la
+      // verificacion parcial). Verificamos la sesion explicitamente
+      // con getUser; si hay user, el flow es funcionalmente exitoso y
+      // el error es solo ruido del SDK. La sesion observada en cookies
+      // es la source of truth, no lo que reporta verifyOtp.
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (user) {
+        logger.warn(
+          "Auth confirm verifyOtp reported error but session was created",
+          { type, errorMessage: error.message, userId: user.id },
+        );
+        return NextResponse.redirect(`${origin}${safeNext}`);
+      }
+
+      // Sin sesion: error real (token expirado, token reuse, etc.).
+      logger.error("Auth confirm verifyOtp failed without session", {
         type,
         message: error.message,
       });
 
-      // Audit del fallo (potencial token reuse, token falso, intento
-      // malicioso). No bloqueante (logAuditEvent es failure-soft).
+      // Audit del fallo real (potencial token reuse, token falso,
+      // intento malicioso). No bloqueante (logAuditEvent es failure-soft).
       const ip =
         request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
         "unknown";
