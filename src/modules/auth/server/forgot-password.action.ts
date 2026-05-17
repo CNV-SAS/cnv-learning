@@ -33,11 +33,13 @@ export async function forgotPasswordAction(
     const ip =
       h.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
 
-    // redirectTo del email = pagina /reset-password de la app web. Cuando
-    // el user clickea el link del email, Supabase lo redirige aqui con
-    // el token en el hash fragment, que la pagina parsea para crear la
-    // sesion temporal de reset.
-    const redirectTo = `${process.env.NEXT_PUBLIC_APP_URL}/reset-password`;
+    // redirectTo del email = callback handler que hace
+    // exchangeCodeForSession (PKCE flow de @supabase/ssr) y luego
+    // redirige al destino final /reset-password con sesion ya activa.
+    // Si pasaramos /reset-password directo, el SDK nunca creaba la
+    // sesion (el code en query params requiere exchange explicito) y
+    // updateUser fallaria con session_missing.
+    const redirectTo = `${process.env.NEXT_PUBLIC_APP_URL}/auth/callback?next=/reset-password`;
 
     return authService.requestPasswordReset({
       email: parsed.data.email,
