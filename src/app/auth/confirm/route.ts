@@ -17,11 +17,10 @@
 //
 // NOTA CRITICA: el email template de Supabase Dashboard debe usar
 // {{ .TokenHash }} y {{ .Type }} explicitamente, NO {{ .ConfirmationURL }}.
-// La URL default genera PKCE flow (?token=pkce_xxx) que NO funciona
-// confiablemente en SSR Next.js (verifier mismatch entre el server
-// action que llama resetPasswordForEmail y el handler que llama
-// exchangeCodeForSession; ver sub-bloque 2.19 commit message para el
-// diagnostico completo).
+// La URL default genera PKCE flow (?token=pkce_xxx) que requiere
+// code_verifier presente en cookies del browser. Si el browser que
+// hace forgot-password es distinto del que clickea el link del email,
+// el verifier no esta y verifyOtp falla con bad_code_verifier.
 //
 // /auth/confirm esta en PUBLIC_PATHS del middleware (no requiere sesion
 // activa al entrar; la sesion se crea aqui mismo via verifyOtp).
@@ -30,7 +29,6 @@
 // https://supabase.com/docs/guides/auth/server-side/email-based-auth-with-pkce-flow-for-ssr
 
 import { NextResponse, type NextRequest } from "next/server";
-import { cookies } from "next/headers";
 import type { EmailOtpType } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 import { logger } from "@/core/logger/logger";
@@ -59,75 +57,19 @@ export async function GET(request: NextRequest) {
     }
 
     const supabase = await createClient();
-
-    // [DIAGNOSTIC - temp, removed after fix. logger.warn para que Sentry capture]
-    const cookieStoreBefore = await cookies();
-    const cookiesBefore = cookieStoreBefore.getAll().map((c) => c.name);
-    logger.warn("DIAGNOSTIC: cookies before verifyOtp", { cookiesBefore });
-
-    const verifyResult = await supabase.auth.verifyOtp({ type, token_hash });
-    logger.warn("DIAGNOSTIC: verifyOtp result", {
-      errorMessage: verifyResult.error?.message,
-      errorCode: verifyResult.error?.code,
-      errorStatus: verifyResult.error?.status,
-      hasUser: !!verifyResult.data?.user,
-      hasSession: !!verifyResult.data?.session,
-      dataUserId: verifyResult.data?.user?.id ?? null,
-    });
-
-    const cookieStoreAfter = await cookies();
-    const cookiesAfter = cookieStoreAfter.getAll().map((c) => c.name);
-    const cookiesDiff = cookiesAfter.filter(
-      (n) => !cookiesBefore.includes(n),
-    );
-    logger.warn("DIAGNOSTIC: cookies after verifyOtp", {
-      cookiesAfter,
-      cookiesDiff,
-    });
-
-    const { error } = verifyResult;
+    const { error } = await supabase.auth.verifyOtp({ type, token_hash });
 
     if (error) {
-      // QUIRK CONOCIDO del SDK con tokens PKCE en password recovery:
-      // verifyOtp puede REPORTAR error PERO crear sesion valida como
-      // side effect (el SDK escribe cookies de sesion durante la
-      // verificacion parcial). Verificamos la sesion explicitamente
-      // con getUser; si hay user, el flow es funcionalmente exitoso y
-      // el error es solo ruido del SDK. La sesion observada en cookies
-      // es la source of truth, no lo que reporta verifyOtp.
-      const userResult = await supabase.auth.getUser();
-      const sessionResult = await supabase.auth.getSession();
-
-      // [DIAGNOSTIC]
-      logger.warn("DIAGNOSTIC: getUser after verifyOtp error", {
-        hasUser: !!userResult.data.user,
-        userId: userResult.data.user?.id ?? null,
-        error: userResult.error?.message ?? null,
-      });
-      logger.warn("DIAGNOSTIC: getSession after verifyOtp error", {
-        hasSession: !!sessionResult.data.session,
-        sessionUserId: sessionResult.data.session?.user?.id ?? null,
-        error: sessionResult.error?.message ?? null,
-      });
-
-      const user = userResult.data.user;
-
-      if (user) {
-        logger.warn(
-          "Auth confirm verifyOtp reported error but session was created",
-          { type, errorMessage: error.message, userId: user.id },
-        );
-        return NextResponse.redirect(`${origin}${safeNext}`);
-      }
-
-      // Sin sesion: error real (token expirado, token reuse, etc.).
-      logger.error("Auth confirm verifyOtp failed without session", {
+      // Error real (token expirado, token reuse, code_verifier missing
+      // por browser cross-window, etc.). Sesion NO se crea cuando
+      // verifyOtp falla (confirmado en investigacion 2.20-diag).
+      logger.error("Auth confirm verifyOtp failed", {
         type,
         message: error.message,
       });
 
-      // Audit del fallo real (potencial token reuse, token falso,
-      // intento malicioso). No bloqueante (logAuditEvent es failure-soft).
+      // Audit del fallo (potencial token reuse, token falso, intento
+      // malicioso). No bloqueante (logAuditEvent es failure-soft).
       const ip =
         request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
         "unknown";

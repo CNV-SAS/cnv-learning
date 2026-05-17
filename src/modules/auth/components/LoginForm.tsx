@@ -1,10 +1,19 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
+
+// Mensajes user-friendly para los error codes que LoginPage puede recibir
+// como query param ?error= cuando otros flows redirigen aqui con fallo.
+const ERROR_MESSAGES: Record<string, string> = {
+  auth_confirm_failed:
+    "El link de recuperación no es válido o ya expiró. Solicita uno nuevo.",
+  session_expired:
+    "Tu sesión de recuperación expiró. Solicita un nuevo link.",
+};
 import {
   Form,
   FormControl,
@@ -23,6 +32,19 @@ export function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [loading, setLoading] = useState(false);
+
+  // Mostrar mensaje de error desde query param solo una vez por mount
+  // (evita re-trigger en hot-reload o re-render con misma URL).
+  const error = searchParams.get("error");
+  const errorShownRef = useRef(false);
+  useEffect(() => {
+    if (!error || errorShownRef.current) return;
+    errorShownRef.current = true;
+    toast.error(
+      ERROR_MESSAGES[error] ??
+        "Ocurrió un error de autenticación. Intenta de nuevo.",
+    );
+  }, [error]);
 
   const form = useForm<LoginInput>({
     resolver: zodResolver(loginSchema),

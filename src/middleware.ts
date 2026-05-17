@@ -29,11 +29,15 @@ const PUBLIC_PATHS = [
   "/support",
 ] as const;
 
-const AUTH_PATHS = [
-  "/login",
-  "/forgot-password",
-  "/reset-password",
-] as const;
+// AUTH_PATHS: paginas de credenciales donde un user logueado NO debe estar
+// (login y forgot-password no tienen sentido si ya hay sesion activa).
+//
+// /reset-password NO esta aqui (esta en PUBLIC_PATHS solamente). Es pagina
+// del flow de recovery que REQUIERE sesion temporal creada por /auth/confirm
+// via verifyOtp. Un user que llega con sesion activa es el caso esperado
+// del flow; redirigir a /dashboard rompe el reset (bug investigado en
+// sub-bloques 2.15-2.20-diag, fix definitivo en sub-bloque 2.21).
+const AUTH_PATHS = ["/login", "/forgot-password"] as const;
 
 function isPublic(pathname: string): boolean {
   return PUBLIC_PATHS.some(
