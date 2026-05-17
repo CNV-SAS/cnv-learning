@@ -30,6 +30,7 @@
 // https://supabase.com/docs/guides/auth/server-side/email-based-auth-with-pkce-flow-for-ssr
 
 import { NextResponse, type NextRequest } from "next/server";
+import { cookies } from "next/headers";
 import type { EmailOtpType } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 import { logger } from "@/core/logger/logger";
@@ -58,7 +59,33 @@ export async function GET(request: NextRequest) {
     }
 
     const supabase = await createClient();
-    const { error } = await supabase.auth.verifyOtp({ type, token_hash });
+
+    // [DIAGNOSTIC - temp, removed after fix. logger.warn para que Sentry capture]
+    const cookieStoreBefore = await cookies();
+    const cookiesBefore = cookieStoreBefore.getAll().map((c) => c.name);
+    logger.warn("DIAGNOSTIC: cookies before verifyOtp", { cookiesBefore });
+
+    const verifyResult = await supabase.auth.verifyOtp({ type, token_hash });
+    logger.warn("DIAGNOSTIC: verifyOtp result", {
+      errorMessage: verifyResult.error?.message,
+      errorCode: verifyResult.error?.code,
+      errorStatus: verifyResult.error?.status,
+      hasUser: !!verifyResult.data?.user,
+      hasSession: !!verifyResult.data?.session,
+      dataUserId: verifyResult.data?.user?.id ?? null,
+    });
+
+    const cookieStoreAfter = await cookies();
+    const cookiesAfter = cookieStoreAfter.getAll().map((c) => c.name);
+    const cookiesDiff = cookiesAfter.filter(
+      (n) => !cookiesBefore.includes(n),
+    );
+    logger.warn("DIAGNOSTIC: cookies after verifyOtp", {
+      cookiesAfter,
+      cookiesDiff,
+    });
+
+    const { error } = verifyResult;
 
     if (error) {
       // QUIRK CONOCIDO del SDK con tokens PKCE en password recovery:
@@ -68,9 +95,22 @@ export async function GET(request: NextRequest) {
       // con getUser; si hay user, el flow es funcionalmente exitoso y
       // el error es solo ruido del SDK. La sesion observada en cookies
       // es la source of truth, no lo que reporta verifyOtp.
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+      const userResult = await supabase.auth.getUser();
+      const sessionResult = await supabase.auth.getSession();
+
+      // [DIAGNOSTIC]
+      logger.warn("DIAGNOSTIC: getUser after verifyOtp error", {
+        hasUser: !!userResult.data.user,
+        userId: userResult.data.user?.id ?? null,
+        error: userResult.error?.message ?? null,
+      });
+      logger.warn("DIAGNOSTIC: getSession after verifyOtp error", {
+        hasSession: !!sessionResult.data.session,
+        sessionUserId: sessionResult.data.session?.user?.id ?? null,
+        error: sessionResult.error?.message ?? null,
+      });
+
+      const user = userResult.data.user;
 
       if (user) {
         logger.warn(
