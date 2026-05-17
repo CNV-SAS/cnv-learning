@@ -15,11 +15,19 @@
 // - En esos flujos el query es ?code=<pkce_code> y la funcion correcta
 //   es supabase.auth.exchangeCodeForSession.
 //
-// Patron oficial documentado:
-// https://supabase.com/docs/guides/auth/server-side/email-based-auth-with-pkce-flow-for-ssr
+// NOTA CRITICA: el email template de Supabase Dashboard debe usar
+// {{ .TokenHash }} y {{ .Type }} explicitamente, NO {{ .ConfirmationURL }}.
+// La URL default genera PKCE flow (?token=pkce_xxx) que NO funciona
+// confiablemente en SSR Next.js (verifier mismatch entre el server
+// action que llama resetPasswordForEmail y el handler que llama
+// exchangeCodeForSession; ver sub-bloque 2.19 commit message para el
+// diagnostico completo).
 //
 // /auth/confirm esta en PUBLIC_PATHS del middleware (no requiere sesion
 // activa al entrar; la sesion se crea aqui mismo via verifyOtp).
+//
+// Patron oficial documentado:
+// https://supabase.com/docs/guides/auth/server-side/email-based-auth-with-pkce-flow-for-ssr
 
 import { NextResponse, type NextRequest } from "next/server";
 import type { EmailOtpType } from "@supabase/supabase-js";
