@@ -1,10 +1,18 @@
 // Rate limiters basados en Upstash (sliding window) para los endpoints
 // del MVP que pueden ser abusados por bots o ataques de fuerza bruta.
 //
-// Política de SECURITY.md tabla linea 577:
-// - login: 5/15min por IP (anti brute-force de passwords).
-// - forgotPassword: 3/1h por IP (anti spam de emails de reset).
-// - ai: 20/1h por user (Gemini cuesta plata).
+// Asimetria intencional por costo del recurso (ajuste sub-bloque 2.16):
+// - login: 10/5min por IP. Operacion cotidiana; bloqueo de 15min era
+//   brutal para humanos que olvidan password ocasionalmente. Ventana
+//   corta (5min) + cuota generosa (10) cubre typos sin frustrar UX.
+//   120 intentos/hora sigue siendo trivialmente bajo para anti
+//   brute-force real (atacante necesita 100M+ intentos para password
+//   promedio).
+// - forgotPassword: 5/15min por IP. Operacion extraordinaria que cuesta
+//   un email (Resend Free permite ~100 emails/dia para todo el equipo).
+//   Ventana mas larga tiene sentido de costo. Heads-up: si en produccion
+//   aparece abuso, considerar 3/15min o 5/30min.
+// - ai: 20/1h por user (Gemini cuesta plata por token).
 // - forum: 30/1h por user (anti spam de posts).
 // - mutation: 100/1min por user (default para cualquier otra mutacion).
 //
@@ -24,12 +32,12 @@ const redis = Redis.fromEnv();
 export const ratelimit = {
   login: new Ratelimit({
     redis,
-    limiter: Ratelimit.slidingWindow(5, "15 m"),
+    limiter: Ratelimit.slidingWindow(10, "5 m"),
     prefix: "rl:login",
   }),
   forgotPassword: new Ratelimit({
     redis,
-    limiter: Ratelimit.slidingWindow(3, "1 h"),
+    limiter: Ratelimit.slidingWindow(5, "15 m"),
     prefix: "rl:forgot",
   }),
   ai: new Ratelimit({
