@@ -171,7 +171,7 @@ cnv-learning/
 │   ├── hooks/                            Custom React hooks compartidos
 │   ├── types/
 │   │   └── database.generated.ts         Generado por Supabase CLI
-│   └── middleware.ts                     Solo refresh sesión, NO auth lógica
+│   └── proxy.ts                          Edge runtime, refresh sesión, redirects auth
 │
 ├── tests/                                Vitest, tests críticos
 │   ├── policies.test.ts
@@ -424,6 +424,19 @@ export const logger = {
 ```
 
 Las server actions y route handlers inicializan el contexto al entrar. AsyncLocalStorage funciona perfectamente en Node.js runtime, que es lo que usaremos. **No usar Edge runtime en MVP.**
+
+### Excepción: Edge runtime para el proxy
+
+La única excepción al principio "Node.js para todo" es el archivo `src/proxy.ts` (file convention de Next.js 16, antes `middleware.ts`). Vive en Edge runtime por obligación: Next.js no permite ejecutarlo en Node.js. El proxy es naturaleza network-boundary (corre antes de servir cualquier request), y `@supabase/ssr` está diseñado precisamente para ese runtime, con un helper dedicado (`updateSession`) que refresca tokens de sesión usando solo APIs compatibles con Edge.
+
+Esta excepción está acotada y no se extiende:
+
+- El proxy SOLO refresca sesión y aplica redirects de auth (login si no hay sesión, dashboard si la hay y la ruta es de credenciales).
+- NO contiene lógica de negocio, NO accede a repositorios, NO emite eventos, NO valida input. Toda esa lógica vive en Node.js (server components, server actions, route handlers, services).
+- El AsyncLocalStorage logger no aplica en el proxy (no es compatible con Edge); las requests originadas en el proxy se trazan implícitamente vía Vercel logs por el request id que la plataforma asigna.
+- `src/lib/supabase/middleware.ts` (helper de Supabase SSR) sigue con su nombre histórico: describe función, no convention. Convive con el proxy y se importa desde él.
+
+Cualquier necesidad futura de mover otra capa a Edge requiere actualizar este doc primero (10 reglas duras + esta sección) antes de tocar código.
 
 ## Convención de errores
 

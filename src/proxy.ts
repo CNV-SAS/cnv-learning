@@ -1,12 +1,16 @@
-// Middleware de Next.js, vive en Edge runtime por naturaleza del runtime de
-// middleware (excepcion justificada al principio "Node.js todo" de
-// ARCHITECTURE.md; aprobada en Bloque 2 sub-bloque 2.1, se documenta
-// formalmente en ARCHITECTURE.md post-Bloque 2). Toda otra capa (server
-// components, server actions, route handlers, services) vive en Node.js.
+// Proxy de Next.js (file convention, antes middleware.ts; renombrado en
+// sub-bloque 2-post.2 siguiendo deprecacion oficial de Next.js 16).
+//
+// Vive en Edge runtime por obligacion del runtime de proxy. Es la UNICA
+// excepcion al principio "Node.js todo" de ARCHITECTURE.md (ver seccion
+// "Excepcion: Edge runtime para el proxy" en ese doc). Toda otra capa
+// (server components, server actions, route handlers, services) vive en
+// Node.js.
 //
 // Responsabilidades:
 // 1. Refrescar tokens de sesion de Supabase en cada request (delega en
-//    lib/supabase/middleware.ts).
+//    lib/supabase/middleware.ts, helper de @supabase/ssr; NO se renombra
+//    porque es helper de Supabase, no file convention de Next.js).
 // 2. Redirigir a /login si no hay sesion y la ruta es protegida (anexa
 //    ?next=<pathname> para volver tras login).
 // 3. Redirigir a /dashboard si hay sesion y el user esta en pagina de auth
@@ -51,7 +55,7 @@ function isAuthPath(pathname: string): boolean {
   );
 }
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { supabaseResponse, user } = await updateSession(request);
   const pathname = request.nextUrl.pathname;
 
