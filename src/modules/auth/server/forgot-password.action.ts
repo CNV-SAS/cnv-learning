@@ -33,13 +33,13 @@ export async function forgotPasswordAction(
     const ip =
       h.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
 
-    // redirectTo del email = callback handler que hace
-    // exchangeCodeForSession (PKCE flow de @supabase/ssr) y luego
-    // redirige al destino final /reset-password con sesion ya activa.
-    // Si pasaramos /reset-password directo, el SDK nunca creaba la
-    // sesion (el code en query params requiere exchange explicito) y
-    // updateUser fallaria con session_missing.
-    const redirectTo = `${process.env.NEXT_PUBLIC_APP_URL}/auth/callback?next=/reset-password`;
+    // redirectTo del email = confirm handler que hace verifyOtp con
+    // token_hash + type=recovery (patron oficial de Supabase para
+    // email-based flows) y luego redirige al destino final
+    // /reset-password con sesion ya activa.
+    // Si pasaramos /reset-password directo, el handler nunca consumiria
+    // el OTP token y updateUser fallaria con session_missing.
+    const redirectTo = `${process.env.NEXT_PUBLIC_APP_URL}/auth/confirm?next=/reset-password`;
 
     return authService.requestPasswordReset({
       email: parsed.data.email,

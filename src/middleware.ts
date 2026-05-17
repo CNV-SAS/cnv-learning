@@ -22,7 +22,7 @@ const PUBLIC_PATHS = [
   "/login",
   "/forgot-password",
   "/reset-password",
-  "/auth/callback",
+  "/auth/confirm",
   "/verify",
   "/privacy",
   "/terms",

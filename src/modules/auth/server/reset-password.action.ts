@@ -1,10 +1,11 @@
 "use server";
 
 // Server action: aplicar el nuevo password tras click del email.
-// Requiere sesion activa: el route handler /auth/callback hizo
-// exchangeCodeForSession antes de redirigir aqui (flujo PKCE de
-// @supabase/ssr), creando la sesion temporal que updateUser necesita.
-// Si el user llega a /reset-password sin pasar por /auth/callback,
+// Requiere sesion activa: el route handler /auth/confirm hizo
+// verifyOtp({ type: 'recovery', token_hash }) antes de redirigir
+// aqui (patron oficial de Supabase para email-based flows),
+// creando la sesion temporal que updateUser necesita.
+// Si el user llega a /reset-password sin pasar por /auth/confirm,
 // updateUser falla con session_missing.
 
 import { authService } from "@/modules/auth/services/auth.service";
