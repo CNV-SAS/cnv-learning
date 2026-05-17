@@ -13,8 +13,8 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { PasswordInput } from "./PasswordInput";
 import {
   resetPasswordSchema,
   type ResetPasswordInput,
@@ -54,8 +54,7 @@ export function ResetPasswordForm() {
             <FormItem>
               <FormLabel>Nueva contraseña</FormLabel>
               <FormControl>
-                <Input
-                  type="password"
+                <PasswordInput
                   autoComplete="new-password"
                   {...field}
                 />
@@ -71,8 +70,7 @@ export function ResetPasswordForm() {
             <FormItem>
               <FormLabel>Confirmar contraseña</FormLabel>
               <FormControl>
-                <Input
-                  type="password"
+                <PasswordInput
                   autoComplete="new-password"
                   {...field}
                 />

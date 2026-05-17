@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { PasswordInput } from "./PasswordInput";
 import { loginSchema, type LoginInput } from "@/modules/auth/validations";
 import { loginAction } from "@/modules/auth/server";
 
@@ -73,8 +74,7 @@ export function LoginForm() {
             <FormItem>
               <FormLabel>Contraseña</FormLabel>
               <FormControl>
-                <Input
-                  type="password"
+                <PasswordInput
                   autoComplete="current-password"
                   {...field}
                 />
