@@ -4,9 +4,9 @@
 import { z } from "zod";
 
 export const loginSchema = z.object({
-  email: z.email("Email invalido"),
+  email: z.email("Email inválido"),
 
-  password: z.string().min(1, "La contrasena es requerida"),
+  password: z.string().min(1, "La contraseña es requerida"),
 
   // next opcional para redirect post-login (lo setea el middleware como
   // ?next=<pathname>). Restricciones anti open-redirect:
@@ -17,7 +17,7 @@ export const loginSchema = z.object({
     .string()
     .startsWith("/", "La ruta debe ser interna y empezar con /")
     .refine((v) => !v.startsWith("//"), {
-      message: "Ruta invalida (no se permite protocol-relative)",
+      message: "Ruta inválida (no se permite protocol-relative)",
     })
     .optional(),
 });

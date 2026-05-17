@@ -51,7 +51,7 @@ export const authService = {
       return err(
         new AuthenticationError(
           ErrorCodes.AUTH_INVALID_CREDENTIALS,
-          "Email o contrasena incorrectos.",
+          "Email o contraseña incorrectos.",
         ),
       );
     }
@@ -94,7 +94,7 @@ export const authService = {
       return err(
         new AuthenticationError(
           ErrorCodes.AUTH_SESSION_EXPIRED,
-          "No fue posible cerrar sesion.",
+          "No fue posible cerrar sesión.",
         ),
       );
     }
@@ -139,7 +139,7 @@ export const authService = {
       return err(
         new AuthenticationError(
           ErrorCodes.AUTH_SESSION_EXPIRED,
-          "Sesion de reset expirada o invalida. Solicita un nuevo link.",
+          "Sesión de reset expirada o inválida. Solicita un nuevo link.",
         ),
       );
     }

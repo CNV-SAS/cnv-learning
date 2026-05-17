@@ -58,7 +58,14 @@ export function ForgotPasswordForm() {
         </p>
         <p>
           Revisa también tu carpeta de spam. Si no llega nada, vuelve a
-          intentar más tarde.
+          intentar más tarde o contáctanos en{" "}
+          <a
+            href="mailto:soporte@cnvsystem.com"
+            className="underline hover:text-foreground"
+          >
+            soporte@cnvsystem.com
+          </a>
+          .
         </p>
       </div>
     );

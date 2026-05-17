@@ -27,7 +27,7 @@ export async function forgotPasswordAction(
       const parsed = forgotPasswordSchema.safeParse(input);
       if (!parsed.success) {
         return err(
-          validationErrorToActionError(parsed.error, "Datos invalidos"),
+          validationErrorToActionError(parsed.error, "Datos inválidos"),
         );
       }
 

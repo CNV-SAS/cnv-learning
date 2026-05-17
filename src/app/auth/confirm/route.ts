@@ -60,10 +60,16 @@ export async function GET(request: NextRequest) {
     const { error } = await supabase.auth.verifyOtp({ type, token_hash });
 
     if (error) {
-      // Error real (token expirado, token reuse, code_verifier missing
-      // por browser cross-window, etc.). Sesion NO se crea cuando
+      // Error esperado del flow defensivo: token expirado, token ya
+      // consumido (link clickeado dos veces), code_verifier missing
+      // por browser cross-window, etc. Sesion NO se crea cuando
       // verifyOtp falla (confirmado en investigacion 2.20-diag).
-      logger.error("Auth confirm verifyOtp failed", {
+      //
+      // logger.warn (no error) porque es UX-defensive controlado:
+      // el user recibe toast claro en /login y puede reintentar.
+      // NO ensucia Sentry con falsos positivos. logger.error queda
+      // reservado para fallas inesperadas reales (DB down, etc.).
+      logger.warn("Auth confirm verifyOtp failed", {
         type,
         message: error.message,
       });

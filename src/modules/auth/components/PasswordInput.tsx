@@ -37,6 +37,10 @@ export const PasswordInput = forwardRef<
         variant="ghost"
         size="icon"
         className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8"
+        // preventDefault en mouseDown evita que el boton robe el focus
+        // del input al clickear, lo que causaba bug intermitente: a veces
+        // el click solo cambiaba focus en vez de ejecutar el toggle.
+        onMouseDown={(e) => e.preventDefault()}
         onClick={() => setShow((v) => !v)}
         aria-label={show ? "Ocultar contraseña" : "Mostrar contraseña"}
         tabIndex={-1}

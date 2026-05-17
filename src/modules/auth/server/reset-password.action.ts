@@ -30,7 +30,7 @@ export async function resetPasswordAction(
       const parsed = resetPasswordSchema.safeParse(input);
       if (!parsed.success) {
         return err(
-          validationErrorToActionError(parsed.error, "Datos invalidos"),
+          validationErrorToActionError(parsed.error, "Datos inválidos"),
         );
       }
 

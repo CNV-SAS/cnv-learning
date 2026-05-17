@@ -10,9 +10,9 @@ import { z } from "zod";
 
 const passwordPolicySchema = z
   .string()
-  .min(8, "Minimo 8 caracteres")
+  .min(8, "Mínimo 8 caracteres")
   .regex(/[a-zA-Z]/, "Debe contener al menos una letra")
-  .regex(/\d/, "Debe contener al menos un digito");
+  .regex(/\d/, "Debe contener al menos un dígito");
 
 export const resetPasswordSchema = z
   .object({
@@ -20,7 +20,7 @@ export const resetPasswordSchema = z
     confirmPassword: z.string(),
   })
   .refine((data) => data.password === data.confirmPassword, {
-    message: "Las contrasenas no coinciden",
+    message: "Las contraseñas no coinciden",
     path: ["confirmPassword"],
   });
 
