@@ -11,7 +11,10 @@ export default withSentryConfig(nextConfig, {
 
   org: "connected-nutrition-ventures",
 
-  project: "javascript-nextjs",
+  // Slug (no display name) del project en Sentry Dashboard. Si se
+  // renombra el project en Sentry, actualizar aqui tambien o el upload
+  // de source maps fallara silenciosamente en build.
+  project: "cnv-learning",
 
   // Only print logs for uploading source maps in CI
   silent: !process.env.CI,
