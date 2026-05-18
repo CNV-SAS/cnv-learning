@@ -21,7 +21,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { submitAssignmentAction } from "@/modules/assignments/server";
-import { MAX_FILE_SIZE_BYTES } from "@/modules/assignments/data";
+// Import path directo (NO via barrel data) para evitar arrastrar
+// submission-storage.ts -> createClient -> next/headers en el
+// Client bundle. Ver constants.ts comment header.
+import { MAX_FILE_SIZE_BYTES } from "@/modules/assignments/data/constants";
 
 interface SubmitFormProps {
   assignmentId: string;

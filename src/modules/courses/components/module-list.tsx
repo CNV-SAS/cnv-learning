@@ -20,7 +20,10 @@ import {
 import { ProgressBar } from "@/components/shared/progress-bar";
 import type { ModuleWithProgress } from "@/modules/progress/services/progress.service";
 import type { Assignment } from "@/modules/assignments/types";
-import { AssignmentLink } from "@/modules/assignments/components";
+// Path directo, NO barrel: el barrel components/index.ts mezclaba
+// Server (AssignmentLink, GradeDisplay) con Client (SubmitForm) y
+// rompia el build con boundary violation. Eliminado en 6.4-fix.
+import { AssignmentLink } from "@/modules/assignments/components/assignment-link";
 import { LessonLink } from "./lesson-link";
 
 export interface ModuleEntry extends ModuleWithProgress {

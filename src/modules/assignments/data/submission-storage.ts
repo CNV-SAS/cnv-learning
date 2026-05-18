@@ -17,13 +17,11 @@ import { ErrorCodes } from "@/core/errors/codes";
 import { logger } from "@/core/logger/logger";
 import { slugify } from "@/lib/utils/slugify";
 
-export const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024;
-
-export const ALLOWED_MIME_TYPES: ReadonlySet<string> = new Set([
-  "application/pdf",
-  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-  "application/vnd.oasis.opendocument.text",
-]);
+// MAX_FILE_SIZE_BYTES y ALLOWED_MIME_TYPES viven en ./constants para
+// que Client Components (SubmitForm) puedan importarlas via path
+// directo sin arrastrar este file Server-only. El barrel data sigue
+// re-exportandolos para Server callers.
+export { MAX_FILE_SIZE_BYTES, ALLOWED_MIME_TYPES } from "./constants";
 
 const BUCKET = "submissions";
 const SIGNED_URL_TTL_SECONDS = 15 * 60;

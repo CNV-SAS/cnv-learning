@@ -17,10 +17,9 @@ import {
   gradingRepository,
 } from "@/modules/assignments/data";
 import { canViewAssignment } from "@/modules/assignments/policies";
-import {
-  SubmitForm,
-  GradeDisplay,
-} from "@/modules/assignments/components";
+// Paths directos en lugar de barrel mixto (eliminado en 6.4-fix).
+import { SubmitForm } from "@/modules/assignments/components/submit-form";
+import { GradeDisplay } from "@/modules/assignments/components/grade-display";
 import { Card, CardContent } from "@/components/ui/card";
 import { requireUuidParam } from "@/lib/utils/params";
 
