@@ -2,7 +2,17 @@ import { withSentryConfig } from "@sentry/nextjs";
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  experimental: {
+    serverActions: {
+      // Default de Next.js es 1MB y rechaza FormData uploads mayores
+      // antes de invocar la action. submitAssignmentAction acepta
+      // archivos hasta 10MB (MAX_FILE_SIZE_BYTES en assignments/data/
+      // constants.ts); alineamos aqui para que el bodyparser permita
+      // el upload llegar al action. La validacion final sigue
+      // viviendo en submission.service.
+      bodySizeLimit: "10mb",
+    },
+  },
 };
 
 export default withSentryConfig(nextConfig, {

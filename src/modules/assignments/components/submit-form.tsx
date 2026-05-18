@@ -53,7 +53,7 @@ export function SubmitForm({
       }
       if (file.size > MAX_FILE_SIZE_BYTES) {
         toast.error(
-          `El archivo excede el tamaño máximo (${MAX_FILE_SIZE_BYTES / 1024 / 1024} MB).`,
+          `El archivo es demasiado grande. Máximo ${MAX_FILE_SIZE_BYTES / 1024 / 1024} MB permitido.`,
         );
         return;
       }
@@ -99,6 +99,7 @@ export function SubmitForm({
             accept=".pdf,.docx,.odt,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.oasis.opendocument.text"
             disabled={disabled || loading}
             onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+            className="cursor-pointer file:mr-3 file:cursor-pointer file:rounded-md file:border-0 file:bg-muted file:px-3 file:py-1 file:text-sm file:font-medium file:text-foreground hover:file:bg-emerald-50 hover:file:text-emerald-700"
           />
           <p className="text-xs text-muted-foreground">
             PDF, DOCX o ODT. Máximo 10 MB.
