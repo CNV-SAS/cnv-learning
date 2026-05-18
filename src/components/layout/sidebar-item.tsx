@@ -12,14 +12,8 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
-
-export interface NavItem {
-  label: string;
-  href: string;
-  icon: LucideIcon;
-}
+import type { NavItem } from "@/modules/auth/policies/navigation";
 
 interface SidebarItemProps {
   item: NavItem;

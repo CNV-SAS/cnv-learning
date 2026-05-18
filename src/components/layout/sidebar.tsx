@@ -9,7 +9,8 @@
 // MobileNav Sheet sin duplicar markup.
 
 import { Wordmark } from "@/components/shared/wordmark";
-import { SidebarItem, type NavItem } from "./sidebar-item";
+import type { NavItem } from "@/modules/auth/policies/navigation";
+import { SidebarItem } from "./sidebar-item";
 
 interface SidebarProps {
   items: NavItem[];

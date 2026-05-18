@@ -4,3 +4,4 @@
 export { canAccessAdmin } from "./can-access-admin";
 export { canAccessTeacherPanel } from "./can-access-teacher-panel";
 export { canAccessStudentArea } from "./can-access-student-area";
+export { getNavigationFor, type NavItem } from "./navigation";
