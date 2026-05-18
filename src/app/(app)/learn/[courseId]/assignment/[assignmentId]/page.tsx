@@ -20,6 +20,7 @@ import { canViewAssignment } from "@/modules/assignments/policies";
 // Paths directos en lugar de barrel mixto (eliminado en 6.4-fix).
 import { SubmitForm } from "@/modules/assignments/components/submit-form";
 import { GradeDisplay } from "@/modules/assignments/components/grade-display";
+import { QuizPlayer } from "@/modules/assignments/components/quiz-player";
 import { Card, CardContent } from "@/components/ui/card";
 import { requireUuidParam } from "@/lib/utils/params";
 
@@ -41,10 +42,9 @@ export default async function AssignmentPage({
   params,
 }: AssignmentPageProps) {
   const raw = await params;
-  // courseId valida formato pero no se usa downstream (la assignment
-  // referencia su course via module). Lo validamos igual para 404
-  // limpio en URL malformada.
-  requireUuidParam(raw.courseId);
+  // courseId se usa downstream para el QuizPlayer (link al libro de
+  // notas si SUBMISSION_ALREADY_SUBMITTED) y para validar formato.
+  const courseId = requireUuidParam(raw.courseId);
   const assignmentId = requireUuidParam(raw.assignmentId);
 
   const user = await profileRepository.getCurrentUser();
@@ -77,12 +77,19 @@ export default async function AssignmentPage({
 
   const hasSubmission = submission !== null;
   const hasGrading = grading !== null;
-  const canSubmit =
+  const isStudent = user.role === "student";
+  const canSubmitWithForm =
     !hasSubmission &&
     !hasGrading &&
     !isOverdue &&
-    user.role === "student" &&
+    isStudent &&
     (assignment.type === "file_upload" || assignment.type === "essay");
+  const canTakeQuiz =
+    !hasSubmission &&
+    !hasGrading &&
+    !isOverdue &&
+    isStudent &&
+    assignment.type === "quiz_multiple_choice";
 
   return (
     <div className="mx-auto max-w-3xl space-y-8">
@@ -114,7 +121,9 @@ export default async function AssignmentPage({
             del docente.
           </CardContent>
         </Card>
-      ) : canSubmit ? (
+      ) : canTakeQuiz ? (
+        <QuizPlayer courseId={courseId} assignmentId={assignment.id} />
+      ) : canSubmitWithForm ? (
         <SubmitForm
           assignmentId={assignment.id}
           type={assignment.type as "file_upload" | "essay"}
