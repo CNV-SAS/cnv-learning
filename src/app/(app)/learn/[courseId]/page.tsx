@@ -9,12 +9,9 @@
 
 import { notFound, redirect } from "next/navigation";
 import { profileRepository } from "@/modules/auth/data/profile.repository";
-import {
-  courseRepository,
-  moduleRepository,
-  lessonRepository,
-} from "@/modules/courses/data";
+import { courseRepository } from "@/modules/courses/data";
 import { canViewCourse } from "@/modules/courses/policies";
+import { progressService } from "@/modules/progress/services/progress.service";
 import { ModuleList } from "@/modules/courses/components/module-list";
 import { requireUuidParam } from "@/lib/utils/params";
 
@@ -33,12 +30,12 @@ export default async function CoursePage({ params }: CoursePageProps) {
     notFound();
   }
 
-  const modules = await moduleRepository.listByCourse(courseId);
-  const modulesWithLessons = await Promise.all(
-    modules.map(async (mod) => ({
-      module: mod,
-      lessons: await lessonRepository.listByModule(mod.id),
-    })),
+  // Bloque 5 sub-bloque 5.3: delega a progressService que orquesta
+  // modules + lessons + completed en paralelo. Reemplaza el
+  // fetch manual previo (Bloque 4.3) que ahora vive en el service.
+  const modulesWithProgress = await progressService.getModulesWithProgress(
+    user.id,
+    courseId,
   );
 
   return (
@@ -53,7 +50,7 @@ export default async function CoursePage({ params }: CoursePageProps) {
           </p>
         )}
       </div>
-      <ModuleList courseId={courseId} modules={modulesWithLessons} />
+      <ModuleList courseId={courseId} modules={modulesWithProgress} />
     </div>
   );
 }

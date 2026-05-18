@@ -1,16 +1,16 @@
-// Dashboard del estudiante (Bloque 4 sub-bloque 4.3). Lista los
-// cursos enrolled del user via courseRepository.listForUser (RLS
-// hace el filtrado real). Grid responsive 1/2 columnas; preparado
-// para multi-curso en v2 sin refactor pese a que el MVP tiene 1
-// solo curso por estudiante.
+// Dashboard del estudiante (Bloque 5 sub-bloque 5.3). Reescrito
+// para mostrar progreso, insignia y "Continuar donde dejaste" en
+// cada CourseCard.
 //
-// La insignia visible y "Continuar donde dejaste" entran en Bloque 5
-// (dependen del calculo de progreso). En Bloque 4 el dashboard
-// muestra solo cursos y vincula a /learn/[courseId].
+// Por cada curso enrolled, llama progressService.getCourseSummary
+// en Promise.all (queries independientes entre cursos). En MVP
+// con 1 curso por estudiante esto es 1 sola llamada paralela; el
+// shape preserva multi-curso para v2 sin refactor.
 
 import { redirect } from "next/navigation";
 import { profileRepository } from "@/modules/auth/data/profile.repository";
 import { courseRepository } from "@/modules/courses/data";
+import { progressService } from "@/modules/progress/services/progress.service";
 import { CourseCard } from "@/modules/courses/components/course-card";
 import {
   Card,
@@ -25,6 +25,11 @@ export default async function DashboardPage() {
   if (!user) redirect("/login");
 
   const courses = await courseRepository.listForUser(user.id);
+  const summaries = await Promise.all(
+    courses.map((course) =>
+      progressService.getCourseSummary(user.id, course.id),
+    ),
+  );
 
   return (
     <div className="mx-auto max-w-5xl space-y-8">
@@ -56,8 +61,12 @@ export default async function DashboardPage() {
         </Card>
       ) : (
         <div className="grid gap-6 md:grid-cols-2">
-          {courses.map((course) => (
-            <CourseCard key={course.id} course={course} />
+          {courses.map((course, idx) => (
+            <CourseCard
+              key={course.id}
+              course={course}
+              summary={summaries[idx]}
+            />
           ))}
         </div>
       )}
