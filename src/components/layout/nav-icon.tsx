@@ -10,12 +10,13 @@
 // type NavIconName en la policy asegura exhaustividad: si falta una
 // key del Record, TypeScript falla en compile time.
 
-import { LayoutDashboard, Shield, type LucideIcon } from "lucide-react";
+import { Inbox, LayoutDashboard, Shield, type LucideIcon } from "lucide-react";
 import type { NavIconName } from "@/modules/auth/policies/navigation";
 
 const ICON_MAP: Record<NavIconName, LucideIcon> = {
   dashboard: LayoutDashboard,
   shield: Shield,
+  inbox: Inbox,
 };
 
 interface NavIconProps {

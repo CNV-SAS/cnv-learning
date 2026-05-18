@@ -77,9 +77,29 @@ export const submissionRepository = {
     return data ?? [];
   },
 
-  // Bandeja del docente: submissions con status='submitted' del
-  // curso, ordenadas por submitted_at (FIFO). El service compone
-  // con gradings para mostrar solo pending (= sin grading) en la UI.
+  // Bandeja global del docente (Bloque 6 sub-bloque 6.5): submissions
+  // con status='submitted' a las que el caller tiene acceso. RLS
+  // filtra a los cursos del teacher autenticado; el repo NO agrega
+  // condicion explicita de teacher_id en el WHERE (confianza en RLS
+  // como source of truth). El service compone con gradings para
+  // mostrar solo pending (= sin grading).
+  async listSubmittedAccessible(): Promise<Submission[]> {
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from("submissions")
+      .select("*")
+      .eq("status", "submitted")
+      .order("submitted_at", { ascending: true });
+
+    if (error) {
+      throw new InfrastructureError(ErrorCodes.DATABASE_ERROR, error.message);
+    }
+    return data ?? [];
+  },
+
+  // Bandeja por curso (preservada del 6.1; submission filter cuando
+  // el caller ya conoce el courseId). Diferencia con listSubmittedAccessible:
+  // este filtra explicitamente por curso, util en panels especificos.
   async listSubmittedByCourse(courseId: string): Promise<Submission[]> {
     const supabase = await createClient();
     const { data, error } = await supabase

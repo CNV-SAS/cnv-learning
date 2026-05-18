@@ -24,7 +24,11 @@ import { slugify } from "@/lib/utils/slugify";
 export { MAX_FILE_SIZE_BYTES, ALLOWED_MIME_TYPES } from "./constants";
 
 const BUCKET = "submissions";
-const SIGNED_URL_TTL_SECONDS = 15 * 60;
+// TTL default: 15 min, alineado con lesson attachments. El caller
+// puede pasar TTL custom (ej. grader del teacher usa 3600s = 60 min
+// porque la sesion de calificacion es mas larga que ver un PDF de
+// leccion). Bloque 6 sub-bloque 6.5.
+const DEFAULT_SIGNED_URL_TTL_SECONDS = 15 * 60;
 
 // Pure: separa nombre+extension del filename original, slugifica el
 // nombre (sin acentos / sin caracteres especiales) y mantiene la
@@ -103,11 +107,14 @@ export const submissionStorageRepository = {
   // min, mismo patron que lesson-attachments. Retorna null si el
   // archivo no existe (defensa para casos como blob eliminado);
   // el caller decide UI fallback.
-  async getSignedUrl(storagePath: string): Promise<string | null> {
+  async getSignedUrl(
+    storagePath: string,
+    ttlSeconds: number = DEFAULT_SIGNED_URL_TTL_SECONDS,
+  ): Promise<string | null> {
     const supabase = await createClient();
     const { data, error } = await supabase.storage
       .from(BUCKET)
-      .createSignedUrl(storagePath, SIGNED_URL_TTL_SECONDS);
+      .createSignedUrl(storagePath, ttlSeconds);
 
     if (error || !data) {
       logger.warn("getSignedUrl submission failed", {

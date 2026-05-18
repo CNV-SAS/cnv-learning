@@ -24,7 +24,7 @@
 
 import type { AuthenticatedUser, UserRole } from "@/modules/auth/types";
 
-export type NavIconName = "dashboard" | "shield";
+export type NavIconName = "dashboard" | "shield" | "inbox";
 
 export interface NavItem {
   label: string;
@@ -39,6 +39,12 @@ const NAV_ITEMS: readonly NavItem[] = [
     href: "/dashboard",
     iconName: "dashboard",
     allowedRoles: ["admin", "teacher", "student"],
+  },
+  {
+    label: "Por calificar",
+    href: "/teacher",
+    iconName: "inbox",
+    allowedRoles: ["teacher"],
   },
   {
     label: "Admin",

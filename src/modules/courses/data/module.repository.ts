@@ -10,6 +10,20 @@ import { ErrorCodes } from "@/core/errors/codes";
 import type { Module } from "../types";
 
 export const moduleRepository = {
+  async findById(id: string): Promise<Module | null> {
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from("modules")
+      .select("*")
+      .eq("id", id)
+      .maybeSingle();
+
+    if (error) {
+      throw new InfrastructureError(ErrorCodes.DATABASE_ERROR, error.message);
+    }
+    return data;
+  },
+
   async listByCourse(courseId: string): Promise<Module[]> {
     const supabase = await createClient();
     const { data, error } = await supabase

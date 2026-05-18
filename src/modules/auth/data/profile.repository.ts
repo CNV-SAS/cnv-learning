@@ -33,6 +33,24 @@ export const profileRepository = {
     return data;
   },
 
+  // Bulk fetch (usado por teacher inbox para resolver nombre del
+  // estudiante de cada submission). RLS aplica: teachers ven enrolled
+  // students de sus cursos (policy del Bloque 2.21). Profiles fuera
+  // del filtro simplemente no vuelven; el caller filtra/maneja.
+  async findByIds(ids: string[]): Promise<Profile[]> {
+    if (ids.length === 0) return [];
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("*")
+      .in("id", ids);
+
+    if (error) {
+      throw new InfrastructureError(ErrorCodes.DATABASE_ERROR, error.message);
+    }
+    return data ?? [];
+  },
+
   async findByEmail(email: string): Promise<Profile | null> {
     const supabase = await createClient();
     const { data, error } = await supabase

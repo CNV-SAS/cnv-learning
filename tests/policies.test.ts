@@ -23,14 +23,14 @@ function makeUser(role: UserRole): AuthenticatedUser {
 }
 
 describe("getNavigationFor", () => {
-  it("admin ve Dashboard + Admin", () => {
+  it("admin ve Dashboard + Admin (sin Por calificar)", () => {
     const items = getNavigationFor(makeUser("admin"));
     expect(items.map((i) => i.href)).toEqual(["/dashboard", "/admin"]);
   });
 
-  it("teacher ve solo Dashboard", () => {
+  it("teacher ve Dashboard + Por calificar (en ese orden)", () => {
     const items = getNavigationFor(makeUser("teacher"));
-    expect(items.map((i) => i.href)).toEqual(["/dashboard"]);
+    expect(items.map((i) => i.href)).toEqual(["/dashboard", "/teacher"]);
   });
 
   it("student ve solo Dashboard", () => {
