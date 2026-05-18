@@ -9,6 +9,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { InfrastructureError } from "@/core/errors/classes";
 import { ErrorCodes } from "@/core/errors/codes";
+import { logger } from "@/core/logger/logger";
 import type { LessonAttachment } from "../types";
 
 const SIGNED_URL_TTL_SECONDS = 15 * 60;
@@ -29,17 +30,29 @@ export const lessonAttachmentRepository = {
     return data ?? [];
   },
 
-  async getSignedUrl(storagePath: string): Promise<string> {
+  // Genera signed URL del bucket privado. Retorna null cuando el
+  // archivo no existe en Storage (estado valido en dev: el seed
+  // crea registros en lesson_attachments con storage_path ficticios
+  // sin subir blobs reales). El caller filtra los nulls antes de
+  // renderizar. En produccion el admin sube archivos reales desde
+  // el panel (Bloque 14) y este null deberia ser raro.
+  //
+  // Solo errores no recuperables (BD/Storage caido, permisos) se
+  // elevan como InfrastructureError. "Object not found" es esperado
+  // y se loguea como warn (no Sentry noise).
+  async getSignedUrl(storagePath: string): Promise<string | null> {
     const supabase = await createClient();
     const { data, error } = await supabase.storage
       .from(LESSON_MATERIALS_BUCKET)
       .createSignedUrl(storagePath, SIGNED_URL_TTL_SECONDS);
 
     if (error || !data) {
-      throw new InfrastructureError(
-        ErrorCodes.STORAGE_ERROR,
-        error?.message ?? "Failed to create signed URL",
-      );
+      logger.warn("getSignedUrl: file not found in storage", {
+        storagePath,
+        bucket: LESSON_MATERIALS_BUCKET,
+        supabaseError: error?.message,
+      });
+      return null;
     }
     return data.signedUrl;
   },

@@ -29,7 +29,10 @@ import {
 } from "@/modules/courses/policies";
 import { VideoEmbed } from "@/modules/courses/components/video-embed";
 import { LessonContent } from "@/modules/courses/components/lesson-content";
-import { AttachmentList } from "@/modules/courses/components/attachment-list";
+import {
+  AttachmentList,
+  type AttachmentWithUrl,
+} from "@/modules/courses/components/attachment-list";
 import { requireUuidParam } from "@/lib/utils/params";
 
 interface LessonPageProps {
@@ -58,16 +61,23 @@ export default async function LessonPage({ params }: LessonPageProps) {
   // composicion (consideracion B del plan: NO cachear URLs entre
   // renders, generar al render con TTL holgado para el delta hasta
   // el click).
+  //
+  // getSignedUrl retorna null cuando el archivo no existe en Storage
+  // (estado valido en dev: el seed registra attachments con paths
+  // ficticios). Filtramos los nulls; si todos fallan, AttachmentList
+  // recibe array vacio y se omite la seccion sin romper la pagina.
   const rawAttachments =
     await lessonAttachmentRepository.listByLesson(lessonId);
-  const attachments = await Promise.all(
-    rawAttachments.map(async (a) => ({
-      attachment: a,
-      signedUrl: await lessonAttachmentRepository.getSignedUrl(
-        a.storage_path,
-      ),
-    })),
-  );
+  const attachments: AttachmentWithUrl[] = (
+    await Promise.all(
+      rawAttachments.map(async (a) => {
+        const signedUrl = await lessonAttachmentRepository.getSignedUrl(
+          a.storage_path,
+        );
+        return signedUrl ? { attachment: a, signedUrl } : null;
+      }),
+    )
+  ).filter((item): item is AttachmentWithUrl => item !== null);
 
   return (
     <div className="mx-auto max-w-3xl space-y-8">
