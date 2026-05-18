@@ -8,7 +8,7 @@
 
 import { notFound, redirect } from "next/navigation";
 import { profileRepository } from "@/modules/auth/data/profile.repository";
-import { canAccessTeacherPanel } from "@/modules/auth/policies";
+import { canAccessTeacherInbox } from "@/modules/auth/policies";
 import {
   submissionRepository,
   gradingRepository,
@@ -33,7 +33,7 @@ export default async function GraderPage({ params }: GraderPageProps) {
 
   const user = await profileRepository.getCurrentUser();
   if (!user) redirect("/login");
-  if (!canAccessTeacherPanel(user)) redirect("/unauthorized");
+  if (!canAccessTeacherInbox(user)) redirect("/unauthorized");
 
   const submission = await submissionRepository.findById(submissionId);
   if (

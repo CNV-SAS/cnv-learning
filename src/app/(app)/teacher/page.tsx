@@ -7,7 +7,7 @@ import { redirect } from "next/navigation";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { profileRepository } from "@/modules/auth/data/profile.repository";
-import { canAccessTeacherPanel } from "@/modules/auth/policies";
+import { canAccessTeacherInbox } from "@/modules/auth/policies";
 import { teacherInboxService } from "@/modules/assignments/services/teacher-inbox.service";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -15,7 +15,7 @@ import { Card, CardContent } from "@/components/ui/card";
 export default async function TeacherPage() {
   const user = await profileRepository.getCurrentUser();
   if (!user) redirect("/login");
-  if (!canAccessTeacherPanel(user)) redirect("/unauthorized");
+  if (!canAccessTeacherInbox(user)) redirect("/unauthorized");
 
   const entries = await teacherInboxService.getPendingSubmissions();
 
@@ -66,7 +66,7 @@ export default async function TeacherPage() {
                     {submission.submitted_at
                       ? format(
                           new Date(submission.submitted_at),
-                          "d 'de' MMM, yyyy",
+                          "d MMM yyyy, h:mm a",
                           { locale: es },
                         )
                       : "—"}
