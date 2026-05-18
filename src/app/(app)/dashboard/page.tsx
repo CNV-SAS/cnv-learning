@@ -1,33 +1,43 @@
-// Dashboard placeholder del Bloque 2. El dashboard real (con sidebar,
-// progreso, "continuar donde dejaste", insignia, etc.) se implementa
-// en Bloques 3-5.
+// Dashboard placeholder. En Bloque 5 se reemplaza con el dashboard
+// real (progreso, insignia, "continuar donde dejaste" funcional).
 //
-// Sirve como destino post-login y como pagina con LogoutButton para que
-// el flujo login -> logout sea testeable end-to-end ahora.
+// Auth check redundante: (app)/layout.tsx ya verifica. Se mantiene
+// por explicitidad y para que la pagina siga teniendo el user en
+// scope sin pasar por context.
 
 import { redirect } from "next/navigation";
 import { profileRepository } from "@/modules/auth/data/profile.repository";
-import { LogoutButton } from "./LogoutButton";
+import {
+  Card,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { getDisplayName } from "@/lib/utils/format";
 
 export default async function DashboardPage() {
   const user = await profileRepository.getCurrentUser();
-  // Defensa en profundidad: el middleware ya redirige si no hay sesion,
-  // pero verificamos aqui tambien (e.g. cache stale, race conditions).
   if (!user) redirect("/login");
 
   return (
-    <div className="container mx-auto max-w-2xl py-12 px-4 space-y-6">
+    <div className="mx-auto max-w-5xl space-y-8">
       <div className="space-y-2">
-        <h1 className="text-2xl font-bold">Bienvenido, {user.full_name}</h1>
+        <h1 className="font-display text-3xl font-black tracking-tight">
+          Hola, {getDisplayName(user)}
+        </h1>
         <p className="text-sm text-muted-foreground">
-          Tu rol: <span className="font-medium">{user.role}</span>
+          Te damos la bienvenida a CNV Learning.
         </p>
       </div>
-      <p className="text-sm text-muted-foreground">
-        Dashboard placeholder del Bloque 2. La vista completa con sidebar,
-        progreso e insignias se implementa en Bloques 3-5.
-      </p>
-      <LogoutButton />
+      <Card>
+        <CardHeader>
+          <CardTitle>Continúa donde dejaste</CardTitle>
+          <CardDescription>
+            Aún no has comenzado tu primer curso. La vista de progreso
+            e insignias estará disponible próximamente.
+          </CardDescription>
+        </CardHeader>
+      </Card>
     </div>
   );
 }
