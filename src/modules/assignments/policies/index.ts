@@ -14,3 +14,7 @@ export {
   canViewSubmission,
   type SubmissionViewContext,
 } from "./can-view-submission";
+export {
+  canViewAssignment,
+  type AssignmentViewContext,
+} from "./can-view-assignment";

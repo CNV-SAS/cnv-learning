@@ -1,19 +1,27 @@
-// Vista del curso (Bloque 4 sub-bloque 4.3). Server Component async:
-// resuelve params -> fetch user -> fetch course con policy
-// canViewCourse (RLS hace el filtrado real, la policy documenta la
-// intencion); 404 si no es accesible. Luego fetch modulos + lessons
-// por modulo en paralelo (Promise.all sobre listByModule).
-//
-// La pagina es read-only en Bloque 4. Marcar leccion completada y
-// nav prev/next entran en la lesson view (sub-bloque 4.4 y 4.5).
+// Vista del curso. Bloque 6 sub-bloque 6.4 agrega fetch de
+// assignments del curso + submissions del user (bulk) para
+// agruparlas por modulo y pasar al ModuleList con shape
+// ModuleEntry, y un boton "Libro de notas" en el header que
+// linkea a /learn/[courseId]/grades.
 
+import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
+import { BookOpen } from "lucide-react";
 import { profileRepository } from "@/modules/auth/data/profile.repository";
 import { courseRepository } from "@/modules/courses/data";
 import { canViewCourse } from "@/modules/courses/policies";
 import { progressService } from "@/modules/progress/services/progress.service";
-import { ModuleList } from "@/modules/courses/components/module-list";
+import {
+  assignmentRepository,
+  submissionRepository,
+} from "@/modules/assignments/data";
+import {
+  ModuleList,
+  type ModuleEntry,
+} from "@/modules/courses/components/module-list";
+import { Button } from "@/components/ui/button";
 import { requireUuidParam } from "@/lib/utils/params";
+import type { Assignment } from "@/modules/assignments/types";
 
 interface CoursePageProps {
   params: Promise<{ courseId: string }>;
@@ -30,27 +38,66 @@ export default async function CoursePage({ params }: CoursePageProps) {
     notFound();
   }
 
-  // Bloque 5 sub-bloque 5.3: delega a progressService que orquesta
-  // modules + lessons + completed en paralelo. Reemplaza el
-  // fetch manual previo (Bloque 4.3) que ahora vive en el service.
-  const modulesWithProgress = await progressService.getModulesWithProgress(
-    user.id,
-    courseId,
+  // Phase 1: modulos+lessons+progreso (servicio) y assignments del
+  // curso en paralelo. Independientes a este punto.
+  const [modulesWithProgress, allAssignments] = await Promise.all([
+    progressService.getModulesWithProgress(user.id, courseId),
+    assignmentRepository.listByCourse(courseId),
+  ]);
+
+  // Phase 2: submissions del user requieren los assignmentIds. Una
+  // sola query bulk via .in() en el repo.
+  const userSubmissions =
+    allAssignments.length > 0
+      ? await submissionRepository.listByAssignmentIdsForUser(
+          allAssignments.map((a) => a.id),
+          user.id,
+        )
+      : [];
+
+  const assignmentsByModuleId = new Map<string, Assignment[]>();
+  for (const a of allAssignments) {
+    const list = assignmentsByModuleId.get(a.module_id) ?? [];
+    list.push(a);
+    assignmentsByModuleId.set(a.module_id, list);
+  }
+  const submittedAssignmentIdSet = new Set(
+    userSubmissions.map((s) => s.assignment_id),
   );
+
+  const moduleEntries: ModuleEntry[] = modulesWithProgress.map((entry) => {
+    const moduleAssignments =
+      assignmentsByModuleId.get(entry.module.id) ?? [];
+    return {
+      ...entry,
+      assignments: moduleAssignments,
+      submittedAssignmentIds: moduleAssignments
+        .filter((a) => submittedAssignmentIdSet.has(a.id))
+        .map((a) => a.id),
+    };
+  });
 
   return (
     <div className="mx-auto max-w-4xl space-y-8">
       <div className="space-y-3">
-        <h1 className="font-display text-3xl font-black tracking-tight">
-          {course.title}
-        </h1>
+        <div className="flex items-start justify-between gap-4">
+          <h1 className="font-display text-3xl font-black tracking-tight">
+            {course.title}
+          </h1>
+          <Button asChild variant="outline" className="shrink-0">
+            <Link href={`/learn/${courseId}/grades`}>
+              <BookOpen className="mr-2 h-4 w-4" />
+              Libro de notas
+            </Link>
+          </Button>
+        </div>
         {course.description && (
           <p className="text-sm text-muted-foreground">
             {course.description}
           </p>
         )}
       </div>
-      <ModuleList courseId={courseId} modules={modulesWithProgress} />
+      <ModuleList courseId={courseId} modules={moduleEntries} />
     </div>
   );
 }
