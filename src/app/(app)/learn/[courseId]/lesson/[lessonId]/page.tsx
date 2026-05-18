@@ -51,27 +51,43 @@ export default async function LessonPage({ params }: LessonPageProps) {
   const user = await profileRepository.getCurrentUser();
   if (!user) redirect("/login");
 
-  const course = await courseRepository.findById(courseId);
+  // Performance (sub-bloque 4.5-perf): paralelizar queries
+  // independientes. Orden de latencias antes -> despues:
+  //   user                   -> user
+  //   course                 -> course + lesson  (Promise.all #1)
+  //   lesson                 -> attachments + completed + neighbors
+  //   attachments               (Promise.all #2)
+  //   completed + neighbors  -> signed URLs (paralelo interno)
+  //
+  // De 6 latencias secuenciales a 4. Combinado con el fix de
+  // getNeighbors (de 11 a 2 latencias internas), baja ~5s a ~1s
+  // en dev con Supabase free tier.
+  const [course, lesson] = await Promise.all([
+    courseRepository.findById(courseId),
+    lessonRepository.findById(lessonId),
+  ]);
   if (!canViewCourse(user, { courseExists: course !== null }) || !course) {
     notFound();
   }
-
-  const lesson = await lessonRepository.findById(lessonId);
   if (!canViewLesson(user, { lessonExists: lesson !== null }) || !lesson) {
     notFound();
   }
 
-  // Resolver signed URLs en paralelo. Repos limpios: el page hace la
-  // composicion (consideracion B del plan: NO cachear URLs entre
-  // renders, generar al render con TTL holgado para el delta hasta
-  // el click).
-  //
-  // getSignedUrl retorna null cuando el archivo no existe en Storage
-  // (estado valido en dev: el seed registra attachments con paths
-  // ficticios). Filtramos los nulls; si todos fallan, AttachmentList
-  // recibe array vacio y se omite la seccion sin romper la pagina.
-  const rawAttachments =
-    await lessonAttachmentRepository.listByLesson(lessonId);
+  // Mega Promise.all: attachments, progreso y vecinos son
+  // independientes una vez tenemos courseId/lessonId/userId.
+  const [rawAttachments, completed, neighbors] = await Promise.all([
+    lessonAttachmentRepository.listByLesson(lessonId),
+    lessonProgressRepository.hasCompleted(user.id, lesson.id),
+    lessonNavigationService.getNeighbors(courseId, lesson.id),
+  ]);
+
+  // Resolver signed URLs en paralelo. getSignedUrl retorna null
+  // cuando el archivo no existe en Storage (estado valido en dev:
+  // el seed registra attachments con paths ficticios). Filtramos
+  // los nulls; si todos fallan, AttachmentList recibe array vacio
+  // y omite la seccion sin romper la pagina. TTL 15 min cubre
+  // delta hasta el click (consideracion B del plan: NO cachear
+  // URLs entre renders).
   const attachments: AttachmentWithUrl[] = (
     await Promise.all(
       rawAttachments.map(async (a) => {
@@ -82,12 +98,6 @@ export default async function LessonPage({ params }: LessonPageProps) {
       }),
     )
   ).filter((item): item is AttachmentWithUrl => item !== null);
-
-  // Estado de progreso + vecinos en paralelo (queries independientes).
-  const [completed, neighbors] = await Promise.all([
-    lessonProgressRepository.hasCompleted(user.id, lesson.id),
-    lessonNavigationService.getNeighbors(courseId, lesson.id),
-  ]);
 
   return (
     <div className="mx-auto max-w-3xl space-y-8">

@@ -6,13 +6,14 @@
 // signed URLs y user prop en otros lugares: el page server
 // resuelve, el componente Client solo orquesta interaccion).
 //
-// Si completed=true: variante outline con icono Check y disabled.
-// Si false: variante primary "Marcar como completada"; click llama
-// la server action, muestra toast y refresca el route via
-// router.refresh() para que el hasCompleted del page server
-// rehidrate true.
+// useOptimistic + useTransition (sub-bloque 4.5-perf): el cambio
+// visual a "Lección completada" ocurre inmediato al click, sin
+// esperar router.refresh(). React revierte el state si la
+// transition termina sin haber persistido (action fallida). El
+// router.refresh() en background rehidrata el server component
+// para que `completed` del prop converja al estado real.
 
-import { useState } from "react";
+import { useOptimistic, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Check } from "lucide-react";
 import { toast } from "sonner";
@@ -29,9 +30,30 @@ export function CompleteLessonButton({
   completed,
 }: CompleteLessonButtonProps) {
   const router = useRouter();
-  const [loading, setLoading] = useState(false);
+  const [isPending, startTransition] = useTransition();
+  const [optimisticCompleted, setOptimisticCompleted] = useOptimistic(
+    completed,
+    (_current, newState: boolean) => newState,
+  );
 
-  if (completed) {
+  function handleClick() {
+    startTransition(async () => {
+      setOptimisticCompleted(true);
+      try {
+        const result = await markLessonCompletedAction({ lessonId });
+        if (!result.ok) {
+          toast.error(result.error.message);
+          return;
+        }
+        toast.success("Lección marcada como completada");
+        router.refresh();
+      } catch {
+        toast.error("Error inesperado. Intenta de nuevo.");
+      }
+    });
+  }
+
+  if (optimisticCompleted) {
     return (
       <Button
         variant="outline"
@@ -44,30 +66,13 @@ export function CompleteLessonButton({
     );
   }
 
-  async function handleClick() {
-    setLoading(true);
-    try {
-      const result = await markLessonCompletedAction({ lessonId });
-      if (!result.ok) {
-        toast.error(result.error.message);
-        return;
-      }
-      toast.success("Lección marcada como completada");
-      router.refresh();
-    } catch {
-      toast.error("Error inesperado. Intenta de nuevo.");
-    } finally {
-      setLoading(false);
-    }
-  }
-
   return (
     <Button
       onClick={handleClick}
-      disabled={loading}
+      disabled={isPending}
       className="w-full"
     >
-      {loading ? "Guardando..." : "Marcar como completada"}
+      {isPending ? "Guardando..." : "Marcar como completada"}
     </Button>
   );
 }

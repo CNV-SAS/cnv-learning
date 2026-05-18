@@ -3,10 +3,11 @@
 // lesson.position).
 //
 // findNeighbors esta exportado como utility pura (testable sin mocks).
-// El service orquesta moduleRepository + lessonRepository (1 + N
-// queries, N modulos del curso). Acceptable para MVP con 10 modulos;
-// si en v2 los cursos crecen a 50+ modulos, optimizar con un join
-// custom en lessonRepository.
+// El service orquesta moduleRepository + lessonRepository: primero
+// fetch de modulos (1 query) y luego fetch de lessons de cada modulo
+// en PARALELO via Promise.all (sub-bloque 4.5-perf). Total: 2
+// latencias secuenciales (no 1+N). En v2 con 50+ modulos, considerar
+// query embedded (modules con lessons join en 1 sola call).
 
 import { moduleRepository } from "../data/module.repository";
 import { lessonRepository } from "../data/lesson.repository";
@@ -39,15 +40,18 @@ export const lessonNavigationService = {
   ): Promise<LessonNeighbors> {
     const modules = await moduleRepository.listByCourse(courseId);
 
-    // Concatenacion ordenada: modulos ya vienen por position ASC,
-    // dentro de cada modulo las lessons tambien por position ASC.
-    // Variable nombrada `mod` (no `module`) porque `module` es global
-    // de Node CommonJS y ESLint la marca como shadowing.
-    const allLessons: Lesson[] = [];
-    for (const mod of modules) {
-      const lessons = await lessonRepository.listByModule(mod.id);
-      allLessons.push(...lessons);
-    }
+    // Fetch lessons de cada modulo en paralelo (Promise.all sobre
+    // map), no en bucle for-await. Modulos vienen por position ASC,
+    // dentro de cada modulo las lessons tambien por position ASC,
+    // asi que .flat() preserva el orden global correcto.
+    //
+    // Performance: con N=10 modulos pasa de 10 latencias secuenciales
+    // (~2-3s) a 1 latencia (~200-300ms). Critico para navegacion
+    // prev/next y router.refresh() del complete button.
+    const lessonsByModule = await Promise.all(
+      modules.map((mod) => lessonRepository.listByModule(mod.id)),
+    );
+    const allLessons = lessonsByModule.flat();
 
     return findNeighbors(allLessons, currentLessonId);
   },
