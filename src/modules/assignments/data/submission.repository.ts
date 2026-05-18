@@ -21,6 +21,23 @@ type SubmissionInsert =
 import type { Database } from "@/types/database.generated";
 
 export const submissionRepository = {
+  // Usado por el grading service: el docente solo tiene el id de
+  // la submission a calificar (no el user_id). RLS filtra teacher
+  // a sus cursos.
+  async findById(id: string): Promise<Submission | null> {
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from("submissions")
+      .select("*")
+      .eq("id", id)
+      .maybeSingle();
+
+    if (error) {
+      throw new InfrastructureError(ErrorCodes.DATABASE_ERROR, error.message);
+    }
+    return data;
+  },
+
   async findByAssignmentAndUser(
     assignmentId: string,
     userId: string,
