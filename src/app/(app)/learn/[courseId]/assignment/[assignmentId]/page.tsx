@@ -30,7 +30,14 @@ import { requireUuidParam } from "@/lib/utils/params";
 // de facto (corren una vez por request), pero la regla no lo sabe.
 // Mover la decision aqui mantiene el componente "puro" a ojos del
 // linter.
-function isPast(date: Date): boolean {
+//
+// Acepta null y retorna false explicitamente: el flow del page
+// ya hace ese guard via ternary, pero defenderlo aqui evita
+// regresiones si el caller cambia en el futuro (ej.
+// isPast(assignment.due_at) sin chequeo seria bug: new Date(null)
+// es epoch 1970 que es siempre "past").
+function isPast(date: Date | null): boolean {
+  if (date === null) return false;
   return date.getTime() < Date.now();
 }
 
@@ -67,7 +74,7 @@ export default async function AssignmentPage({
     : null;
 
   const dueAt = assignment.due_at ? new Date(assignment.due_at) : null;
-  const isOverdue = dueAt !== null && isPast(dueAt);
+  const isOverdue = isPast(dueAt);
   const dueLabel =
     dueAt === null
       ? "Sin plazo"
@@ -133,7 +140,9 @@ export default async function AssignmentPage({
           <CardContent className="py-6 text-sm text-muted-foreground">
             {isOverdue
               ? "El plazo de entrega venció. Contacta al docente si necesitas una prórroga."
-              : "Esta tarea no acepta entregas desde la plataforma."}
+              : !isStudent
+                ? "Vista previa. Solo los estudiantes pueden entregar esta tarea."
+                : "Esta tarea no acepta entregas desde la plataforma."}
           </CardContent>
         </Card>
       )}
