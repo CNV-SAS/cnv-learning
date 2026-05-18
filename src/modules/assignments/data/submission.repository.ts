@@ -118,7 +118,13 @@ export const submissionRepository = {
   async upsert(
     input: Pick<
       SubmissionInsert,
-      "assignment_id" | "user_id" | "status" | "storage_path" | "essay_text" | "submitted_at"
+      | "assignment_id"
+      | "user_id"
+      | "status"
+      | "storage_path"
+      | "essay_text"
+      | "quiz_answers"
+      | "submitted_at"
     >,
   ): Promise<Submission> {
     const supabase = await createClient();

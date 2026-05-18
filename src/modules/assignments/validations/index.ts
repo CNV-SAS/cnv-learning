@@ -8,3 +8,7 @@ export {
   publishGradingSchema,
   type PublishGradingInput,
 } from "./publish-grading";
+export {
+  submitQuizSchema,
+  type SubmitQuizInput,
+} from "./submit-quiz";

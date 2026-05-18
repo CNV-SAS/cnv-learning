@@ -7,3 +7,7 @@ export {
   MAX_FILE_SIZE_BYTES,
   ALLOWED_MIME_TYPES,
 } from "./submission-storage";
+export {
+  quizRepository,
+  type QuizOptionPublic,
+} from "./quiz.repository";

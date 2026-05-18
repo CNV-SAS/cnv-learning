@@ -11,6 +11,7 @@
 // update separado (no implementado en MVP).
 
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { InfrastructureError } from "@/core/errors/classes";
 import { ErrorCodes } from "@/core/errors/codes";
 import type { Database } from "@/types/database.generated";
@@ -68,6 +69,34 @@ export const gradingRepository = {
       throw new InfrastructureError(
         ErrorCodes.DATABASE_ERROR,
         error?.message ?? "Failed to create grading",
+      );
+    }
+    return data;
+  },
+
+  // BYPASS DE RLS: students no tienen INSERT policy en gradings (la
+  // policy original es solo para teachers). El auto-grading del
+  // quiz necesita insertar sin que el caller sea teacher; usamos
+  // service role para evitar acoplar la decision de auth a SQL.
+  // graded_by se setea al student.id (auto-graded by themselves)
+  // y el audit log clarifica gradedBy: "auto" en metadata.
+  async createAsAdmin(
+    input: Pick<
+      GradingInsert,
+      "submission_id" | "graded_by" | "final_grade" | "feedback"
+    >,
+  ): Promise<Grading> {
+    const supabase = createAdminClient();
+    const { data, error } = await supabase
+      .from("gradings")
+      .insert(input)
+      .select("*")
+      .single();
+
+    if (error || !data) {
+      throw new InfrastructureError(
+        ErrorCodes.DATABASE_ERROR,
+        error?.message ?? "Failed to create grading (admin)",
       );
     }
     return data;

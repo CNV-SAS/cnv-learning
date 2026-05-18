@@ -4,3 +4,8 @@ export {
   gradesService,
   type CourseGradeEntry,
 } from "./grades.service";
+export {
+  quizService,
+  type QuizForPlayer,
+  type QuizSubmitResult,
+} from "./quiz.service";
