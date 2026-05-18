@@ -16,7 +16,13 @@
 import { useState } from "react";
 import { Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 
 interface MobileNavProps {
   children: React.ReactNode;
@@ -38,6 +44,13 @@ export function MobileNav({ children }: MobileNavProps) {
         </Button>
       </SheetTrigger>
       <SheetContent side="left" className="w-72 p-0">
+        {/* SheetTitle + SheetDescription requeridos por Radix Dialog
+            para a11y. Wordmark del sidebar ya cumple rol visual, asi
+            que estos viven solo para screen readers (sr-only). */}
+        <SheetTitle className="sr-only">Navegación</SheetTitle>
+        <SheetDescription className="sr-only">
+          Menú principal de CNV Learning
+        </SheetDescription>
         {children}
       </SheetContent>
     </Sheet>
