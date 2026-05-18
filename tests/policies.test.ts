@@ -7,6 +7,10 @@ import { describe, it, expect } from "vitest";
 import { getNavigationFor } from "@/modules/auth/policies/navigation";
 import { canViewCourse } from "@/modules/courses/policies/can-view-course";
 import { canViewLesson } from "@/modules/courses/policies/can-view-lesson";
+import { canSubmitAssignment } from "@/modules/assignments/policies/can-submit-assignment";
+import { canGradeAssignment } from "@/modules/assignments/policies/can-grade-assignment";
+import { canViewGrading } from "@/modules/assignments/policies/can-view-grading";
+import { canViewSubmission } from "@/modules/assignments/policies/can-view-submission";
 import type { AuthenticatedUser, UserRole } from "@/modules/auth/types";
 
 function makeUser(role: UserRole): AuthenticatedUser {
@@ -106,6 +110,137 @@ describe("canViewLesson", () => {
   it("teacher no ve leccion cuando RLS no la retorna", () => {
     expect(
       canViewLesson(makeUser("teacher"), { lessonExists: false }),
+    ).toBe(false);
+  });
+});
+
+describe("canSubmitAssignment", () => {
+  const futureDate = new Date(Date.now() + 1000 * 60 * 60 * 24); // +1 day
+  const pastDate = new Date(Date.now() - 1000 * 60 * 60 * 24); // -1 day
+
+  it("student entrega cuando assignment existe y sin deadline", () => {
+    expect(
+      canSubmitAssignment(makeUser("student"), {
+        assignmentExists: true,
+        dueAt: null,
+      }),
+    ).toBe(true);
+  });
+
+  it("student entrega antes del deadline", () => {
+    expect(
+      canSubmitAssignment(makeUser("student"), {
+        assignmentExists: true,
+        dueAt: futureDate,
+      }),
+    ).toBe(true);
+  });
+
+  it("student no entrega despues del deadline", () => {
+    expect(
+      canSubmitAssignment(makeUser("student"), {
+        assignmentExists: true,
+        dueAt: pastDate,
+      }),
+    ).toBe(false);
+  });
+
+  it("student no entrega cuando assignment no existe (RLS bloqueo)", () => {
+    expect(
+      canSubmitAssignment(makeUser("student"), {
+        assignmentExists: false,
+        dueAt: null,
+      }),
+    ).toBe(false);
+  });
+
+  it("teacher no entrega tareas", () => {
+    expect(
+      canSubmitAssignment(makeUser("teacher"), {
+        assignmentExists: true,
+        dueAt: null,
+      }),
+    ).toBe(false);
+  });
+
+  it("admin no entrega tareas (no es estudiante)", () => {
+    expect(
+      canSubmitAssignment(makeUser("admin"), {
+        assignmentExists: true,
+        dueAt: null,
+      }),
+    ).toBe(false);
+  });
+});
+
+describe("canGradeAssignment", () => {
+  it("teacher califica cuando submission existe", () => {
+    expect(
+      canGradeAssignment(makeUser("teacher"), { submissionExists: true }),
+    ).toBe(true);
+  });
+
+  it("teacher no califica si submission no existe (RLS bloqueo)", () => {
+    expect(
+      canGradeAssignment(makeUser("teacher"), { submissionExists: false }),
+    ).toBe(false);
+  });
+
+  it("admin califica como backup", () => {
+    expect(
+      canGradeAssignment(makeUser("admin"), { submissionExists: true }),
+    ).toBe(true);
+  });
+
+  it("student no califica", () => {
+    expect(
+      canGradeAssignment(makeUser("student"), { submissionExists: true }),
+    ).toBe(false);
+  });
+});
+
+describe("canViewGrading", () => {
+  it("admin ve cualquier grading", () => {
+    expect(
+      canViewGrading(makeUser("admin"), { gradingExists: false }),
+    ).toBe(true);
+  });
+
+  it("student ve grading cuando RLS la retorna (own submission)", () => {
+    expect(
+      canViewGrading(makeUser("student"), { gradingExists: true }),
+    ).toBe(true);
+  });
+
+  it("student no ve grading de otros (RLS bloqueo)", () => {
+    expect(
+      canViewGrading(makeUser("student"), { gradingExists: false }),
+    ).toBe(false);
+  });
+});
+
+describe("canViewSubmission", () => {
+  it("admin ve cualquier submission", () => {
+    expect(
+      canViewSubmission(makeUser("admin"), { submissionExists: false }),
+    ).toBe(true);
+  });
+
+  it("teacher ve submission cuando RLS la retorna (curso suyo)", () => {
+    expect(
+      canViewSubmission(makeUser("teacher"), { submissionExists: true }),
+    ).toBe(true);
+  });
+
+  it("student ve own submission cuando RLS la retorna", () => {
+    expect(
+      canViewSubmission(makeUser("student"), { submissionExists: true }),
+    ).toBe(true);
+  });
+
+  it("student no ve submission de otros (RLS bloqueo)", () => {
+    expect(
+      canViewSubmission(makeUser("student"), { submissionExists: false }),
     ).toBe(false);
   });
 });
