@@ -11,16 +11,20 @@ describe("getBadge", () => {
     expect(getBadge(0).id).toBe("junior");
   });
 
-  it("59%: Junior (limite superior del rango)", () => {
-    expect(getBadge(59).id).toBe("junior");
+  it("49%: Junior (limite superior del rango)", () => {
+    expect(getBadge(49).id).toBe("junior");
   });
 
-  it("60%: Senior (umbral exacto)", () => {
-    expect(getBadge(60).id).toBe("senior");
+  it("50%: Senior (umbral exacto)", () => {
+    expect(getBadge(50).id).toBe("senior");
   });
 
-  it("99%: Senior (limite superior del rango)", () => {
-    expect(getBadge(99).id).toBe("senior");
+  it("84%: Senior (limite superior del rango)", () => {
+    expect(getBadge(84).id).toBe("senior");
+  });
+
+  it("85%: Master ATLAS (umbral exacto)", () => {
+    expect(getBadge(85).id).toBe("master");
   });
 
   it("100%: Master ATLAS", () => {

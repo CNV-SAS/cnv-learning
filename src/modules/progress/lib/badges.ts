@@ -38,12 +38,18 @@ const BADGE_MASTER: Badge = {
   colorClass: "bg-amber-100 text-amber-700",
 };
 
-// Rangos (MVP.md Bloque 5):
-//   0-59  -> Junior
-//   60-99 -> Senior
-//   100   -> Master
+// Rangos (ajustados en Bloque 5 sub-bloque 5.3-badges post smoke).
+// Los umbrales originales de MVP.md (Junior 0-59 / Senior 60-99 /
+// Master 100) resultaron desmotivadores: 28/30 lecciones (93%)
+// quedaba en Senior. Ajuste a:
+//   0-49   -> Junior Bioimpedancia
+//   50-84  -> Senior Medicina Bioeléctrica
+//   85-100 -> Master ATLAS
+//
+// Master no exige 100% para motivar el cierre de curso sin penalizar
+// las ultimas 1-2 lecciones (que pueden ser revision o bonus).
 export function getBadge(percentage: number): Badge {
-  if (percentage >= 100) return BADGE_MASTER;
-  if (percentage >= 60) return BADGE_SENIOR;
+  if (percentage >= 85) return BADGE_MASTER;
+  if (percentage >= 50) return BADGE_SENIOR;
   return BADGE_JUNIOR;
 }
