@@ -13,20 +13,7 @@
 // antes de la primera query al repo.
 
 import { notFound } from "next/navigation";
-
-// Regex de formato UUID (8-4-4-4-12 hex). NO valida RFC 4122
-// estricto (que exige version 1-5 en el primer nibble del tercer
-// segmento). Motivo del relax: el seed usa UUIDs deterministicos
-// formato 00000000-0000-0000-0000-XXXXXXXXXXXX (version 0) para
-// reproducibilidad de fixtures; un schema RFC-strict (z.string().uuid()
-// en Zod 4) los rechazaria como invalidos.
-//
-// Postgres uuid type acepta cualquier string con este formato, asi
-// que el chequeo formal es suficiente para evitar el roundtrip al
-// repo y la InfrastructureError downstream. Strings tipo "hola",
-// "abc", "<uuid>h" no pasan.
-const UUID_FORMAT =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+import { UUID_FORMAT } from "./uuid";
 
 // Valida que el param tenga formato UUID. Llama notFound() si no.
 // Retorna el valor para uso directo (mantiene el call site limpio).

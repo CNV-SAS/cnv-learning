@@ -33,6 +33,10 @@ import {
   AttachmentList,
   type AttachmentWithUrl,
 } from "@/modules/courses/components/attachment-list";
+import { CompleteLessonButton } from "@/modules/courses/components/complete-lesson-button";
+import { LessonNav } from "@/modules/courses/components/lesson-nav";
+import { lessonNavigationService } from "@/modules/courses/services/lesson-navigation";
+import { lessonProgressRepository } from "@/modules/progress/data";
 import { requireUuidParam } from "@/lib/utils/params";
 
 interface LessonPageProps {
@@ -79,6 +83,12 @@ export default async function LessonPage({ params }: LessonPageProps) {
     )
   ).filter((item): item is AttachmentWithUrl => item !== null);
 
+  // Estado de progreso + vecinos en paralelo (queries independientes).
+  const [completed, neighbors] = await Promise.all([
+    lessonProgressRepository.hasCompleted(user.id, lesson.id),
+    lessonNavigationService.getNeighbors(courseId, lesson.id),
+  ]);
+
   return (
     <div className="mx-auto max-w-3xl space-y-8">
       <div className="space-y-2">
@@ -99,6 +109,13 @@ export default async function LessonPage({ params }: LessonPageProps) {
       )}
 
       <AttachmentList attachments={attachments} />
+
+      <CompleteLessonButton lessonId={lesson.id} completed={completed} />
+      <LessonNav
+        courseId={courseId}
+        prev={neighbors.prev}
+        next={neighbors.next}
+      />
     </div>
   );
 }
