@@ -16,13 +16,14 @@ import {
 } from "@/modules/courses/data";
 import { canViewCourse } from "@/modules/courses/policies";
 import { ModuleList } from "@/modules/courses/components/module-list";
+import { requireUuidParam } from "@/lib/utils/params";
 
 interface CoursePageProps {
   params: Promise<{ courseId: string }>;
 }
 
 export default async function CoursePage({ params }: CoursePageProps) {
-  const { courseId } = await params;
+  const courseId = requireUuidParam((await params).courseId);
 
   const user = await profileRepository.getCurrentUser();
   if (!user) redirect("/login");

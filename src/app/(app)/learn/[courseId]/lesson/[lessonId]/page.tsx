@@ -30,13 +30,16 @@ import {
 import { VideoEmbed } from "@/modules/courses/components/video-embed";
 import { LessonContent } from "@/modules/courses/components/lesson-content";
 import { AttachmentList } from "@/modules/courses/components/attachment-list";
+import { requireUuidParam } from "@/lib/utils/params";
 
 interface LessonPageProps {
   params: Promise<{ courseId: string; lessonId: string }>;
 }
 
 export default async function LessonPage({ params }: LessonPageProps) {
-  const { courseId, lessonId } = await params;
+  const raw = await params;
+  const courseId = requireUuidParam(raw.courseId);
+  const lessonId = requireUuidParam(raw.lessonId);
 
   const user = await profileRepository.getCurrentUser();
   if (!user) redirect("/login");
