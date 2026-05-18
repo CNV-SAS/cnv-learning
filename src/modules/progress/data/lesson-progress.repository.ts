@@ -45,4 +45,30 @@ export const lessonProgressRepository = {
       throw new InfrastructureError(ErrorCodes.DATABASE_ERROR, error.message);
     }
   },
+
+  // Lista IDs de lessons completadas por el user dentro del curso. El
+  // join lessons -> modules filtra por course_id; la RLS de
+  // lesson_progress filtra por user_id (no hace falta agregar la
+  // condicion aqui, pero la repetimos para que el plan de query sea
+  // estable si la policy cambia).
+  //
+  // Retorna string[] de lesson_ids (no LessonProgress[] completos)
+  // porque el caller solo necesita lookup por id, no metadata.
+  // Menor payload de red y sin transformacion downstream.
+  async listCompletedLessonIdsForUserAndCourse(
+    userId: string,
+    courseId: string,
+  ): Promise<string[]> {
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from("lesson_progress")
+      .select("lesson_id, lessons!inner(modules!inner(course_id))")
+      .eq("user_id", userId)
+      .eq("lessons.modules.course_id", courseId);
+
+    if (error) {
+      throw new InfrastructureError(ErrorCodes.DATABASE_ERROR, error.message);
+    }
+    return (data ?? []).map((row) => row.lesson_id);
+  },
 };
