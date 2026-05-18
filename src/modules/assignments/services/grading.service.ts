@@ -9,9 +9,8 @@
 //   4. Check no existe grading previa (SUBMISSION_ALREADY_GRADED).
 //   5. Insert grading.
 //   6. Audit log via auditRepository (service role; fault-tolerant).
-//
-// El email de notificacion al estudiante entra en sub-bloque 6.6
-// como step adicional aqui o como handler de evento.
+//   7. Email al estudiante via Resend (Bloque 6 sub-bloque 6.6;
+//      fault-tolerant: no rompe el flow si falla).
 
 import {
   assignmentRepository,
@@ -20,6 +19,11 @@ import {
 } from "@/modules/assignments/data";
 import { canGradeAssignment } from "@/modules/assignments/policies";
 import { auditRepository } from "@/modules/audit/data";
+import { moduleRepository } from "@/modules/courses/data/module.repository";
+import { courseRepository } from "@/modules/courses/data/course.repository";
+import { profileRepository } from "@/modules/auth/data/profile.repository";
+import { sendGradingPublishedEmail } from "@/lib/email";
+import { logger } from "@/core/logger/logger";
 import {
   AppError,
   AuthorizationError,
@@ -111,6 +115,46 @@ export const gradingService = {
         maxScore: assignment.max_score,
       },
     });
+
+    // Email al estudiante (Bloque 6 sub-bloque 6.6). Resolve
+    // courseTitle via module -> course + studentProfile en paralelo.
+    // Fault-tolerant: cualquier fallo se loguea pero NO degrada
+    // el resultado (grading + audit ya son persistidos; return ok).
+    try {
+      const [moduleRow, studentProfile] = await Promise.all([
+        moduleRepository.findById(assignment.module_id),
+        profileRepository.findById(submission.user_id),
+      ]);
+      const courseRow = moduleRow
+        ? await courseRepository.findById(moduleRow.course_id)
+        : null;
+
+      if (moduleRow && courseRow && studentProfile) {
+        await sendGradingPublishedEmail({
+          studentEmail: studentProfile.email,
+          studentName: studentProfile.full_name,
+          courseTitle: courseRow.title,
+          courseId: courseRow.id,
+          assignmentId: assignment.id,
+          assignmentTitle: assignment.title,
+          finalGrade: grading.final_grade,
+          maxScore: assignment.max_score,
+          feedback: grading.feedback,
+        });
+      } else {
+        logger.warn("Email skip: contexto incompleto", {
+          gradingId: grading.id,
+          hasModule: moduleRow !== null,
+          hasCourse: courseRow !== null,
+          hasStudent: studentProfile !== null,
+        });
+      }
+    } catch (e) {
+      logger.warn("Email flow lanzo excepcion inesperada", {
+        gradingId: grading.id,
+        error: e instanceof Error ? e.message : String(e),
+      });
+    }
 
     return ok(grading);
   },
