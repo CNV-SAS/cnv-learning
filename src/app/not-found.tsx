@@ -27,7 +27,7 @@ export default async function NotFound() {
           desde un link interno, repórtalo en soporte.
         </p>
       </div>
-      <Button asChild>
+      <Button asChild size="lg" className="px-8">
         <Link href={href}>{label}</Link>
       </Button>
     </div>

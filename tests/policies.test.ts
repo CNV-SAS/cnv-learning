@@ -30,4 +30,15 @@ describe("getNavigationFor", () => {
     const items = getNavigationFor(makeUser("student"));
     expect(items.map((i) => i.href)).toEqual(["/dashboard"]);
   });
+
+  // Regresion del bug de sub-bloque 3.5: si NavItem se llenara con
+  // referencias a componentes React (icon: LucideIcon), el array
+  // dejaria de ser serializable y romperia al cruzar la frontera
+  // Server -> Client. Verificamos via JSON roundtrip que el shape
+  // se mantiene plain.
+  it("items sobreviven JSON roundtrip (shape serializable)", () => {
+    const items = getNavigationFor(makeUser("admin"));
+    const cloned = JSON.parse(JSON.stringify(items));
+    expect(cloned).toEqual(items);
+  });
 });

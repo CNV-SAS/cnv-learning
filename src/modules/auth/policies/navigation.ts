@@ -6,20 +6,30 @@
 // Regla dura 3 de ARCHITECTURE.md: la comparacion user.role === ...
 // vive aqui (en allowedRoles.includes) y NUNCA en el sidebar.
 //
+// El icono va como NavIconName (string literal) en lugar de
+// componente React directo: el shape debe ser serializable para
+// cruzar la frontera Server -> Client (el SidebarItem es Client por
+// usePathname y recibe el item como prop). Pasar el componente
+// LucideIcon directo rompe runtime con "Functions cannot be passed
+// to Client Components". La resolucion name -> componente vive en
+// components/layout/nav-icon.tsx, donde corresponde.
+//
 // Items omitidos conscientemente del MVP en Bloque 3:
 // - Perfil: pendiente de Bloque 16 (no hay ruta /profile aun, link
 //   a 404 seria mal UX).
 // - Notificaciones: pendiente de Bloque 10.
 // Otros (cursos, foro, certificados) se agregan en sus bloques
-// respectivos cuando exista la ruta correspondiente.
+// respectivos cuando exista la ruta correspondiente, agregando
+// tanto el iconName aqui como su mapeo en nav-icon.tsx.
 
-import { LayoutDashboard, Shield, type LucideIcon } from "lucide-react";
 import type { AuthenticatedUser, UserRole } from "@/modules/auth/types";
+
+export type NavIconName = "dashboard" | "shield";
 
 export interface NavItem {
   label: string;
   href: string;
-  icon: LucideIcon;
+  iconName: NavIconName;
   allowedRoles: ReadonlyArray<UserRole>;
 }
 
@@ -27,13 +37,13 @@ const NAV_ITEMS: readonly NavItem[] = [
   {
     label: "Dashboard",
     href: "/dashboard",
-    icon: LayoutDashboard,
+    iconName: "dashboard",
     allowedRoles: ["admin", "teacher", "student"],
   },
   {
     label: "Admin",
     href: "/admin",
-    icon: Shield,
+    iconName: "shield",
     allowedRoles: ["admin"],
   },
 ];

@@ -36,7 +36,9 @@ export default function ErrorBoundary({
           automáticamente. Puedes intentar de nuevo en un momento.
         </p>
       </div>
-      <Button onClick={reset}>Reintentar</Button>
+      <Button onClick={reset} size="lg" className="px-8">
+        Reintentar
+      </Button>
     </div>
   );
 }

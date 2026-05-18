@@ -35,6 +35,7 @@ export function Wordmark({ variant = "default", className }: WordmarkProps) {
       aria-label="CNV Learning"
     >
       <span className="text-emerald-700">CNV</span>
+      {" "}
       <span className="text-foreground">Learning</span>
     </span>
   );
