@@ -55,6 +55,12 @@ export const ErrorCodes = {
   EMAIL_PROVIDER_ERROR: "EMAIL_PROVIDER_ERROR",
   STORAGE_ERROR: "STORAGE_ERROR",
 
+  // Forum (NotFoundError o AuthorizationError)
+  FORUM_NOT_FOUND: "FORUM_NOT_FOUND",
+  THREAD_NOT_FOUND: "THREAD_NOT_FOUND",
+  AUTHZ_CANNOT_POST_IN_FORUM: "AUTHZ_CANNOT_POST_IN_FORUM",
+  AUTHZ_CANNOT_EDIT_THREAD: "AUTHZ_CANNOT_EDIT_THREAD",
+
   // Validation general (ValidationError, 400). SECURITY.md linea 178
   // referencia este code en el ejemplo de createThread action.
   VALIDATION_FAILED: "VALIDATION_FAILED",
