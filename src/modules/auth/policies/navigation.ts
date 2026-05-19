@@ -14,17 +14,22 @@
 // to Client Components". La resolucion name -> componente vive en
 // components/layout/nav-icon.tsx, donde corresponde.
 //
-// Items omitidos conscientemente del MVP en Bloque 3:
-// - Perfil: pendiente de Bloque 16 (no hay ruta /profile aun, link
-//   a 404 seria mal UX).
-// - Notificaciones: pendiente de Bloque 10.
+// Items omitidos conscientemente del MVP:
+// - Notificaciones: el bell del header reemplaza la entrada del
+//   sidebar; no se agrega item para no duplicar (Bloque 10).
 // Otros (cursos, foro, certificados) se agregan en sus bloques
 // respectivos cuando exista la ruta correspondiente, agregando
 // tanto el iconName aqui como su mapeo en nav-icon.tsx.
+//
+// Orden del sidebar:
+// 1. Dashboard (todos los roles, entrada principal).
+// 2. Por calificar (solo teacher, accion contextual).
+// 3. Admin (solo admin, panel administrativo).
+// 4. Perfil (todos los roles, ultimo por convencion estandar).
 
 import type { AuthenticatedUser, UserRole } from "@/modules/auth/types";
 
-export type NavIconName = "dashboard" | "shield" | "inbox";
+export type NavIconName = "dashboard" | "shield" | "inbox" | "user";
 
 export interface NavItem {
   label: string;
@@ -51,6 +56,12 @@ const NAV_ITEMS: readonly NavItem[] = [
     href: "/admin",
     iconName: "shield",
     allowedRoles: ["admin"],
+  },
+  {
+    label: "Perfil",
+    href: "/profile",
+    iconName: "user",
+    allowedRoles: ["admin", "teacher", "student"],
   },
 ];
 

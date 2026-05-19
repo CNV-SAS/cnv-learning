@@ -23,19 +23,27 @@ function makeUser(role: UserRole): AuthenticatedUser {
 }
 
 describe("getNavigationFor", () => {
-  it("admin ve Dashboard + Admin (sin Por calificar)", () => {
+  it("admin ve Dashboard + Admin + Perfil (sin Por calificar)", () => {
     const items = getNavigationFor(makeUser("admin"));
-    expect(items.map((i) => i.href)).toEqual(["/dashboard", "/admin"]);
+    expect(items.map((i) => i.href)).toEqual([
+      "/dashboard",
+      "/admin",
+      "/profile",
+    ]);
   });
 
-  it("teacher ve Dashboard + Por calificar (en ese orden)", () => {
+  it("teacher ve Dashboard + Por calificar + Perfil (en ese orden)", () => {
     const items = getNavigationFor(makeUser("teacher"));
-    expect(items.map((i) => i.href)).toEqual(["/dashboard", "/teacher"]);
+    expect(items.map((i) => i.href)).toEqual([
+      "/dashboard",
+      "/teacher",
+      "/profile",
+    ]);
   });
 
-  it("student ve solo Dashboard", () => {
+  it("student ve Dashboard + Perfil", () => {
     const items = getNavigationFor(makeUser("student"));
-    expect(items.map((i) => i.href)).toEqual(["/dashboard"]);
+    expect(items.map((i) => i.href)).toEqual(["/dashboard", "/profile"]);
   });
 
   // Regresion del bug de sub-bloque 3.5: si NavItem se llenara con
