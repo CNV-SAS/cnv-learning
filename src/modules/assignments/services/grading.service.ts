@@ -23,6 +23,7 @@ import { moduleRepository } from "@/modules/courses/data/module.repository";
 import { courseRepository } from "@/modules/courses/data/course.repository";
 import { profileRepository } from "@/modules/auth/data/profile.repository";
 import { sendGradingPublishedEmail } from "@/lib/email";
+import { notificationRepository } from "@/modules/notifications/data";
 import { logger } from "@/core/logger/logger";
 import {
   AppError,
@@ -124,41 +125,74 @@ export const gradingService = {
       },
     });
 
-    // Email al estudiante (Bloque 6 sub-bloque 6.6). Resolve
-    // courseTitle via module -> course + studentProfile en paralelo.
-    // Fault-tolerant: cualquier fallo se loguea pero NO degrada
-    // el resultado (grading + audit ya son persistidos; return ok).
-    try {
-      const [moduleRow, studentProfile] = await Promise.all([
-        moduleRepository.findById(assignment.module_id),
-        profileRepository.findById(submission.user_id),
-      ]);
-      const courseRow = moduleRow
-        ? await courseRepository.findById(moduleRow.course_id)
-        : null;
+    // Delivery al estudiante: email (Bloque 6 sub-bloque 6.6) +
+    // notification in-app (Bloque 10 sub-bloque 10.8). Ambos
+    // fault-tolerant: cualquier fallo se loguea pero NO degrada el
+    // resultado (grading + audit ya son persistidos; return ok).
+    //
+    // Resolvemos moduleRow + courseRow + studentProfile una sola
+    // vez (los 3 deliveries los usan). Si alguno falta logueamos
+    // skip; emails/notifications con contexto incompleto NO se
+    // disparan (mejor missing notification que notification con
+    // info falsa).
+    const [moduleRow, studentProfile] = await Promise.all([
+      moduleRepository.findById(assignment.module_id),
+      profileRepository.findById(submission.user_id),
+    ]);
+    const courseRow = moduleRow
+      ? await courseRepository.findById(moduleRow.course_id)
+      : null;
 
-      if (moduleRow && courseRow && studentProfile) {
-        await sendGradingPublishedEmail({
-          studentEmail: studentProfile.email,
-          studentName: studentProfile.full_name,
-          courseTitle: courseRow.title,
-          courseId: courseRow.id,
-          assignmentId: assignment.id,
-          assignmentTitle: assignment.title,
-          finalGrade: grading.final_grade,
-          maxScore: assignment.max_score,
-          feedback: grading.feedback,
-        });
-      } else {
-        logger.warn("Email skip: contexto incompleto", {
-          gradingId: grading.id,
-          hasModule: moduleRow !== null,
-          hasCourse: courseRow !== null,
-          hasStudent: studentProfile !== null,
-        });
-      }
+    if (!moduleRow || !courseRow || !studentProfile) {
+      logger.warn("Grading delivery skip: contexto incompleto", {
+        gradingId: grading.id,
+        hasModule: moduleRow !== null,
+        hasCourse: courseRow !== null,
+        hasStudent: studentProfile !== null,
+      });
+      return ok(grading);
+    }
+
+    try {
+      await sendGradingPublishedEmail({
+        studentEmail: studentProfile.email,
+        studentName: studentProfile.full_name,
+        courseTitle: courseRow.title,
+        courseId: courseRow.id,
+        assignmentId: assignment.id,
+        assignmentTitle: assignment.title,
+        finalGrade: grading.final_grade,
+        maxScore: assignment.max_score,
+        feedback: grading.feedback,
+      });
     } catch (e) {
       logger.warn("Email flow lanzo excepcion inesperada", {
+        gradingId: grading.id,
+        error: e instanceof Error ? e.message : String(e),
+      });
+    }
+
+    // Notification in-app: alimenta el bell del header + lista
+    // de /notifications del estudiante. Independiente del email
+    // (puede fallar uno y el otro llegar). Link al detalle del
+    // assignment para que el click navegue al feedback completo.
+    try {
+      await notificationRepository.createBulk({
+        userIds: [studentProfile.id],
+        kind: "graded",
+        title: `Recibiste tu calificación en ${assignment.title}`,
+        body: `Nota: ${grading.final_grade} / ${assignment.max_score}`,
+        link: `/learn/${courseRow.id}/assignment/${assignment.id}`,
+        metadata: {
+          submissionId,
+          assignmentId: assignment.id,
+          gradingId: grading.id,
+          finalGrade: grading.final_grade,
+          maxScore: assignment.max_score,
+        },
+      });
+    } catch (e) {
+      logger.warn("Notification in-app lanzo excepcion inesperada", {
         gradingId: grading.id,
         error: e instanceof Error ? e.message : String(e),
       });
