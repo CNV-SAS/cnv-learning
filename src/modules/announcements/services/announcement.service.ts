@@ -30,9 +30,10 @@ import { notificationRepository } from "@/modules/notifications/data";
 import { courseRepository } from "@/modules/courses/data";
 import { auditRepository } from "@/modules/audit/data";
 import { sendAnnouncementEmail } from "@/lib/email";
+import { ratelimit } from "@/lib/ratelimit";
 import { logger } from "@/core/logger/logger";
 import {
-  type AppError,
+  AppError,
   AuthorizationError,
   NotFoundError,
 } from "@/core/errors/classes";
@@ -44,6 +45,14 @@ import type {
   AnnouncementRecipient,
   AnnouncementScope,
 } from "../types";
+
+function announcementRateLimitError(secondsLeft: number): AppError {
+  return new AppError(
+    ErrorCodes.RATE_LIMIT_EXCEEDED,
+    `Demasiadas emisiones de anuncios. Vuelve a intentar en ${secondsLeft} segundos.`,
+    429,
+  );
+}
 
 interface EmitCourseAnnouncementParams {
   user: AuthenticatedUser;
@@ -108,6 +117,12 @@ export const announcementService = {
   async emitCourseAnnouncement(
     params: EmitCourseAnnouncementParams,
   ): Promise<Result<Announcement, AppError>> {
+    const limit = await ratelimit.mutation.limit(params.user.id);
+    if (!limit.success) {
+      const secondsLeft = Math.ceil((limit.reset - Date.now()) / 1000);
+      return err(announcementRateLimitError(secondsLeft));
+    }
+
     const course = await courseRepository.findById(params.courseId);
     if (!course) {
       return err(
@@ -190,6 +205,12 @@ export const announcementService = {
   async emitGlobalAnnouncement(
     params: EmitGlobalAnnouncementParams,
   ): Promise<Result<Announcement, AppError>> {
+    const limit = await ratelimit.mutation.limit(params.user.id);
+    if (!limit.success) {
+      const secondsLeft = Math.ceil((limit.reset - Date.now()) / 1000);
+      return err(announcementRateLimitError(secondsLeft));
+    }
+
     const allowed = canEmitGlobalAnnouncement(params.user);
     if (!allowed) {
       return err(
