@@ -32,7 +32,9 @@ function bodyExcerpt(body: string): string {
   return plain.slice(0, MAX_EXCERPT_LEN).trimEnd() + "…";
 }
 
-function roleLabel(role: ThreadWithAuthor["author"]["role"]): string | null {
+function roleLabel(
+  role: NonNullable<ThreadWithAuthor["author"]>["role"] | undefined,
+): string | null {
   if (role === "teacher") return "Docente";
   if (role === "admin") return "Admin";
   return null;
@@ -49,7 +51,8 @@ export function ThreadList({ courseId, forumId, threads }: ThreadListProps) {
   return (
     <div className="space-y-3">
       {threads.map((thread) => {
-        const role = roleLabel(thread.author.role);
+        const authorName = thread.author?.full_name ?? "(Sin perfil)";
+        const role = roleLabel(thread.author?.role);
         return (
           <Link
             key={thread.id}
@@ -73,7 +76,7 @@ export function ThreadList({ courseId, forumId, threads }: ThreadListProps) {
                   {bodyExcerpt(thread.body)}
                 </p>
                 <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
-                  <span>Por {thread.author.full_name}</span>
+                  <span>Por {authorName}</span>
                   {role && (
                     <Badge
                       variant="secondary"

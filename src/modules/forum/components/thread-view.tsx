@@ -25,7 +25,9 @@ interface ThreadViewProps {
   canEdit: boolean;
 }
 
-function roleLabel(role: ThreadWithAuthor["author"]["role"]): string | null {
+function roleLabel(
+  role: NonNullable<ThreadWithAuthor["author"]>["role"] | undefined,
+): string | null {
   if (role === "teacher") return "Docente";
   if (role === "admin") return "Admin";
   return null;
@@ -54,7 +56,8 @@ export function ThreadView({
     );
   }
 
-  const role = roleLabel(thread.author.role);
+  const authorName = thread.author?.full_name ?? "(Sin perfil)";
+  const role = roleLabel(thread.author?.role);
   const wasEdited = thread.updated_at !== thread.created_at;
 
   return (
@@ -84,7 +87,7 @@ export function ThreadView({
           )}
         </div>
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
-          <span>Por {thread.author.full_name}</span>
+          <span>Por {authorName}</span>
           {role && (
             <Badge variant="secondary" className="px-1.5 py-0 text-[10px]">
               {role}

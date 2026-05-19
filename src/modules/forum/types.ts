@@ -18,12 +18,17 @@ export interface ForumAuthor {
   role: Database["public"]["Enums"]["user_role"];
 }
 
+// author es nullable: el embedded join via PostgREST retorna null
+// cuando la RLS de profiles bloquea el cross-read (ej. student
+// leyendo el profile de otro student del mismo curso, sin policy
+// de course-peer). Una migracion posterior cierra ese gap; mientras
+// tanto la UI cae a un fallback "(Sin perfil)" en lugar de crashear.
 export interface ThreadWithAuthor extends ForumThread {
-  author: ForumAuthor;
+  author: ForumAuthor | null;
 }
 
 export interface ReplyWithAuthor extends ForumReply {
-  author: ForumAuthor;
+  author: ForumAuthor | null;
 }
 
 // Conteos derivados para ForumListPage. Calculados via aggregate

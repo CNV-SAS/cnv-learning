@@ -12,7 +12,9 @@ interface ReplyListProps {
   replies: ReplyWithAuthor[];
 }
 
-function roleLabel(role: ReplyWithAuthor["author"]["role"]): string | null {
+function roleLabel(
+  role: NonNullable<ReplyWithAuthor["author"]>["role"] | undefined,
+): string | null {
   if (role === "teacher") return "Docente";
   if (role === "admin") return "Admin";
   return null;
@@ -29,12 +31,13 @@ export function ReplyList({ replies }: ReplyListProps) {
   return (
     <div className="space-y-3">
       {replies.map((reply) => {
-        const role = roleLabel(reply.author.role);
+        const authorName = reply.author?.full_name ?? "(Sin perfil)";
+        const role = roleLabel(reply.author?.role);
         return (
           <Card key={reply.id} className="space-y-2 p-4">
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
               <span className="font-medium text-foreground">
-                {reply.author.full_name}
+                {authorName}
               </span>
               {role && (
                 <Badge
