@@ -61,6 +61,13 @@ export const ErrorCodes = {
   AUTHZ_CANNOT_POST_IN_FORUM: "AUTHZ_CANNOT_POST_IN_FORUM",
   AUTHZ_CANNOT_EDIT_THREAD: "AUTHZ_CANNOT_EDIT_THREAD",
 
+  // Courses (NotFoundError)
+  COURSE_NOT_FOUND: "COURSE_NOT_FOUND",
+
+  // Announcements (NotFoundError o AuthorizationError)
+  ANNOUNCEMENT_NOT_FOUND: "ANNOUNCEMENT_NOT_FOUND",
+  AUTHZ_CANNOT_EMIT_ANNOUNCEMENT: "AUTHZ_CANNOT_EMIT_ANNOUNCEMENT",
+
   // Validation general (ValidationError, 400). SECURITY.md linea 178
   // referencia este code en el ejemplo de createThread action.
   VALIDATION_FAILED: "VALIDATION_FAILED",

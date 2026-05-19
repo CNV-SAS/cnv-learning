@@ -46,6 +46,31 @@ export const courseRepository = {
       .filter((c): c is Course => c !== null);
   },
 
+  // Verifica si un user es teacher del curso. Lee de course_teachers
+  // via server client; RLS "Users view own teaching assignments"
+  // permite que el teacher en cuestion vea su propia row (la admin
+  // ve todas). Para otros callers (otro teacher curioso) la RLS
+  // bloquea la SELECT y retorna count=0, lo cual es el comportamiento
+  // correcto: no admite afirmar la asignacion ajena.
+  //
+  // Usado por canEmitCourseAnnouncement context resolver.
+  async isTeacherOfCourse(
+    userId: string,
+    courseId: string,
+  ): Promise<boolean> {
+    const supabase = await createClient();
+    const { count, error } = await supabase
+      .from("course_teachers")
+      .select("*", { count: "exact", head: true })
+      .eq("teacher_id", userId)
+      .eq("course_id", courseId);
+
+    if (error) {
+      throw new InfrastructureError(ErrorCodes.DATABASE_ERROR, error.message);
+    }
+    return (count ?? 0) > 0;
+  },
+
   // Cursos accesibles para el caller. RLS hace el filtrado real:
   // students ven sus enrolled (via policy "Enrolled users view
   // their courses"), teachers ven sus asignados (via "Teachers
