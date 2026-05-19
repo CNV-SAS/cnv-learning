@@ -8,3 +8,21 @@ export type Certificate =
 
 export type CertificateStatus =
   Database["public"]["Enums"]["certificate_status"];
+
+// Shape consumido por /verify/[id] pagina publica. Incluye campos
+// del cert + nombre del estudiante + titulo del curso resueltos en
+// un solo embed PostgREST. NO incluye email del estudiante (no
+// queremos exponerlo en endpoint publico sin auth).
+export interface CertificateForVerify {
+  id: string;
+  user_id: string;
+  course_id: string;
+  issued_at: string;
+  revoked_at: string | null;
+  revoked_reason: string | null;
+  hash: string;
+  template_version: string;
+  status: CertificateStatus;
+  studentName: string;
+  courseTitle: string;
+}

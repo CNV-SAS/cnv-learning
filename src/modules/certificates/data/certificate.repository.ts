@@ -25,7 +25,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { InfrastructureError } from "@/core/errors/classes";
 import { ErrorCodes } from "@/core/errors/codes";
 import type { Database } from "@/types/database.generated";
-import type { Certificate } from "../types";
+import type { Certificate, CertificateForVerify } from "../types";
 
 type CertificateInsert =
   Database["public"]["Tables"]["certificates"]["Insert"];
@@ -66,6 +66,55 @@ export const certificateRepository = {
       throw new InfrastructureError(ErrorCodes.DATABASE_ERROR, error.message);
     }
     return data;
+  },
+
+  // Para /verify/[id]: cert + studentName + courseTitle en una sola
+  // query via PostgREST embed. Sin email u otros campos sensibles del
+  // estudiante (la pagina es publica). Admin client justificado
+  // mismo que findByIdPublic (sin auth, RLS bypassa).
+  async findByIdForVerify(
+    id: string,
+  ): Promise<CertificateForVerify | null> {
+    const supabase = createAdminClient();
+    const { data, error } = await supabase
+      .from("certificates")
+      .select(
+        "id, user_id, course_id, issued_at, revoked_at, revoked_reason, hash, template_version, status, student:profiles!certificates_user_id_fkey(full_name), course:courses!certificates_course_id_fkey(title)",
+      )
+      .eq("id", id)
+      .maybeSingle();
+
+    if (error) {
+      throw new InfrastructureError(ErrorCodes.DATABASE_ERROR, error.message);
+    }
+    if (!data) return null;
+
+    type Joined = typeof data & {
+      student: { full_name: string } | null;
+      course: { title: string } | null;
+    };
+    const row = data as Joined;
+    if (!row.student || !row.course) {
+      // El cascade delete del FK garantiza que si el cert existe,
+      // student y course existen. Si llegamos aqui es bug; logueamos
+      // implicitamente devolviendo null para que la pagina muestre
+      // "no encontrado" en vez de crashear.
+      return null;
+    }
+
+    return {
+      id: row.id,
+      user_id: row.user_id,
+      course_id: row.course_id,
+      issued_at: row.issued_at,
+      revoked_at: row.revoked_at,
+      revoked_reason: row.revoked_reason,
+      hash: row.hash,
+      template_version: row.template_version,
+      status: row.status,
+      studentName: row.student.full_name,
+      courseTitle: row.course.title,
+    };
   },
 
   async findByUserAndCourse(
