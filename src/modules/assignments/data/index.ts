@@ -11,3 +11,4 @@ export {
   quizRepository,
   type QuizOptionPublic,
 } from "./quiz.repository";
+export { aiGradingSuggestionRepository } from "./ai-grading-suggestion.repository";

@@ -10,3 +10,5 @@ export type QuizQuestion =
   Database["public"]["Tables"]["quiz_questions"]["Row"];
 export type QuizOption =
   Database["public"]["Tables"]["quiz_options"]["Row"];
+export type AiGradingSuggestion =
+  Database["public"]["Tables"]["ai_grading_suggestions"]["Row"];

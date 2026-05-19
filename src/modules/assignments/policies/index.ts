@@ -18,3 +18,7 @@ export {
   canViewAssignment,
   type AssignmentViewContext,
 } from "./can-view-assignment";
+export {
+  canRequestAiSuggestion,
+  type AiSuggestionContext,
+} from "./can-request-ai-suggestion";

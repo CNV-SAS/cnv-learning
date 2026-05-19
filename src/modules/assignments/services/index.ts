@@ -9,3 +9,4 @@ export {
   type QuizForPlayer,
   type QuizSubmitResult,
 } from "./quiz.service";
+export { aiGradingService } from "./ai-grading.service";
