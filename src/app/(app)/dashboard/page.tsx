@@ -1,11 +1,18 @@
-// Dashboard del estudiante (Bloque 5 sub-bloque 5.3). Reescrito
-// para mostrar progreso, insignia y "Continuar donde dejaste" en
-// cada CourseCard.
+// Dashboard accesible para los 3 roles. Decision del cierre del
+// Bloque 9: branch por rol para listar cursos accesibles.
 //
-// Por cada curso enrolled, llama progressService.getCourseSummary
-// en Promise.all (queries independientes entre cursos). En MVP
-// con 1 curso por estudiante esto es 1 sola llamada paralela; el
-// shape preserva multi-curso para v2 sin refactor.
+//   - Student: listForUser (filtra por enrollment activo) +
+//     progressService para progreso propio + CourseCard con
+//     summary completo (ProgressBar, BadgeDisplay, continueLesson).
+//
+//   - Teacher / admin: listAllAccessible (RLS filtra: teachers ven
+//     asignados, admins ven todo) + summary=null + CourseCard en
+//     variante simplificada (sin progreso porque no es propio del
+//     rol). Boton "Ver curso" -> /learn/[courseId] -> entry point
+//     a foros, libro de notas, etc.
+//
+// Una sola fuente de verdad para "tus cursos"; el sidebar global
+// no necesita un item "Foros" ni un "Mis cursos" por rol.
 
 import { redirect } from "next/navigation";
 import { profileRepository } from "@/modules/auth/data/profile.repository";
@@ -18,18 +25,31 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import type { CourseSummary } from "@/modules/progress/services/progress.service";
 import { getDisplayName } from "@/lib/utils/format";
 
 export default async function DashboardPage() {
   const user = await profileRepository.getCurrentUser();
   if (!user) redirect("/login");
 
-  const courses = await courseRepository.listForUser(user.id);
-  const summaries = await Promise.all(
-    courses.map((course) =>
-      progressService.getCourseSummary(user.id, course.id),
-    ),
-  );
+  const isStudent = user.role === "student";
+  const courses = isStudent
+    ? await courseRepository.listForUser(user.id)
+    : await courseRepository.listAllAccessible();
+
+  const summaries: Array<CourseSummary | null> = isStudent
+    ? await Promise.all(
+        courses.map((course) =>
+          progressService.getCourseSummary(user.id, course.id),
+        ),
+      )
+    : courses.map(() => null);
+
+  const emptyTitle = isStudent
+    ? "Aún no estás inscrito en ningún curso"
+    : user.role === "teacher"
+      ? "Aún no tienes cursos asignados"
+      : "Aún no hay cursos en el sistema";
 
   return (
     <div className="mx-auto max-w-5xl space-y-8">
@@ -45,10 +65,9 @@ export default async function DashboardPage() {
       {courses.length === 0 ? (
         <Card>
           <CardHeader>
-            <CardTitle>Aún no estás inscrito en ningún curso</CardTitle>
+            <CardTitle>{emptyTitle}</CardTitle>
             <CardDescription>
-              No tienes cursos activos. Si crees que es un error, contacta
-              a soporte en{" "}
+              Si crees que es un error, contacta a soporte en{" "}
               <a
                 href="mailto:soporte@cnvsystem.com"
                 className="underline hover:text-foreground"

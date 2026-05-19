@@ -26,6 +26,10 @@ import {
   editThreadAction,
 } from "@/modules/forum/server";
 
+// Hint de markdown removido tras smoke del Bloque 9: para MVP con
+// 10 alumnos un textarea sin pista es suficiente. Si en v2 entra
+// editor WYSIWYG, tampoco aplica.
+
 interface ThreadFormCreateProps {
   mode: "create";
   courseId: string;
@@ -49,9 +53,6 @@ interface ThreadFormEditProps {
 }
 
 type ThreadFormProps = ThreadFormCreateProps | ThreadFormEditProps;
-
-const MARKDOWN_HINT =
-  "Puedes usar **negrita**, _cursiva_, listas con - y [links](url).";
 
 export function ThreadForm(props: ThreadFormProps) {
   const router = useRouter();
@@ -142,7 +143,6 @@ export function ThreadForm(props: ThreadFormProps) {
           disabled={loading}
           placeholder="Escribe tu post aquí."
         />
-        <p className="text-xs text-muted-foreground">{MARKDOWN_HINT}</p>
       </div>
       <div className="flex gap-2">
         <Button type="submit" disabled={loading}>

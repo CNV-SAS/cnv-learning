@@ -1,19 +1,16 @@
-// CourseCard: card del dashboard con curso enrolled + progreso +
-// insignia + accion contextual segun nivel de completacion.
+// CourseCard: card del dashboard con curso accesible. Dos
+// variantes segun el rol del caller:
 //
-// Layout (Bloque 5 sub-bloque 5.3):
-//   - Header: titulo + BadgeDisplay top-right.
-//   - Descripcion line-clamp-3.
-//   - ProgressBar con label "N de M lecciones" + porcentaje.
-//   - Footer condicional segun progress.percentage:
-//       0%       -> 1 boton "Entrar al curso".
-//       1-99%    -> "Entrar al curso" (outline) + "Continuar donde
-//                   dejaste" (primary, link a continueLesson).
-//       100%     -> 1 boton "Revisar el curso".
+//   - Con summary (CourseSummary): variante para student enrolled.
+//     Layout original (Bloque 5 sub-bloque 5.3): titulo + Badge,
+//     descripcion, ProgressBar, accion contextual segun progress
+//     (0% / 1-99% / 100%).
 //
-// El "Revisar el curso" linkea al course view (no a una leccion
-// especifica) porque el user decide que repasar. continueLesson es
-// null cuando 100% por definicion (pickFirstUncompleted).
+//   - Sin summary (null): variante simplificada para teacher y
+//     admin, que no tienen progreso propio en el curso. Solo
+//     titulo + descripcion + boton "Ver curso". Decision del
+//     ajuste de cierre del Bloque 9: una sola fuente de verdad
+//     para "tus cursos" en el dashboard de los 3 roles.
 
 import Link from "next/link";
 import {
@@ -31,10 +28,30 @@ import type { Course } from "../types";
 
 interface CourseCardProps {
   course: Course;
-  summary: CourseSummary;
+  summary: CourseSummary | null;
 }
 
 export function CourseCard({ course, summary }: CourseCardProps) {
+  if (summary === null) {
+    return (
+      <Card className="flex flex-col">
+        <CardHeader className="flex-1">
+          <CardTitle>{course.title}</CardTitle>
+          {course.description && (
+            <CardDescription className="line-clamp-3">
+              {course.description}
+            </CardDescription>
+          )}
+        </CardHeader>
+        <CardContent>
+          <Button asChild className="w-full">
+            <Link href={`/learn/${course.id}`}>Ver curso</Link>
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
+
   const { progress, badge, continueLesson } = summary;
   const isComplete = progress.percentage === 100;
   const isStarted = progress.percentage > 0;

@@ -45,4 +45,28 @@ export const courseRepository = {
       .map((row) => row.course)
       .filter((c): c is Course => c !== null);
   },
+
+  // Cursos accesibles para el caller. RLS hace el filtrado real:
+  // students ven sus enrolled (via policy "Enrolled users view
+  // their courses"), teachers ven sus asignados (via "Teachers
+  // view their assigned courses"), admins ven todo. Un solo
+  // metodo sirve para los 3 roles sin if-by-role en la app layer.
+  //
+  // Usado por dashboard/page.tsx para teacher y admin (que no
+  // tienen enrollments, sino asignaciones via course_teachers).
+  // No se usa para student porque listForUser ya devuelve sus
+  // enrolled y el join via enrollments es mas barato que el
+  // select all + RLS para volumen MVP.
+  async listAllAccessible(): Promise<Course[]> {
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from("courses")
+      .select("*")
+      .order("title", { ascending: true });
+
+    if (error) {
+      throw new InfrastructureError(ErrorCodes.DATABASE_ERROR, error.message);
+    }
+    return data ?? [];
+  },
 };
