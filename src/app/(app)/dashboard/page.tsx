@@ -18,6 +18,7 @@ import { redirect } from "next/navigation";
 import { profileRepository } from "@/modules/auth/data/profile.repository";
 import { courseRepository } from "@/modules/courses/data";
 import { progressService } from "@/modules/progress/services/progress.service";
+import { certificateRepository } from "@/modules/certificates/data";
 import { CourseCard } from "@/modules/courses/components/course-card";
 import {
   Card,
@@ -26,6 +27,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import type { CourseSummary } from "@/modules/progress/services/progress.service";
+import type { Certificate } from "@/modules/certificates/types";
 import { getDisplayName } from "@/lib/utils/format";
 
 export default async function DashboardPage() {
@@ -37,13 +39,21 @@ export default async function DashboardPage() {
     ? await courseRepository.listForUser(user.id)
     : await courseRepository.listAllAccessible();
 
-  const summaries: Array<CourseSummary | null> = isStudent
-    ? await Promise.all(
-        courses.map((course) =>
-          progressService.getCourseSummary(user.id, course.id),
-        ),
-      )
-    : courses.map(() => null);
+  const [summaries, certificates] = await Promise.all([
+    isStudent
+      ? Promise.all(
+          courses.map((course) =>
+            progressService.getCourseSummary(user.id, course.id),
+          ),
+        )
+      : Promise.resolve(courses.map(() => null) as Array<CourseSummary | null>),
+    isStudent
+      ? certificateRepository.listForUser(user.id)
+      : Promise.resolve([] as Certificate[]),
+  ]);
+  const certByCourseId = new Map(
+    certificates.map((c) => [c.course_id, c]),
+  );
 
   const emptyTitle = isStudent
     ? "Aún no estás inscrito en ningún curso"
@@ -85,6 +95,7 @@ export default async function DashboardPage() {
               key={course.id}
               course={course}
               summary={summaries[idx]}
+              certificate={certByCourseId.get(course.id) ?? null}
             />
           ))}
         </div>

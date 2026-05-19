@@ -14,9 +14,13 @@
 
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { Download } from "lucide-react";
+import { format } from "date-fns";
+import { es } from "date-fns/locale";
 import { profileRepository } from "@/modules/auth/data/profile.repository";
 import { courseRepository } from "@/modules/courses/data";
 import { progressService } from "@/modules/progress/services/progress.service";
+import { certificateRepository } from "@/modules/certificates/data";
 import { BadgeDisplay } from "@/modules/progress/components";
 import {
   Card,
@@ -26,6 +30,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { ProgressBar } from "@/components/shared/progress-bar";
 import { getDisplayName, getInitials } from "@/lib/utils/format";
 
@@ -51,11 +56,21 @@ export default async function ProfilePage() {
       ? await courseRepository.listForTeacher(user.id)
       : await courseRepository.listAllAccessible();
 
-  const studentSummaries = isStudent
-    ? await Promise.all(
-        courses.map((c) => progressService.getCourseSummary(user.id, c.id)),
-      )
-    : [];
+  const [studentSummaries, studentCertificates] = await Promise.all([
+    isStudent
+      ? Promise.all(
+          courses.map((c) =>
+            progressService.getCourseSummary(user.id, c.id),
+          ),
+        )
+      : Promise.resolve([]),
+    isStudent
+      ? certificateRepository.listForUser(user.id)
+      : Promise.resolve([]),
+  ]);
+  const certByCourseId = new Map(
+    studentCertificates.map((c) => [c.course_id, c]),
+  );
 
   const coursesSectionTitle = isStudent
     ? "Mis cursos"
@@ -114,6 +129,8 @@ export default async function ProfilePage() {
           <div className="grid gap-3 md:grid-cols-2">
             {courses.map((course, idx) => {
               const summary = studentSummaries[idx];
+              const certificate = certByCourseId.get(course.id);
+              const isRevoked = certificate?.status === "revoked";
               return (
                 <Card key={course.id}>
                   <CardHeader className="pb-3">
@@ -129,12 +146,36 @@ export default async function ProfilePage() {
                       <BadgeDisplay badge={summary.badge} size="sm" />
                     </div>
                   </CardHeader>
-                  <CardContent className="pt-0">
+                  <CardContent className="space-y-3 pt-0">
                     <ProgressBar
                       percentage={summary.progress.percentage}
                       label={`${summary.progress.completedCount} de ${summary.progress.totalCount} lecciones`}
                       showPercentage
                     />
+                    {certificate && (
+                      <div className="space-y-1 border-t border-border pt-3">
+                        <Button
+                          asChild
+                          variant="outline"
+                          size="sm"
+                          className="w-full"
+                        >
+                          <a
+                            href={`/api/certificates/${certificate.id}/pdf`}
+                          >
+                            <Download className="mr-2 h-3.5 w-3.5" />
+                            Descargar certificado
+                          </a>
+                        </Button>
+                        <p
+                          className={`text-xs ${isRevoked ? "text-rose-700" : "text-muted-foreground"}`}
+                        >
+                          {isRevoked && certificate.revoked_at
+                            ? `Revocado el ${format(new Date(certificate.revoked_at), "d MMM y", { locale: es })}`
+                            : `Emitido el ${format(new Date(certificate.issued_at), "d MMM y", { locale: es })}`}
+                        </p>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               );

@@ -9,10 +9,17 @@
 //   - Sin summary (null): variante simplificada para teacher y
 //     admin, que no tienen progreso propio en el curso. Solo
 //     titulo + descripcion + boton "Ver curso". Decision del
-//     ajuste de cierre del Bloque 9: una sola fuente de verdad
-//     para "tus cursos" en el dashboard de los 3 roles.
+//     ajuste de cierre del Bloque 9.
+//
+// Bloque 12 sub-bloque 12.7: prop opcional certificate. Cuando se
+// pasa, agrega un bloque al final con boton "Descargar certificado"
+// + status text (Valido / Revocado el X). El PDF revocado lleva
+// watermark; permitir descarga es honesto (consideracion plan B12).
 
 import Link from "next/link";
+import { Download } from "lucide-react";
+import { format } from "date-fns";
+import { es } from "date-fns/locale";
 import {
   Card,
   CardContent,
@@ -24,14 +31,56 @@ import { Button } from "@/components/ui/button";
 import { ProgressBar } from "@/components/shared/progress-bar";
 import { BadgeDisplay } from "@/modules/progress/components";
 import type { CourseSummary } from "@/modules/progress/services/progress.service";
+import type { Certificate } from "@/modules/certificates/types";
 import type { Course } from "../types";
 
 interface CourseCardProps {
   course: Course;
   summary: CourseSummary | null;
+  certificate?: Certificate | null;
 }
 
-export function CourseCard({ course, summary }: CourseCardProps) {
+function CertificateBlock({ certificate }: { certificate: Certificate }) {
+  const isRevoked = certificate.status === "revoked";
+  const issuedAtLabel = format(
+    new Date(certificate.issued_at),
+    "d MMM y",
+    { locale: es },
+  );
+  const revokedAtLabel =
+    certificate.revoked_at &&
+    format(new Date(certificate.revoked_at), "d MMM y", { locale: es });
+
+  return (
+    <div className="space-y-2 border-t border-border pt-4">
+      <Button
+        asChild
+        variant="outline"
+        className="w-full"
+      >
+        <a href={`/api/certificates/${certificate.id}/pdf`}>
+          <Download className="mr-2 h-4 w-4" />
+          Descargar certificado
+        </a>
+      </Button>
+      <p
+        className={`text-xs ${
+          isRevoked ? "text-rose-700" : "text-muted-foreground"
+        }`}
+      >
+        {isRevoked
+          ? `Revocado el ${revokedAtLabel}`
+          : `Emitido el ${issuedAtLabel}`}
+      </p>
+    </div>
+  );
+}
+
+export function CourseCard({
+  course,
+  summary,
+  certificate,
+}: CourseCardProps) {
   if (summary === null) {
     return (
       <Card className="flex flex-col">
@@ -97,6 +146,7 @@ export function CourseCard({ course, summary }: CourseCardProps) {
             <Link href={`/learn/${course.id}`}>Entrar al curso</Link>
           </Button>
         )}
+        {certificate && <CertificateBlock certificate={certificate} />}
       </CardContent>
     </Card>
   );
