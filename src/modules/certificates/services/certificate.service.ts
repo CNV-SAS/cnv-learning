@@ -11,6 +11,9 @@
 //     reproducibilidad.
 //   - Insert via admin client (RLS bloquea INSERT por user).
 //   - Audit log 'certificate.issued' (regla 8 ARCHITECTURE).
+//   - Delivery: notification in-app (kind='certificate_issued') +
+//     email (Bloque 12.9). Fault-tolerant: si falla el delivery
+//     el certificado ya esta persistido y auditado.
 //
 // revokeCertificate:
 //   - Caller (admin desde /admin/certificates) pasa user + cert id +
@@ -19,9 +22,8 @@
 //     ya revoked).
 //   - Repo revoke via admin client.
 //   - Audit log 'certificate.revoked' con reason en metadata.
-//
-// Notifications + emails de issued/revoked se manejan en sub-bloque
-// 12.9 (wire-up al final del service o handler dedicado).
+//   - Delivery: notification + email (kind='certificate_revoked')
+//     al estudiante con motivo. Fault-tolerant igual que issue.
 
 import { certificateRepository } from "@/modules/certificates/data";
 import {
@@ -29,7 +31,15 @@ import {
   canRevokeCertificate,
 } from "@/modules/certificates/policies";
 import { auditRepository } from "@/modules/audit/data";
+import { notificationRepository } from "@/modules/notifications/data";
+import { profileRepository } from "@/modules/auth/data/profile.repository";
+import { courseRepository } from "@/modules/courses/data";
+import {
+  sendCertificateIssuedEmail,
+  sendCertificateRevokedEmail,
+} from "@/lib/email";
 import { computeCertificateHash } from "@/lib/utils/hash";
+import { logger } from "@/core/logger/logger";
 import {
   type AppError,
   AuthorizationError,
@@ -57,6 +67,97 @@ interface RevokeCertificateParams {
   user: AuthenticatedUser;
   certificateId: string;
   reason: string;
+}
+
+// Resuelve student + course y dispara notification + email al
+// estudiante. Fault-tolerant en multiples niveles:
+//   - Si lookup de profile o course falla -> log warn, return
+//     (cert ya persistido + audit, delivery se intenta manualmente).
+//   - Si createBulk falla -> log warn, email igual se intenta.
+//   - sendEmail* ya es no-throw (lib/email/resend.ts).
+// El caller (service.issueCertificate / revokeCertificate) llama
+// este helper despues del audit, sin throw propagado.
+async function deliverCertificateNotification(params: {
+  certificate: Certificate;
+  kind: "issued" | "revoked";
+  reason?: string;
+}): Promise<void> {
+  const { certificate, kind } = params;
+
+  const [studentProfile, courseRow] = await Promise.all([
+    profileRepository.findById(certificate.user_id),
+    courseRepository.findById(certificate.course_id),
+  ]);
+
+  if (!studentProfile || !courseRow) {
+    logger.warn(
+      "Certificate delivery skip: profile or course not accessible",
+      {
+        certificateId: certificate.id,
+        kind,
+        hasProfile: studentProfile !== null,
+        hasCourse: courseRow !== null,
+      },
+    );
+    return;
+  }
+
+  const isIssued = kind === "issued";
+  const notificationTitle = isIssued
+    ? `Tu certificado de ${courseRow.title} está listo`
+    : `Tu certificado de ${courseRow.title} fue revocado`;
+  const notificationBody = isIssued
+    ? "Puedes descargar el PDF desde tu perfil."
+    : `Motivo: ${params.reason ?? "sin detalle"}`;
+  const notificationLink = isIssued
+    ? "/profile"
+    : `/verify/${certificate.id}`;
+
+  try {
+    await notificationRepository.createBulk({
+      userIds: [studentProfile.id],
+      kind: isIssued ? "certificate_issued" : "certificate_revoked",
+      title: notificationTitle,
+      body: notificationBody,
+      link: notificationLink,
+      metadata: {
+        certificateId: certificate.id,
+        courseId: certificate.course_id,
+        ...(params.reason ? { reason: params.reason } : {}),
+      },
+    });
+  } catch (e) {
+    logger.warn("Certificate notification in-app failed (non-blocking)", {
+      certificateId: certificate.id,
+      kind,
+      error: e instanceof Error ? e.message : String(e),
+    });
+  }
+
+  try {
+    if (isIssued) {
+      await sendCertificateIssuedEmail({
+        recipientEmail: studentProfile.email,
+        studentName: studentProfile.full_name,
+        courseTitle: courseRow.title,
+        certificateId: certificate.id,
+      });
+    } else {
+      await sendCertificateRevokedEmail({
+        recipientEmail: studentProfile.email,
+        studentName: studentProfile.full_name,
+        courseTitle: courseRow.title,
+        certificateId: certificate.id,
+        reason: params.reason ?? "sin detalle",
+      });
+    }
+  } catch (e) {
+    logger.warn("Certificate email failed (non-blocking)", {
+      certificateId: certificate.id,
+      kind,
+      error: e instanceof Error ? e.message : String(e),
+    });
+  }
 }
 
 export const certificateService = {
@@ -122,6 +223,22 @@ export const certificateService = {
       },
     });
 
+    // Delivery fault-tolerant. Si falla, cert + audit ya estan ok.
+    try {
+      await deliverCertificateNotification({
+        certificate,
+        kind: "issued",
+      });
+    } catch (e) {
+      logger.warn(
+        "Certificate issued delivery threw unexpected (non-blocking)",
+        {
+          certificateId: certificate.id,
+          error: e instanceof Error ? e.message : String(e),
+        },
+      );
+    }
+
     return ok(certificate);
   },
 
@@ -179,6 +296,22 @@ export const certificateService = {
         reason: params.reason,
       },
     });
+
+    try {
+      await deliverCertificateNotification({
+        certificate: revoked,
+        kind: "revoked",
+        reason: params.reason,
+      });
+    } catch (e) {
+      logger.warn(
+        "Certificate revoked delivery threw unexpected (non-blocking)",
+        {
+          certificateId: revoked.id,
+          error: e instanceof Error ? e.message : String(e),
+        },
+      );
+    }
 
     return ok(revoked);
   },
