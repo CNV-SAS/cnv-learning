@@ -35,7 +35,10 @@ interface SuggestionPanelProps {
   assignmentType: "file_upload" | "essay" | "quiz_multiple_choice";
   initialSuggestion: AiGradingSuggestion | null;
   onApply: (params: {
-    grade: number;
+    // null cuando la sugerencia es para file_upload: el grader form
+    // dejara el campo de nota vacio para que el docente lo asigne
+    // manualmente tras abrir el archivo.
+    grade: number | null;
     feedback: string;
     suggestionId: string;
   }) => void;
@@ -126,12 +129,9 @@ export function SuggestionPanel({
 
   function handleApply() {
     if (!suggestion || suggestion.status !== "success") return;
-    if (
-      suggestion.suggested_grade === null ||
-      suggestion.generated_feedback === null
-    ) {
-      return;
-    }
+    if (suggestion.generated_feedback === null) return;
+    // grade puede ser null (file_upload): se propaga como tal al
+    // GraderSection, que lo convierte a campo vacio en el form.
     onApply({
       grade: suggestion.suggested_grade,
       feedback: suggestion.generated_feedback,
@@ -144,7 +144,6 @@ export function SuggestionPanel({
   const hasSuccess =
     suggestion !== null &&
     suggestion.status === "success" &&
-    suggestion.suggested_grade !== null &&
     suggestion.generated_feedback !== null;
   const hasFailedPrevious =
     suggestion !== null && suggestion.status !== "success";
@@ -164,14 +163,21 @@ export function SuggestionPanel({
 
         {hasSuccess && suggestion && (
           <div className="space-y-3">
-            <div className="flex items-baseline gap-2">
-              <span className="font-display text-4xl font-black tracking-tight text-emerald-700">
-                {suggestion.suggested_grade}
-              </span>
-              <span className="text-sm text-muted-foreground">
-                nota sugerida
-              </span>
-            </div>
+            {suggestion.suggested_grade !== null ? (
+              <div className="flex items-baseline gap-2">
+                <span className="font-display text-4xl font-black tracking-tight text-emerald-700">
+                  {suggestion.suggested_grade}
+                </span>
+                <span className="text-sm text-muted-foreground">
+                  nota sugerida
+                </span>
+              </div>
+            ) : (
+              <p className="rounded-md border border-emerald-200 bg-white/60 px-3 py-2 text-sm text-foreground">
+                Nota: a determinar por el docente. La IA no tiene acceso
+                al archivo y no calificó numéricamente.
+              </p>
+            )}
             <div className="space-y-1">
               <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
                 Feedback sugerido

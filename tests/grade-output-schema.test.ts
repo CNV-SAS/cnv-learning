@@ -21,6 +21,14 @@ describe("gradeOutputSchema", () => {
     expect(result.success).toBe(true);
   });
 
+  it("acepta suggestedGrade null (caso file_upload)", () => {
+    const result = gradeOutputSchema.safeParse({
+      suggestedGrade: null,
+      generatedFeedback: "Revisar el archivo manualmente.",
+    });
+    expect(result.success).toBe(true);
+  });
+
   it("rechaza suggestedGrade negativo", () => {
     const result = gradeOutputSchema.safeParse({
       suggestedGrade: -1,

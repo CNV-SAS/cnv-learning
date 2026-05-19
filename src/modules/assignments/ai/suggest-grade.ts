@@ -27,7 +27,10 @@ import { logger } from "@/core/logger/logger";
 import type { Assignment, Submission } from "@/modules/assignments/types";
 
 export interface GradeSuggestion {
-  suggestedGrade: number;
+  // null cuando assignment.type === "file_upload" (la IA no debe
+  // sugerir nota sin haber leido el archivo). El service persiste el
+  // null tal cual en ai_grading_suggestions.suggested_grade.
+  suggestedGrade: number | null;
   generatedFeedback: string;
   rawText: string;
   latencyMs: number;

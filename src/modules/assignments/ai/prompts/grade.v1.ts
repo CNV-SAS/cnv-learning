@@ -2,9 +2,13 @@
 // Prompt: grade.v1
 // Versión:        v1 (primera versión publicada)
 // Fecha:          2026-05-18
-// Modelo target:  gemini-2.0-flash (con responseMimeType JSON)
-// Output:         JSON estricto { suggestedGrade: number,
+// Modelo target:  configurable via GEMINI_MODEL (default
+//                 gemini-2.5-flash) con responseMimeType JSON
+// Output:         JSON estricto { suggestedGrade: number | null,
 //                                generatedFeedback: string }
+//                 suggestedGrade es null cuando el assignment es
+//                 file_upload (la IA no lee archivos en MVP, no
+//                 debe inventar nota).
 //
 // Cambios respecto a versiones anteriores: ninguna (primera).
 //
@@ -54,8 +58,25 @@ function describeSubmissionContent(
 export function gradePromptV1(input: GradePromptInput): string {
   const { submission, assignment } = input;
   const contentSection = describeSubmissionContent(submission, assignment);
+  const isFileUpload = assignment.type === "file_upload";
 
-  return `Eres un asistente de calificación académica para CNV Learning. Tu tarea es sugerir una calificación numérica y un feedback escrito para la entrega de un estudiante de un Diplomado en Medicina Bioeléctrica.
+  // Branch file_upload: prohibir nota numerica. Inventar nota sin
+  // leer el archivo es peor que no dar nota (confunde al docente
+  // que podria aplicarla sin pensar). La IA solo aporta feedback
+  // orientativo + criterios derivados de la descripcion de la tarea.
+  const gradeInstruction = isFileUpload
+    ? `2. NO sugieras una calificación numérica. No tienes acceso al contenido del archivo y no puedes evaluar el trabajo. El valor de suggestedGrade DEBE ser exactamente null.`
+    : `2. Sugiere una calificación numérica entre 0 y ${assignment.max_score}.`;
+
+  const feedbackInstruction = isFileUpload
+    ? `3. El feedback va dirigido al docente (no al estudiante). NO simules evaluación del archivo. En su lugar: lista criterios concretos que el docente debe verificar (basados en la descripción de la tarea) y recuérdale que debe abrir el archivo antes de publicar la calificación.`
+    : `3. Escribe un feedback claro, constructivo y respetuoso, en español neutro, dirigido al estudiante (usa "tú"). El feedback debe explicar la calificación: qué hizo bien, qué puede mejorar.`;
+
+  const outputGradeLine = isFileUpload
+    ? `  "suggestedGrade": null,`
+    : `  "suggestedGrade": <número entre 0 y ${assignment.max_score}>,`;
+
+  return `Eres un asistente de calificación académica para CNV Learning. Tu tarea es ayudar al docente a calificar una entrega de un estudiante del Diplomado en Medicina Bioeléctrica.
 
 CONTEXTO DE LA TAREA:
 Título: ${assignment.title}
@@ -66,15 +87,13 @@ ${contentSection}
 
 INSTRUCCIONES:
 1. Lee la entrega cuidadosamente.
-2. Sugiere una calificación numérica entre 0 y ${assignment.max_score}.
-3. Escribe un feedback claro, constructivo y respetuoso, en español neutro, dirigido al estudiante (usa "tú").
-4. El feedback debe explicar la calificación: qué hizo bien, qué puede mejorar.
-5. NO inventes información que no esté en la entrega.
-6. Si la entrega es un archivo adjunto al que no tienes acceso, indica explícitamente al docente que debe revisar el archivo antes de publicar.
+${gradeInstruction}
+${feedbackInstruction}
+4. NO inventes información que no esté en la entrega ni en la descripción de la tarea.
 
 OUTPUT: retorna un objeto JSON con exactamente esta estructura, sin texto adicional:
 {
-  "suggestedGrade": <número entre 0 y ${assignment.max_score}>,
+${outputGradeLine}
   "generatedFeedback": "<feedback en español, mínimo una oración>"
 }`;
 }

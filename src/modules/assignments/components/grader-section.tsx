@@ -17,7 +17,12 @@ import { GraderForm } from "./grader-form";
 import type { AiGradingSuggestion } from "@/modules/assignments/types";
 
 interface AppliedSuggestion {
-  grade: string;
+  // null cuando la sugerencia es para file_upload (la IA no
+  // calificó). El GraderForm recibe initialGrade undefined y deja
+  // el campo vacio para que el docente lo asigne tras abrir el
+  // archivo. El aiSuggestionId persiste igual en el payload final
+  // como audit trail "esta sugerencia influyo la decision".
+  grade: string | null;
   feedback: string;
   suggestionId: string;
 }
@@ -45,7 +50,7 @@ export function GraderSection({
         initialSuggestion={initialSuggestion}
         onApply={({ grade, feedback, suggestionId }) =>
           setApplied({
-            grade: String(grade),
+            grade: grade === null ? null : String(grade),
             feedback,
             suggestionId,
           })
@@ -62,7 +67,9 @@ export function GraderSection({
         key={applied?.suggestionId ?? "manual"}
         submissionId={submissionId}
         maxScore={maxScore}
-        initialGrade={applied?.grade}
+        // null colapsa a undefined: campo vacio para que el docente
+        // ingrese la nota manualmente en flujos file_upload.
+        initialGrade={applied?.grade ?? undefined}
         initialFeedback={applied?.feedback}
         aiSuggestionId={applied?.suggestionId}
       />

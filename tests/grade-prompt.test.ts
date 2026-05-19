@@ -77,6 +77,27 @@ describe("gradePromptV1", () => {
     expect(prompt).toContain("revisar el archivo manualmente");
   });
 
+  it("file_upload: instruye suggestedGrade null (no inventar nota)", () => {
+    const prompt = gradePromptV1({
+      assignment: makeAssignment({ type: "file_upload" }),
+      submission: makeSubmission({
+        storage_path: "user-id/assignment-id/1234-mi-ensayo.pdf",
+      }),
+    });
+    expect(prompt).toContain("NO sugieras una calificación numérica");
+    expect(prompt).toContain("suggestedGrade DEBE ser exactamente null");
+    expect(prompt).toContain('"suggestedGrade": null');
+  });
+
+  it("essay: pide nota numerica entre 0 y max_score (no null)", () => {
+    const prompt = gradePromptV1({
+      assignment: makeAssignment({ type: "essay", max_score: 100 }),
+      submission: makeSubmission({ essay_text: "x" }),
+    });
+    expect(prompt).toContain("Sugiere una calificación numérica entre 0 y 100");
+    expect(prompt).not.toContain('"suggestedGrade": null');
+  });
+
   it("entrega vacia: indica que no hay contenido evaluable", () => {
     const prompt = gradePromptV1({
       assignment: makeAssignment({ type: "essay" }),

@@ -20,6 +20,7 @@ import { assignmentRepository } from "@/modules/assignments/data/assignment.repo
 import { aiGradingSuggestionRepository } from "@/modules/assignments/data/ai-grading-suggestion.repository";
 import { canRequestAiSuggestion } from "@/modules/assignments/policies";
 import { suggestGrade } from "@/modules/assignments/ai/suggest-grade";
+import { aiProvider } from "@/lib/ai/provider";
 import { auditRepository } from "@/modules/audit/data";
 import {
   type AppError,
@@ -34,7 +35,11 @@ import type { AuthenticatedUser } from "@/modules/auth/types";
 import type { AiGradingSuggestion } from "../types";
 
 const PROVIDER = "gemini";
-const DEFAULT_MODEL = "gemini-2.0-flash";
+// Fallback usado solo en failure paths (cuando suggestGrade no
+// retorna un result.value.model). En success el modelo viene del
+// provider (env-driven). Importamos aiProvider.model como single
+// source of truth para que rows de failure no mientan sobre el
+// modelo intentado.
 const DEFAULT_PROMPT_VERSION = "grade.v1";
 
 type Json = Database["public"]["Tables"]["ai_grading_suggestions"]["Insert"]["raw_response"];
@@ -102,7 +107,7 @@ export const aiGradingService = {
     let generatedFeedback: string | null = null;
     let rawResponse: Json = null;
     let latencyMs: number;
-    let model = DEFAULT_MODEL;
+    let model = aiProvider.model;
     let promptVersion = DEFAULT_PROMPT_VERSION;
 
     if (result.ok) {

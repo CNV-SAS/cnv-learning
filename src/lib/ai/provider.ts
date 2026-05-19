@@ -23,7 +23,11 @@ import { ErrorCodes } from "@/core/errors/codes";
 import { ok, err, type Result } from "@/lib/utils/result";
 import { logger } from "@/core/logger/logger";
 
-const DEFAULT_TIMEOUT_MS = 8_000;
+// 15s en lugar de 8s: el primer call de la sesion observa cold
+// start de Gemini que supera los 8s en gemini-2.5-flash. El reintento
+// rara vez excede 5s, pero el primero requiere holgura para que el
+// docente no vea AI_TIMEOUT en su primera interaccion.
+const DEFAULT_TIMEOUT_MS = 15_000;
 // Modelo configurable via env var. El default refleja lo que la
 // GEMINI_API_KEY del plan free de Google AI Studio tiene habilitado
 // (gemini-2.0-flash arroja limit: 0 con esa key). El nombre se
