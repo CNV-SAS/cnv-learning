@@ -46,6 +46,27 @@ export const courseRepository = {
       .filter((c): c is Course => c !== null);
   },
 
+  // Cursos en los que un teacher tiene asignacion via course_teachers.
+  // Diferente de listAllAccessible: este filtra estrictamente a la
+  // asignacion, mientras que listAllAccessible incluye cursos
+  // publicados que el teacher ve por "Authenticated users view
+  // published courses". Usado por /teacher/announce para que el
+  // teacher solo vea sus cursos elegibles para emitir anuncios.
+  async listForTeacher(userId: string): Promise<Course[]> {
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from("course_teachers")
+      .select("course:courses(*)")
+      .eq("teacher_id", userId);
+
+    if (error) {
+      throw new InfrastructureError(ErrorCodes.DATABASE_ERROR, error.message);
+    }
+    return (data ?? [])
+      .map((row) => row.course)
+      .filter((c): c is Course => c !== null);
+  },
+
   // Verifica si un user es teacher del curso. Lee de course_teachers
   // via server client; RLS "Users view own teaching assignments"
   // permite que el teacher en cuestion vea su propia row (la admin
