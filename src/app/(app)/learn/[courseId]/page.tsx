@@ -6,7 +6,7 @@
 
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { BookOpen } from "lucide-react";
+import { BookOpen, MessageSquare } from "lucide-react";
 import { profileRepository } from "@/modules/auth/data/profile.repository";
 import { courseRepository } from "@/modules/courses/data";
 import { canViewCourse } from "@/modules/courses/policies";
@@ -80,16 +80,24 @@ export default async function CoursePage({ params }: CoursePageProps) {
   return (
     <div className="mx-auto max-w-4xl space-y-8">
       <div className="space-y-3">
-        <div className="flex items-start justify-between gap-4">
+        <div className="flex flex-wrap items-start gap-4">
           <h1 className="font-display text-3xl font-black tracking-tight">
             {course.title}
           </h1>
-          <Button asChild variant="outline" className="shrink-0">
-            <Link href={`/learn/${courseId}/grades`}>
-              <BookOpen className="mr-2 h-4 w-4" />
-              Libro de notas
-            </Link>
-          </Button>
+          <div className="ml-auto flex shrink-0 flex-wrap gap-2">
+            <Button asChild variant="outline">
+              <Link href={`/learn/${courseId}/grades`}>
+                <BookOpen className="mr-2 h-4 w-4" />
+                Libro de notas
+              </Link>
+            </Button>
+            <Button asChild variant="outline">
+              <Link href={`/learn/${courseId}/forum`}>
+                <MessageSquare className="mr-2 h-4 w-4" />
+                Foros
+              </Link>
+            </Button>
+          </div>
         </div>
         {course.description && (
           <p className="text-sm text-muted-foreground">
