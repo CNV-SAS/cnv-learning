@@ -37,6 +37,8 @@ import { CompleteLessonButton } from "@/modules/courses/components/complete-less
 import { LessonNav } from "@/modules/courses/components/lesson-nav";
 import { lessonNavigationService } from "@/modules/courses/services/lesson-navigation";
 import { lessonProgressRepository } from "@/modules/progress/data";
+import { progressService } from "@/modules/progress/services/progress.service";
+import { BadgeDisplay } from "@/modules/progress/components";
 import { requireUuidParam } from "@/lib/utils/params";
 
 interface LessonPageProps {
@@ -75,11 +77,21 @@ export default async function LessonPage({ params }: LessonPageProps) {
 
   // Mega Promise.all: attachments, progreso y vecinos son
   // independientes una vez tenemos courseId/lessonId/userId.
-  const [rawAttachments, completed, neighbors] = await Promise.all([
-    lessonAttachmentRepository.listByLesson(lessonId),
-    lessonProgressRepository.hasCompleted(user.id, lesson.id),
-    lessonNavigationService.getNeighbors(courseId, lesson.id),
-  ]);
+  // courseSummary solo se calcula para student (los otros roles no
+  // tienen progreso propio); el badge size=sm del header refleja el
+  // nivel actual y se actualiza automaticamente tras router.refresh()
+  // del CompleteLessonButton (criterio Bloque 11: badge cambia sin
+  // refresh manual).
+  const isStudent = user.role === "student";
+  const [rawAttachments, completed, neighbors, courseSummary] =
+    await Promise.all([
+      lessonAttachmentRepository.listByLesson(lessonId),
+      lessonProgressRepository.hasCompleted(user.id, lesson.id),
+      lessonNavigationService.getNeighbors(courseId, lesson.id),
+      isStudent
+        ? progressService.getCourseSummary(user.id, courseId)
+        : Promise.resolve(null),
+    ]);
 
   // Resolver signed URLs en paralelo. getSignedUrl retorna null
   // cuando el archivo no existe en Storage (estado valido en dev:
@@ -105,11 +117,14 @@ export default async function LessonPage({ params }: LessonPageProps) {
         <h1 className="font-display text-3xl font-black tracking-tight">
           {lesson.title}
         </h1>
-        {lesson.duration_minutes !== null && (
-          <p className="text-sm text-muted-foreground">
-            Duración estimada: {lesson.duration_minutes} min
-          </p>
-        )}
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
+          {lesson.duration_minutes !== null && (
+            <span>Duración estimada: {lesson.duration_minutes} min</span>
+          )}
+          {courseSummary && (
+            <BadgeDisplay badge={courseSummary.badge} size="sm" />
+          )}
+        </div>
       </div>
 
       {lesson.video_url && <VideoEmbed videoUrl={lesson.video_url} />}
