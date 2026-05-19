@@ -48,6 +48,7 @@ export const ErrorCodes = {
   AI_TIMEOUT: "AI_TIMEOUT",
   AI_PARSE_FAILED: "AI_PARSE_FAILED",
   AI_PROVIDER_ERROR: "AI_PROVIDER_ERROR",
+  AI_RATE_LIMITED: "AI_RATE_LIMITED",
 
   // Infrastructure (InfrastructureError, 500)
   DATABASE_ERROR: "DATABASE_ERROR",
