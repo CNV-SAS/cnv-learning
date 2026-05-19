@@ -185,14 +185,18 @@ pnpm add \
   @google/generative-ai \
   react-markdown \
   remark-gfm \
-  isomorphic-dompurify
+  isomorphic-dompurify \
+  qrcode
 
 pnpm add -D \
   vitest \
   @types/node \
   prettier \
-  prettier-plugin-tailwindcss
+  prettier-plugin-tailwindcss \
+  @types/qrcode
 ```
+
+`qrcode` se usa en `lib/pdf/qr.ts` para generar el QR de los certificados verificables (Bloque 12). Render server-side a data URL; embedded como `<Image>` en el `@react-pdf/renderer` Document. Sin alternativa nativa en react-pdf; libreria establecida (MIT, ~3 deps transitivas).
 
 `supabase` (CLI) NO se instala como devDep. Ver sección 7 para el detalle.
 
