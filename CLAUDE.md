@@ -280,6 +280,7 @@ Documentadas en `DEPLOY.md`. Las usas con:
 - `process.env.NEXT_PUBLIC_SUPABASE_URL` (cliente OK, es público)
 - `process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY` (cliente OK)
 - `process.env.GEMINI_API_KEY` (solo server)
+- `process.env.GEMINI_MODEL` (solo server, default `"gemini-2.5-flash"`; controla el modelo que invoca `aiProvider`)
 - `process.env.RESEND_API_KEY` (solo server)
 - `process.env.UPSTASH_REDIS_REST_URL` (solo server)
 - `process.env.UPSTASH_REDIS_REST_TOKEN` (solo server)
