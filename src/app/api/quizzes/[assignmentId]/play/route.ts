@@ -22,8 +22,8 @@ import { quizService } from "@/modules/assignments/services/quiz.service";
 import { logger } from "@/core/logger/logger";
 import { withContext } from "@/core/logger/context";
 import { UUID_FORMAT } from "@/lib/utils/uuid";
+import { errorResponse, unexpectedResponse } from "@/lib/api/errors";
 import {
-  AppError,
   AuthenticationError,
   ValidationError,
 } from "@/core/errors/classes";
@@ -31,16 +31,6 @@ import { ErrorCodes } from "@/core/errors/codes";
 
 interface RouteParams {
   params: Promise<{ assignmentId: string }>;
-}
-
-function errorResponse(error: AppError): NextResponse {
-  return NextResponse.json(
-    {
-      ok: false,
-      error: { code: error.code, message: error.message },
-    },
-    { status: error.statusCode },
-  );
 }
 
 export async function GET(
@@ -98,12 +88,6 @@ export async function GET(
     logger.error("GET /api/quizzes/.../play unexpected throw", {
       error: e instanceof Error ? e.message : String(e),
     });
-    return NextResponse.json(
-      {
-        ok: false,
-        error: { code: "UNEXPECTED", message: "Error inesperado." },
-      },
-      { status: 500 },
-    );
+    return unexpectedResponse();
   }
 }

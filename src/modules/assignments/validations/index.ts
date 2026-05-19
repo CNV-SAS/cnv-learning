@@ -12,3 +12,7 @@ export {
   submitQuizSchema,
   type SubmitQuizInput,
 } from "./submit-quiz";
+export {
+  requestAiSuggestionSchema,
+  type RequestAiSuggestionInput,
+} from "./request-ai-suggestion";
