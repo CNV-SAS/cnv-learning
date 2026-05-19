@@ -156,8 +156,16 @@ export const quizService = {
       questions.map((q) => q.id),
     );
 
-    // Score puro antes de cualquier write.
+    // Score raw antes de cualquier write. gradeQuiz retorna en escala
+    // de points del quiz (sum de question.points). Normalizamos a la
+    // escala del assignment.max_score para persistir grading
+    // consistente con file_upload/essay (que guardan grade en la
+    // escala oficial 0..max_score).
     const result = gradeQuiz(questions, options, answers);
+    const finalGrade =
+      result.maxScore > 0
+        ? Math.round((result.score / result.maxScore) * assignment.max_score)
+        : 0;
 
     // 1) Upsert submission (idempotente).
     const submission = await submissionRepository.upsert({
@@ -178,7 +186,7 @@ export const quizService = {
       });
       return ok({
         finalGrade: existingGrading.final_grade,
-        maxScore: result.maxScore,
+        maxScore: assignment.max_score,
         correctCount: result.correctCount,
         totalCount: result.totalCount,
       });
@@ -186,12 +194,15 @@ export const quizService = {
 
     // 3) Insert grading con admin client (students sin INSERT policy
     // en gradings; comment justificando en gradingRepository.createAsAdmin).
+    // Feedback mantiene el desglose en escala raw (correctCount/
+    // totalCount + raw score) que es info pedagogica para el
+    // estudiante. El final_grade persiste en escala assignment.
     const feedback = `Acertaste ${result.correctCount} de ${result.totalCount} preguntas. Puntaje: ${result.score}/${result.maxScore}.`;
 
     const grading = await gradingRepository.createAsAdmin({
       submission_id: submission.id,
       graded_by: user.id,
-      final_grade: result.score,
+      final_grade: finalGrade,
       feedback,
     });
 
@@ -206,8 +217,10 @@ export const quizService = {
       metadata: {
         submissionId: submission.id,
         assignmentId,
-        finalGrade: result.score,
-        maxScore: result.maxScore,
+        finalGrade,
+        assignmentMaxScore: assignment.max_score,
+        rawScore: result.score,
+        rawMaxScore: result.maxScore,
         correctCount: result.correctCount,
         totalCount: result.totalCount,
         gradedBy: "auto",
@@ -215,8 +228,8 @@ export const quizService = {
     });
 
     return ok({
-      finalGrade: result.score,
-      maxScore: result.maxScore,
+      finalGrade,
+      maxScore: assignment.max_score,
       correctCount: result.correctCount,
       totalCount: result.totalCount,
     });

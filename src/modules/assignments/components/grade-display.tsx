@@ -17,13 +17,23 @@ export function GradeDisplay({ grading, assignment }: GradeDisplayProps) {
         <CardTitle className="text-lg">Calificación</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="flex items-baseline gap-2">
-          <span className="font-display text-5xl font-black tracking-tight text-emerald-700">
-            {grading.final_grade}
-          </span>
-          <span className="text-lg text-muted-foreground">
-            / {assignment.max_score}
-          </span>
+        <div className="space-y-1">
+          <div className="flex items-baseline gap-2">
+            <span className="font-display text-5xl font-black tracking-tight text-emerald-700">
+              {grading.final_grade}
+            </span>
+            <span className="text-lg text-muted-foreground">
+              / {assignment.max_score}
+            </span>
+          </div>
+          {assignment.max_score > 0 && (
+            <p className="text-sm text-muted-foreground">
+              {Math.round(
+                (grading.final_grade / assignment.max_score) * 100,
+              )}
+              %
+            </p>
+          )}
         </div>
         <div className="space-y-1">
           <p className="text-xs font-black uppercase tracking-widest text-muted-foreground">
