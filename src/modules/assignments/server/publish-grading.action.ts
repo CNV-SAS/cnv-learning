@@ -50,6 +50,7 @@ export async function publishGradingAction(
         submissionId: parsed.data.submissionId,
         finalGrade: parsed.data.finalGrade,
         feedback: parsed.data.feedback,
+        aiSuggestionId: parsed.data.aiSuggestionId,
       });
       if (!result.ok) return err(toActionError(result.error));
       return ok(undefined);

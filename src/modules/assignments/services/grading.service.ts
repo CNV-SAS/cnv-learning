@@ -41,13 +41,19 @@ interface PublishGradingParams {
   submissionId: string;
   finalGrade: number;
   feedback: string;
+  // Bloque 8 sub-bloque 8.4: si el docente aplico una sugerencia
+  // IA antes de publicar, persistimos el link aunque haya editado
+  // los valores despues del Apply (audit trail: "esta sugerencia
+  // influyo la decision", no "es identica a la nota final").
+  aiSuggestionId?: string;
 }
 
 export const gradingService = {
   async publishGrading(
     params: PublishGradingParams,
   ): Promise<Result<Grading, AppError>> {
-    const { user, submissionId, finalGrade, feedback } = params;
+    const { user, submissionId, finalGrade, feedback, aiSuggestionId } =
+      params;
 
     const submission = await submissionRepository.findById(submissionId);
     const allowed = canGradeAssignment(user, {
@@ -98,6 +104,7 @@ export const gradingService = {
       graded_by: user.id,
       final_grade: finalGrade,
       feedback,
+      ai_suggestion_id: aiSuggestionId ?? null,
     });
 
     // Audit log (regla 8 ARCHITECTURE.md). Fault-tolerant: no
@@ -113,6 +120,7 @@ export const gradingService = {
         assignmentId: submission.assignment_id,
         finalGrade,
         maxScore: assignment.max_score,
+        aiSuggestionId: aiSuggestionId ?? null,
       },
     });
 

@@ -13,6 +13,14 @@ export const publishGradingSchema = z.object({
     .number({ message: "La nota debe ser un número" })
     .min(0, "La nota no puede ser negativa"),
   feedback: z.string().min(1, "El feedback no puede estar vacío"),
+  // Opcional: ID de la sugerencia IA que el docente aplico al
+  // formulario antes de publicar. Bloque 8.4. Si el docente edito
+  // los valores tras aplicar, el ID se preserva igual (representa
+  // "esta sugerencia influyo la decision", no "es identica a").
+  aiSuggestionId: z
+    .string()
+    .regex(UUID_FORMAT, "ID de sugerencia inválido")
+    .optional(),
 });
 
 export type PublishGradingInput = z.infer<typeof publishGradingSchema>;

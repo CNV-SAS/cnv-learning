@@ -14,10 +14,11 @@ import {
   gradingRepository,
   assignmentRepository,
   submissionStorageRepository,
+  aiGradingSuggestionRepository,
 } from "@/modules/assignments/data";
 import { canGradeAssignment } from "@/modules/assignments/policies";
 import { GradeDisplay } from "@/modules/assignments/components/grade-display";
-import { GraderForm } from "@/modules/assignments/components/grader-form";
+import { GraderSection } from "@/modules/assignments/components/grader-section";
 import { SubmissionPreview } from "@/modules/assignments/components/submission-preview";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { requireUuidParam } from "@/lib/utils/params";
@@ -48,7 +49,7 @@ export default async function GraderPage({ params }: GraderPageProps) {
   );
   if (!assignment) notFound();
 
-  const [grading, student, signedUrl] = await Promise.all([
+  const [grading, student, signedUrl, latestSuggestion] = await Promise.all([
     gradingRepository.findBySubmissionId(submission.id),
     profileRepository.findById(submission.user_id),
     submission.storage_path
@@ -57,6 +58,7 @@ export default async function GraderPage({ params }: GraderPageProps) {
           GRADER_SIGNED_URL_TTL_SECONDS,
         )
       : Promise.resolve(null),
+    aiGradingSuggestionRepository.findLatestBySubmissionId(submission.id),
   ]);
 
   return (
@@ -90,9 +92,11 @@ export default async function GraderPage({ params }: GraderPageProps) {
             <CardTitle className="text-lg">Publicar calificación</CardTitle>
           </CardHeader>
           <CardContent>
-            <GraderForm
+            <GraderSection
               submissionId={submission.id}
+              assignmentType={assignment.type}
               maxScore={assignment.max_score}
+              initialSuggestion={latestSuggestion}
             />
           </CardContent>
         </Card>

@@ -55,7 +55,11 @@ export const gradingRepository = {
   async create(
     input: Pick<
       GradingInsert,
-      "submission_id" | "graded_by" | "final_grade" | "feedback"
+      | "submission_id"
+      | "graded_by"
+      | "final_grade"
+      | "feedback"
+      | "ai_suggestion_id"
     >,
   ): Promise<Grading> {
     const supabase = await createClient();
@@ -83,7 +87,11 @@ export const gradingRepository = {
   async createAsAdmin(
     input: Pick<
       GradingInsert,
-      "submission_id" | "graded_by" | "final_grade" | "feedback"
+      | "submission_id"
+      | "graded_by"
+      | "final_grade"
+      | "feedback"
+      | "ai_suggestion_id"
     >,
   ): Promise<Grading> {
     const supabase = createAdminClient();
