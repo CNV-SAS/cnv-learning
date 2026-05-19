@@ -9,6 +9,14 @@ export type Certificate =
 export type CertificateStatus =
   Database["public"]["Enums"]["certificate_status"];
 
+// Shape consumido por /admin/certificates: cert + datos del
+// estudiante y curso para la tabla. Admin client + embed join.
+export interface CertificateWithDetails extends Certificate {
+  studentName: string;
+  studentEmail: string;
+  courseTitle: string;
+}
+
 // Shape consumido por /verify/[id] pagina publica. Incluye campos
 // del cert + nombre del estudiante + titulo del curso resueltos en
 // un solo embed PostgREST. NO incluye email del estudiante (no

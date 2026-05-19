@@ -25,7 +25,11 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { InfrastructureError } from "@/core/errors/classes";
 import { ErrorCodes } from "@/core/errors/codes";
 import type { Database } from "@/types/database.generated";
-import type { Certificate, CertificateForVerify } from "../types";
+import type {
+  Certificate,
+  CertificateForVerify,
+  CertificateWithDetails,
+} from "../types";
 
 type CertificateInsert =
   Database["public"]["Tables"]["certificates"]["Insert"];
@@ -147,6 +151,42 @@ export const certificateRepository = {
       throw new InfrastructureError(ErrorCodes.DATABASE_ERROR, error.message);
     }
     return data ?? [];
+  },
+
+  // Para la tabla de /admin/certificates: cert + student + course
+  // embedded. Admin client justificado: la pagina es admin-only y el
+  // embed via server client tendria que respaldarse en RLS de
+  // profiles + courses (que admin tiene, pero el admin client da
+  // predictabilidad sin depender de configurar todas las cadenas).
+  async listAllWithDetails(): Promise<CertificateWithDetails[]> {
+    const supabase = createAdminClient();
+    const { data, error } = await supabase
+      .from("certificates")
+      .select(
+        "*, student:profiles!certificates_user_id_fkey(full_name, email), course:courses!certificates_course_id_fkey(title)",
+      )
+      .order("issued_at", { ascending: false });
+
+    if (error) {
+      throw new InfrastructureError(ErrorCodes.DATABASE_ERROR, error.message);
+    }
+
+    type JoinedRow = Certificate & {
+      student: { full_name: string; email: string } | null;
+      course: { title: string } | null;
+    };
+    const rows = (data ?? []) as unknown as JoinedRow[];
+    const result: CertificateWithDetails[] = [];
+    for (const row of rows) {
+      if (!row.student || !row.course) continue;
+      result.push({
+        ...row,
+        studentName: row.student.full_name,
+        studentEmail: row.student.email,
+        courseTitle: row.course.title,
+      });
+    }
+    return result;
   },
 
   // Lista todos los certificados accesibles para el caller. Admin

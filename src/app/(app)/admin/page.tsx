@@ -1,9 +1,11 @@
-// Placeholder del panel admin. Vista completa en Bloque 14 (gestion de
-// usuarios, stats, auditoria). Por ahora ofrece un CTA al unico flujo
-// admin habilitado: emision de anuncios globales (Bloque 10).
+// Placeholder del panel admin. Vista completa en Bloque 14 (gestion
+// de usuarios, stats, auditoria). Mientras tanto ofrece CTAs a los
+// flujos admin habilitados:
+//   - Anuncios globales (Bloque 10).
+//   - Certificados (gestion + revocacion, Bloque 12).
 
 import Link from "next/link";
-import { Globe } from "lucide-react";
+import { Award, Globe } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export default function AdminPage() {
@@ -23,6 +25,12 @@ export default function AdminPage() {
           <Link href="/admin/announce">
             <Globe className="mr-2 h-4 w-4" />
             Nuevo anuncio global
+          </Link>
+        </Button>
+        <Button asChild variant="outline">
+          <Link href="/admin/certificates">
+            <Award className="mr-2 h-4 w-4" />
+            Gestionar certificados
           </Link>
         </Button>
       </div>
