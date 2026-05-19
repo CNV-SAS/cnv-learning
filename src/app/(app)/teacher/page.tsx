@@ -6,7 +6,6 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
-import { Megaphone } from "lucide-react";
 import { profileRepository } from "@/modules/auth/data/profile.repository";
 import { canAccessTeacherInbox } from "@/modules/auth/policies";
 import { teacherInboxService } from "@/modules/assignments/services/teacher-inbox.service";
@@ -22,25 +21,17 @@ export default async function TeacherPage() {
 
   return (
     <div className="mx-auto max-w-5xl space-y-8">
-      <div className="flex flex-wrap items-start gap-4">
-        <div className="space-y-2">
-          <p className="text-xs font-black uppercase tracking-widest text-muted-foreground">
-            Por calificar
-          </p>
-          <h1 className="font-display text-3xl font-black tracking-tight">
-            Bandeja de entregas
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            Entregas pendientes de calificación, ordenadas por fecha de
-            envío (más antiguas primero).
-          </p>
-        </div>
-        <Button asChild variant="outline" className="ml-auto shrink-0">
-          <Link href="/teacher/announce">
-            <Megaphone className="mr-2 h-4 w-4" />
-            Nuevo anuncio al curso
-          </Link>
-        </Button>
+      <div className="space-y-2">
+        <p className="text-xs font-black uppercase tracking-widest text-muted-foreground">
+          Por calificar
+        </p>
+        <h1 className="font-display text-3xl font-black tracking-tight">
+          Bandeja de entregas
+        </h1>
+        <p className="text-sm text-muted-foreground">
+          Entregas pendientes de calificación, ordenadas por fecha de
+          envío (más antiguas primero).
+        </p>
       </div>
 
       {entries.length === 0 ? (

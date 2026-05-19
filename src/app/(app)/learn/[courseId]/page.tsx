@@ -6,7 +6,7 @@
 
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { BookOpen, MessageSquare } from "lucide-react";
+import { BookOpen, Megaphone, MessageSquare } from "lucide-react";
 import { profileRepository } from "@/modules/auth/data/profile.repository";
 import { courseRepository } from "@/modules/courses/data";
 import { canViewCourse } from "@/modules/courses/policies";
@@ -97,6 +97,14 @@ export default async function CoursePage({ params }: CoursePageProps) {
                 Foros
               </Link>
             </Button>
+            {(user.role === "teacher" || user.role === "admin") && (
+              <Button asChild variant="outline">
+                <Link href={`/teacher/announce?courseId=${courseId}`}>
+                  <Megaphone className="mr-2 h-4 w-4" />
+                  Nuevo anuncio
+                </Link>
+              </Button>
+            )}
           </div>
         </div>
         {course.description && (

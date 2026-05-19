@@ -32,11 +32,17 @@ interface CourseOption {
 interface CourseFormProps {
   scope: "course";
   courses: CourseOption[];
+  // Si /teacher/announce recibe ?courseId=X y X esta en courses,
+  // el caller lo pasa aqui para pre-seleccionarlo. Para teacher con
+  // 1 solo curso es redundante (igual auto-selecciona); util para
+  // admin con N cursos que viene desde el header del curso.
+  defaultCourseId?: string;
 }
 
 interface GlobalFormProps {
   scope: "global";
   courses?: never;
+  defaultCourseId?: never;
 }
 
 type AnnouncementFormProps = CourseFormProps | GlobalFormProps;
@@ -44,8 +50,13 @@ type AnnouncementFormProps = CourseFormProps | GlobalFormProps;
 export function AnnouncementForm(props: AnnouncementFormProps) {
   const router = useRouter();
   const initialCourseId =
-    props.scope === "course" && props.courses.length === 1
-      ? props.courses[0].id
+    props.scope === "course"
+      ? props.defaultCourseId &&
+        props.courses.some((c) => c.id === props.defaultCourseId)
+        ? props.defaultCourseId
+        : props.courses.length === 1
+          ? props.courses[0].id
+          : ""
       : "";
   const [courseId, setCourseId] = useState<string>(initialCourseId);
   const [title, setTitle] = useState("");
@@ -160,10 +171,6 @@ export function AnnouncementForm(props: AnnouncementFormProps) {
           disabled={loading}
           placeholder="Escribe el cuerpo del anuncio."
         />
-        <p className="text-xs text-muted-foreground">
-          El mensaje se envía como texto plano por email y se muestra en
-          la página de notificaciones. Sin formato markdown.
-        </p>
       </div>
       <Button type="submit" disabled={loading}>
         {submitLabel}

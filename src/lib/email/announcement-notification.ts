@@ -3,8 +3,10 @@
 // este helper por cada recipient; ambos (template y send) son
 // fault-tolerant.
 //
-// appUrl resuelve desde NEXT_PUBLIC_APP_URL con fallback al
-// dominio canonico de produccion (DEPLOY.md).
+// El CTA del email lleva a /notifications (no a la raiz de la app)
+// para que el destinatario aterrice directamente en la pagina donde
+// puede leer el anuncio recien recibido. La raiz mostraba el layout
+// base sin contexto util.
 
 import { sendEmail } from "./resend";
 import {
@@ -26,10 +28,11 @@ interface SendAnnouncementEmailParams {
 }
 
 function buildAppUrl(): string {
-  return (process.env.NEXT_PUBLIC_APP_URL ?? DEFAULT_APP_URL).replace(
+  const base = (process.env.NEXT_PUBLIC_APP_URL ?? DEFAULT_APP_URL).replace(
     /\/$/,
     "",
   );
+  return `${base}/notifications`;
 }
 
 export async function sendAnnouncementEmail(

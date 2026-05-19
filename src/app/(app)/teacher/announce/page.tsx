@@ -6,6 +6,11 @@
 // Si el caller no tiene cursos elegibles, muestra EmptyState. Si
 // tiene 1 solo, el AnnouncementForm preselecciona y oculta el
 // select.
+//
+// searchParams.courseId: si se invoca desde el header del curso
+// (boton "Nuevo anuncio al curso"), el courseId del curso actual
+// se pasa para pre-seleccionar. Solo se aplica si el id esta en
+// la lista de cursos elegibles del caller (silencioso ignore si no).
 
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
@@ -16,8 +21,15 @@ import { courseRepository } from "@/modules/courses/data";
 import { AnnouncementForm } from "@/modules/announcements/components/announcement-form";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { UUID_FORMAT } from "@/lib/utils/uuid";
 
-export default async function TeacherAnnouncePage() {
+interface TeacherAnnouncePageProps {
+  searchParams: Promise<{ courseId?: string }>;
+}
+
+export default async function TeacherAnnouncePage({
+  searchParams,
+}: TeacherAnnouncePageProps) {
   const user = await profileRepository.getCurrentUser();
   if (!user) redirect("/login");
   if (!canAccessTeacherPanel(user)) notFound();
@@ -28,6 +40,14 @@ export default async function TeacherAnnouncePage() {
       : await courseRepository.listForTeacher(user.id);
 
   const courseOptions = courses.map((c) => ({ id: c.id, title: c.title }));
+
+  const { courseId: rawCourseId } = await searchParams;
+  const defaultCourseId =
+    rawCourseId &&
+    UUID_FORMAT.test(rawCourseId) &&
+    courseOptions.some((c) => c.id === rawCourseId)
+      ? rawCourseId
+      : undefined;
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
@@ -56,7 +76,11 @@ export default async function TeacherAnnouncePage() {
           No tienes cursos asignados a tu cuenta.
         </Card>
       ) : (
-        <AnnouncementForm scope="course" courses={courseOptions} />
+        <AnnouncementForm
+          scope="course"
+          courses={courseOptions}
+          defaultCourseId={defaultCourseId}
+        />
       )}
     </div>
   );
