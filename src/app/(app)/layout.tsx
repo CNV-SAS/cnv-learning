@@ -17,6 +17,7 @@ import { Header } from "@/components/layout/header";
 import { MobileNav } from "@/components/layout/mobile-nav";
 import { UserDropdown } from "@/components/layout/user-dropdown";
 import { Wordmark } from "@/components/shared/wordmark";
+import { NotificationBell } from "@/modules/notifications/components/notification-bell";
 import { getDisplayName, getInitials } from "@/lib/utils/format";
 
 export default async function AppLayout({
@@ -47,11 +48,14 @@ export default async function AppLayout({
             </>
           }
           rightSlot={
-            <UserDropdown
-              displayName={displayName}
-              email={user.email}
-              initials={initials}
-            />
+            <>
+              <NotificationBell />
+              <UserDropdown
+                displayName={displayName}
+                email={user.email}
+                initials={initials}
+              />
+            </>
           }
         />
         <main className="flex-1 overflow-y-auto p-6 lg:p-10">{children}</main>
