@@ -3,8 +3,8 @@
 //
 // Excerpt: strip naive de caracteres markdown comunes para no
 // mostrar `#`, `*`, etc. en el preview. NO es render full de
-// markdown; eso solo se hace en thread detail (PostBody, 9.4) para
-// limitar el ruido visual en la lista.
+// markdown; eso solo se hace en thread detail (MarkdownContent)
+// para limitar el ruido visual en la lista.
 
 import Link from "next/link";
 import { Pin } from "lucide-react";

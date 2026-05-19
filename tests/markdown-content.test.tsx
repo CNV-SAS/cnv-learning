@@ -1,4 +1,4 @@
-// Tests del PostBody: render markdown sanitizado. Server
+// Tests del MarkdownContent: render markdown sanitizado. Server
 // Component puro (sin hooks), asi que renderToStaticMarkup lo
 // renderiza a HTML directamente desde Node.
 //
@@ -9,13 +9,13 @@
 import { describe, it, expect } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import React from "react";
-import { PostBody } from "@/modules/forum/components/post-body";
+import { MarkdownContent } from "@/components/shared/markdown-content";
 
 function render(body: string): string {
-  return renderToStaticMarkup(<PostBody body={body} />);
+  return renderToStaticMarkup(<MarkdownContent body={body} />);
 }
 
-describe("PostBody markdown rendering", () => {
+describe("MarkdownContent markdown rendering", () => {
   it("renderiza negrita y cursiva en HTML", () => {
     const html = render("Texto con **negrita** y _cursiva_.");
     expect(html).toContain("<strong");
@@ -50,7 +50,7 @@ describe("PostBody markdown rendering", () => {
   });
 });
 
-describe("PostBody XSS sanitization", () => {
+describe("MarkdownContent XSS sanitization", () => {
   it("script tag inline en el body NO se renderiza como elemento script", () => {
     const html = render("Antes <script>alert(1)</script> después");
     expect(html).not.toMatch(/<script\b/i);

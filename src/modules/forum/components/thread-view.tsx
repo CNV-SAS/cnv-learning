@@ -1,8 +1,8 @@
 "use client";
 
 // ThreadView: wrapper del thread principal. Mantiene estado local
-// "editing" para alternar entre PostBody (default) y ThreadForm en
-// modo edit inline.
+// "editing" para alternar entre MarkdownContent (default) y
+// ThreadForm en modo edit inline.
 //
 // canEdit lo decide el server (page) via canEditThread policy. Si
 // es false, el boton "Editar" no se renderiza y el toggle es
@@ -14,7 +14,7 @@ import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { PostBody } from "./post-body";
+import { MarkdownContent } from "@/components/shared/markdown-content";
 import { ThreadForm } from "./thread-form";
 import type { ThreadWithAuthor } from "../types";
 
@@ -104,7 +104,7 @@ export function ThreadView({
           )}
         </div>
       </header>
-      <PostBody body={thread.body} />
+      <MarkdownContent body={thread.body} />
     </article>
   );
 }

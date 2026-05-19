@@ -1,26 +1,30 @@
-// PostBody: renderiza markdown del body de threads y replies.
-// Server Component (react-markdown no usa hooks; render puro).
+// MarkdownContent: render seguro de markdown user-generated.
+// Compartido entre dominios (forum threads/replies, announcements,
+// y futuras features que muestren contenido enriquecido). Server
+// Component (react-markdown no usa hooks; render puro).
 //
 // SECURITY.md 403: sin allowDangerousHtml, sin rehype-raw. No se
-// permite HTML inline en posts de usuarios. react-markdown
-// renderiza a React elements (no a HTML string), asi que DOMPurify
-// no es necesario aqui (la sanitization la hace el modelo de
-// renderizado: cualquier tag HTML escrito por el user se trata
-// como texto literal).
+// permite HTML inline. react-markdown renderiza a React elements
+// (no a HTML string), asi que DOMPurify no es necesario aqui (la
+// sanitization la hace el modelo de renderizado: cualquier tag
+// HTML escrito por el user se trata como texto literal).
 //
 // Style map: alineado con lesson-content.tsx para consistencia
-// visual del proyecto. Diferencia: h1 del markdown se degrada a
-// h2 (estilo visual), porque el h1 de la pagina ya esta tomado
-// por el titulo del thread.
+// visual del proyecto. h1 del markdown se degrada a h2 (estilo
+// visual) porque la pagina contenedora suele tener el h1 propio.
+//
+// Historico: nacio como PostBody en modules/forum/components (Bloque
+// 9.4) y se extrajo al cierre del Bloque 10 cuando announcements
+// pidio el mismo render, para evitar duplicar el style map.
 
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
-interface PostBodyProps {
+interface MarkdownContentProps {
   body: string;
 }
 
-export function PostBody({ body }: PostBodyProps) {
+export function MarkdownContent({ body }: MarkdownContentProps) {
   return (
     <div className="space-y-3 text-base leading-relaxed text-foreground">
       <ReactMarkdown

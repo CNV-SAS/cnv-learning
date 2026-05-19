@@ -5,7 +5,7 @@ import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { PostBody } from "./post-body";
+import { MarkdownContent } from "@/components/shared/markdown-content";
 import type { ReplyWithAuthor } from "../types";
 
 interface ReplyListProps {
@@ -53,7 +53,7 @@ export function ReplyList({ replies }: ReplyListProps) {
                 })}
               </span>
             </div>
-            <PostBody body={reply.body} />
+            <MarkdownContent body={reply.body} />
           </Card>
         );
       })}
