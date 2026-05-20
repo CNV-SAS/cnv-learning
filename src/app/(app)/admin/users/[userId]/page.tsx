@@ -164,7 +164,11 @@ export default async function AdminUserDetailPage({
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {isSuspended ? (
+          {isSelf ? (
+            <p className="text-sm text-muted-foreground">
+              No puedes suspender tu propia cuenta.
+            </p>
+          ) : isSuspended ? (
             <UnsuspendUserButton userId={target.id} />
           ) : (
             <SuspendUserDialog

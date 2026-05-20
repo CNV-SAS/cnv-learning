@@ -11,11 +11,10 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { ArrowLeft, Clock, ChevronLeft, ChevronRight } from "lucide-react";
-import { format } from "date-fns";
-import { es } from "date-fns/locale";
 import { profileRepository } from "@/modules/auth/data/profile.repository";
 import { canAccessAdmin } from "@/modules/auth/policies";
 import { auditRepository } from "@/modules/audit/data";
+import { formatBogotaDateTime } from "@/lib/utils/format-date";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -180,9 +179,7 @@ export default async function AdminAuditPage({
                     <td className="px-4 py-3 align-top text-xs text-muted-foreground">
                       <div className="flex items-center gap-1">
                         <Clock className="h-3 w-3" />
-                        {format(new Date(row.created_at), "d MMM y HH:mm:ss", {
-                          locale: es,
-                        })}
+                        {formatBogotaDateTime(row.created_at)}
                       </div>
                     </td>
                     <td className="px-4 py-3 align-top">

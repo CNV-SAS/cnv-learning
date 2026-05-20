@@ -71,20 +71,45 @@ export const adminMetricsRepository = {
     return counts;
   },
 
-  // Submissions pendientes = status='submitted' (entregadas y aun
-  // sin calificar). Las 'graded'/'returned' ya pasaron por el
-  // docente; las 'draft' no se cuentan porque no requieren accion.
+  // Submissions pendientes = status='submitted' AND sin grading.
+  //
+  // Fix del BUG 4 del smoke 14: la query original contaba TODAS las
+  // submissions con status='submitted', pero el flow de publicar
+  // grading (grading.service.publish) no actualiza submission.status
+  // a 'graded' (la grading row queda como single source of truth).
+  // Por eso si solo se filtra por status='submitted', se incluyen
+  // las que ya tienen calificacion publicada, inflando la metrica.
+  //
+  // Pattern: dos queries + diferencia en memoria. Para MVP <100
+  // submissions/cohorte es 2 roundtrips constantes; mas simple que
+  // un RPC o vista materializada. Si en v2 el volumen crece, mover
+  // a una vista SQL.
   async countPendingSubmissions(): Promise<number> {
     const supabase = createAdminClient();
-    const { count, error } = await supabase
+
+    const { data: submitted, error: errSub } = await supabase
       .from("submissions")
-      .select("id", { count: "exact", head: true })
+      .select("id")
       .eq("status", "submitted");
 
-    if (error) {
-      throw new InfrastructureError(ErrorCodes.DATABASE_ERROR, error.message);
+    if (errSub) {
+      throw new InfrastructureError(ErrorCodes.DATABASE_ERROR, errSub.message);
     }
-    return count ?? 0;
+
+    const submittedIds = (submitted ?? []).map((s) => s.id);
+    if (submittedIds.length === 0) return 0;
+
+    const { data: gradedRows, error: errGr } = await supabase
+      .from("gradings")
+      .select("submission_id")
+      .in("submission_id", submittedIds);
+
+    if (errGr) {
+      throw new InfrastructureError(ErrorCodes.DATABASE_ERROR, errGr.message);
+    }
+
+    const graded = new Set((gradedRows ?? []).map((g) => g.submission_id));
+    return submittedIds.filter((id) => !graded.has(id)).length;
   },
 
   // Threads totales del foro. Sin filtro de "activos" porque el

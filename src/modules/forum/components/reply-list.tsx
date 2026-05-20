@@ -1,11 +1,10 @@
 // ReplyList: render plano de replies. Server Component.
 // EmptyState cuando no hay replies todavia.
 
-import { format } from "date-fns";
-import { es } from "date-fns/locale";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { MarkdownContent } from "@/components/shared/markdown-content";
+import { formatBogotaDateTimeShort } from "@/lib/utils/format-date";
 import type { ReplyWithAuthor } from "../types";
 
 interface ReplyListProps {
@@ -47,11 +46,7 @@ export function ReplyList({ replies }: ReplyListProps) {
                   {role}
                 </Badge>
               )}
-              <span>
-                {format(new Date(reply.created_at), "d MMM y, HH:mm", {
-                  locale: es,
-                })}
-              </span>
+              <span>{formatBogotaDateTimeShort(reply.created_at)}</span>
             </div>
             <MarkdownContent body={reply.body} />
           </Card>
