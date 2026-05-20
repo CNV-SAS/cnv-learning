@@ -54,6 +54,7 @@ export default async function AppLayout({
                 displayName={displayName}
                 email={user.email}
                 initials={initials}
+                avatarUrl={user.avatar_url}
               />
             </>
           }

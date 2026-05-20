@@ -96,7 +96,7 @@ export const profileRepository = {
     // Query optimizada: solo los campos del Pick AuthenticatedUser.
     const { data, error } = await supabase
       .from("profiles")
-      .select("id, email, role, full_name")
+      .select("id, email, role, full_name, avatar_url")
       .eq("id", user.id)
       .maybeSingle();
 

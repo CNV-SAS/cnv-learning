@@ -1,16 +1,15 @@
 // Pagina de perfil del usuario autenticado. Server Component que
-// muestra info basica + lista de cursos accesibles segun rol.
+// resuelve el profile completo + lista de cursos accesibles.
 //
-// MVP §Bloque 11: visualizacion de badges en perfil. Para student
-// cada curso enrolled lleva su BadgeDisplay calculado al render
-// desde lesson_progress (no persistido). Para teacher y admin la
-// lista es simple (no aplica badge: no tienen progreso propio).
+// Bloque 16: reemplaza el placeholder de "edicion proximamente"
+// por edicion real en 3 secciones (Personal, Profesional,
+// Seguridad). El avatar tiene su componente cliente AvatarUpload
+// que sube directo a Storage. El cambio de password vive en un
+// Dialog separado.
 //
-// Edicion de profile (nombre, avatar, bio, password): Bloque 16.
-// Aqui solo display; el aviso muted lo señala.
-//
-// No usa requireUuidParam (la ruta es /profile sin params; el user
-// se resuelve de la sesion).
+// MVP §Bloque 11 (badges): mantiene la lista de "Mis cursos" /
+// "Cursos que imparto" / "Cursos en el sistema" segun rol, con
+// progreso + badges + certificados para el student.
 
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -22,6 +21,9 @@ import { courseRepository } from "@/modules/courses/data";
 import { progressService } from "@/modules/progress/services/progress.service";
 import { certificateRepository } from "@/modules/certificates/data";
 import { BadgeDisplay } from "@/modules/progress/components";
+import { AvatarUpload } from "@/modules/profile/components/avatar-upload";
+import { ProfileForm } from "@/modules/profile/components/profile-form";
+import { ChangePasswordDialog } from "@/modules/profile/components/change-password-dialog";
 import {
   Card,
   CardContent,
@@ -43,6 +45,12 @@ const ROLE_LABEL: Record<"student" | "teacher" | "admin", string> = {
 export default async function ProfilePage() {
   const user = await profileRepository.getCurrentUser();
   if (!user) redirect("/login");
+
+  // Necesitamos el row completo para precargar el form (bio,
+  // professional_license, institution, specialization no estan en
+  // AuthenticatedUser).
+  const profile = await profileRepository.findById(user.id);
+  if (!profile) redirect("/login");
 
   const displayName = getDisplayName(user);
   const initials = getInitials(user.full_name, user.email);
@@ -85,29 +93,54 @@ export default async function ProfilePage() {
           Perfil
         </h1>
         <p className="text-sm text-muted-foreground">
-          Resumen de tu cuenta en CNV Learning.
+          Edita tu información personal, profesional y seguridad de tu
+          cuenta.
         </p>
       </div>
 
       <Card>
         <CardHeader>
-          <div className="flex items-start gap-4">
-            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-lg font-bold text-emerald-700">
-              {initials}
-            </div>
+          <div className="flex items-start gap-3">
             <div className="flex-1 space-y-1">
               <div className="flex flex-wrap items-center gap-2">
                 <CardTitle>{displayName}</CardTitle>
                 <Badge variant="secondary">{roleLabel}</Badge>
               </div>
               <CardDescription>{user.email}</CardDescription>
+              <p className="text-xs text-muted-foreground">
+                El correo no puede modificarse desde la app. Si necesitas
+                cambiarlo, contacta a soporte en soporte@cnvsystem.com.
+              </p>
             </div>
           </div>
         </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="space-y-2">
+            <h3 className="font-display text-base font-bold tracking-tight">
+              Foto de perfil
+            </h3>
+            <AvatarUpload
+              userId={user.id}
+              initialAvatarUrl={profile.avatar_url}
+              initials={initials}
+            />
+          </div>
+          <div className="border-t border-border pt-6">
+            <ProfileForm profile={profile} />
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Seguridad</CardTitle>
+          <CardDescription>
+            Cambia tu contraseña. Si olvidaste la actual, cierra sesión y
+            usa el enlace &quot;¿Olvidaste tu contraseña?&quot; en /login.
+          </CardDescription>
+        </CardHeader>
         <CardContent>
-          <p className="text-xs text-muted-foreground">
-            La edición del perfil estará disponible próximamente.
-          </p>
+          <ChangePasswordDialog />
         </CardContent>
       </Card>
 

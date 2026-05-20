@@ -12,6 +12,7 @@ function makeUser(role: UserRole): AuthenticatedUser {
     email: "test@cnvsystem.com",
     full_name: "Test User",
     role,
+    avatar_url: null,
   };
 }
 

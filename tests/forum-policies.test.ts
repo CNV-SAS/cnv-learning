@@ -26,6 +26,7 @@ function makeUser(
     email: "test@cnvsystem.com",
     full_name: "Test User",
     role,
+    avatar_url: null,
   };
 }
 

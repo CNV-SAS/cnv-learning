@@ -1,20 +1,23 @@
 "use client";
 
 // UserDropdown: avatar circular del header que abre menu con
-// label (nombre + email) y opcion "Cerrar sesion". El item de
-// Perfil esta omitido conscientemente hasta el Bloque 16 (no
-// hay ruta /profile todavia; agregar link a 404 seria mal UX).
+// label (nombre + email), link al Perfil y opcion "Cerrar sesion".
 //
-// Patron de logout heredado del LogoutButton de Bloque 2 (que
-// se elimina en sub-bloque 3.4): router.push(redirectTo) +
-// router.refresh() para que el server component (app)/layout.tsx
-// rehidrate sin user y el proxy redirija a /login.
+// Bloque 16: muestra la foto del user si tiene avatar_url, fallback
+// a iniciales con AvatarFallback. Link "Perfil" agregado (la ruta
+// /profile ya existe desde Bloque 11; en Bloque 16 cobra mas
+// sentido al permitir edicion).
+//
+// Patron de logout heredado del LogoutButton de Bloque 2:
+// router.push(redirectTo) + router.refresh() para que el server
+// component (app)/layout.tsx rehidrate sin user.
 
+import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { LogOut } from "lucide-react";
+import { LogOut, User } from "lucide-react";
 import { toast } from "sonner";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -30,12 +33,14 @@ interface UserDropdownProps {
   displayName: string;
   email: string;
   initials: string;
+  avatarUrl: string | null;
 }
 
 export function UserDropdown({
   displayName,
   email,
   initials,
+  avatarUrl,
 }: UserDropdownProps) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
@@ -66,6 +71,9 @@ export function UserDropdown({
           aria-label="Abrir menú de usuario"
         >
           <Avatar className="h-10 w-10">
+            {avatarUrl && (
+              <AvatarImage src={avatarUrl} alt={displayName} />
+            )}
             <AvatarFallback className="bg-emerald-50 text-emerald-700 font-semibold">
               {initials}
             </AvatarFallback>
@@ -80,6 +88,12 @@ export function UserDropdown({
           </div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
+        <DropdownMenuItem asChild>
+          <Link href="/profile">
+            <User className="mr-2 h-4 w-4" />
+            Perfil
+          </Link>
+        </DropdownMenuItem>
         <DropdownMenuItem
           onSelect={(e) => {
             // Evita que el dropdown cierre antes del async; se cierra
