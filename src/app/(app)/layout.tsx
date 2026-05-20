@@ -65,8 +65,8 @@ export default async function AppLayout({
             </>
           }
         />
-        <div className="flex-1 overflow-y-auto">
-          <main className="p-6 lg:p-10">{children}</main>
+        <div className="flex flex-1 flex-col overflow-y-auto">
+          <main className="flex-1 p-6 lg:p-10">{children}</main>
           <Footer />
         </div>
       </div>
