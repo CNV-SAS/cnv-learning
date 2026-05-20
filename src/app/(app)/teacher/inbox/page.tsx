@@ -56,7 +56,7 @@ export default async function TeacherInboxPage() {
           </CardContent>
         </Card>
       ) : (
-        <div className="overflow-hidden rounded-2xl border border-border bg-card">
+        <div className="overflow-x-auto rounded-2xl border border-border bg-card">
           <table className="w-full text-sm">
             <thead className="border-b border-border bg-muted/50 text-left text-xs font-black uppercase tracking-widest text-muted-foreground">
               <tr>
