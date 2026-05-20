@@ -16,7 +16,6 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { profileRepository } from "@/modules/auth/data/profile.repository";
-import { canAccessTeacherPanel } from "@/modules/auth/policies";
 import { courseRepository } from "@/modules/courses/data";
 import { AnnouncementForm } from "@/modules/announcements/components/announcement-form";
 import { Button } from "@/components/ui/button";
@@ -32,7 +31,12 @@ export default async function TeacherAnnouncePage({
 }: TeacherAnnouncePageProps) {
   const user = await profileRepository.getCurrentUser();
   if (!user) redirect("/login");
-  if (!canAccessTeacherPanel(user)) notFound();
+  // Inline check teacher OR admin (refactor Bloque 14.1):
+  // canAccessTeacherPanel ahora es strict teacher, pero admin SI
+  // necesita acceso aqui para emitir anuncios scope='course' (sin
+  // ruta paralela /admin/announce/course). El form ya soporta los
+  // dos casos (lista de cursos resuelta segun rol).
+  if (user.role !== "teacher" && user.role !== "admin") notFound();
 
   const courses =
     user.role === "admin"

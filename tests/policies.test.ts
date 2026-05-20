@@ -5,6 +5,7 @@
 
 import { describe, it, expect } from "vitest";
 import { getNavigationFor } from "@/modules/auth/policies/navigation";
+import { canAccessTeacherPanel } from "@/modules/auth/policies/can-access-teacher-panel";
 import { canViewCourse } from "@/modules/courses/policies/can-view-course";
 import { canViewLesson } from "@/modules/courses/policies/can-view-lesson";
 import { canSubmitAssignment } from "@/modules/assignments/policies/can-submit-assignment";
@@ -57,6 +58,20 @@ describe("getNavigationFor", () => {
     const items = getNavigationFor(makeUser("admin"));
     const cloned = JSON.parse(JSON.stringify(items));
     expect(cloned).toEqual(items);
+  });
+});
+
+describe("canAccessTeacherPanel", () => {
+  it("teacher pasa", () => {
+    expect(canAccessTeacherPanel(makeUser("teacher"))).toBe(true);
+  });
+
+  it("admin NO pasa (strict tras refactor Bloque 14.1)", () => {
+    expect(canAccessTeacherPanel(makeUser("admin"))).toBe(false);
+  });
+
+  it("student NO pasa", () => {
+    expect(canAccessTeacherPanel(makeUser("student"))).toBe(false);
   });
 });
 

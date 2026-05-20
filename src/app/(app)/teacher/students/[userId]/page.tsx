@@ -26,7 +26,6 @@ import { ArrowLeft } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { profileRepository } from "@/modules/auth/data/profile.repository";
-import { canAccessTeacherPanel } from "@/modules/auth/policies";
 import { courseRepository } from "@/modules/courses/data";
 import { enrollmentRepository } from "@/modules/enrollments/data";
 import { canAccessTeacherStudentDetail } from "@/modules/teacher-panel/policies";
@@ -76,7 +75,12 @@ export default async function TeacherStudentDetailPage({
 
   const user = await profileRepository.getCurrentUser();
   if (!user) redirect("/login");
-  if (!canAccessTeacherPanel(user)) notFound();
+  // Inline check teacher OR admin (refactor Bloque 14.1):
+  // canAccessTeacherPanel ahora es strict teacher, pero admin
+  // tambien debe poder ver detalle de un alumno (al llegar via
+  // /admin/teachers/[teacherId] roster). canAccessTeacherStudentDetail
+  // mas abajo valida la chain teacher-curso-alumno o el bypass admin.
+  if (user.role !== "teacher" && user.role !== "admin") notFound();
 
   // Resolver contexto. Sin distinguir entre "no autorizado" y "no
   // existe" en la respuesta para no leak info de cursos ajenos.

@@ -65,6 +65,23 @@ export const profileRepository = {
     return data;
   },
 
+  // Lista todos los profiles con role='teacher'. Usado por
+  // /admin/teachers. RLS "Admins can view all profiles" (0017)
+  // permite a admin via server client; otros roles llegarian a [].
+  async listTeachers(): Promise<Profile[]> {
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("*")
+      .eq("role", "teacher")
+      .order("full_name", { ascending: true });
+
+    if (error) {
+      throw new InfrastructureError(ErrorCodes.DATABASE_ERROR, error.message);
+    }
+    return data ?? [];
+  },
+
   async getCurrentUser(): Promise<AuthenticatedUser | null> {
     const supabase = await createClient();
 
