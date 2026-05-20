@@ -1,18 +1,28 @@
-// Dashboard accesible para los 3 roles. Decision del cierre del
-// Bloque 9: branch por rol para listar cursos accesibles.
+// Dashboard accesible para los 3 roles. Branch por rol para listar
+// cursos accesibles.
 //
 //   - Student: listForUser (filtra por enrollment activo) +
 //     progressService para progreso propio + CourseCard con
 //     summary completo (ProgressBar, BadgeDisplay, continueLesson).
 //
-//   - Teacher / admin: listAllAccessible (RLS filtra: teachers ven
-//     asignados, admins ven todo) + summary=null + CourseCard en
-//     variante simplificada (sin progreso porque no es propio del
-//     rol). Boton "Ver curso" -> /learn/[courseId] -> entry point
-//     a foros, libro de notas, etc.
+//   - Teacher: listForTeacher (filtra estricto contra
+//     course_teachers). Fix del BUG A/B del smoke 14.11: la
+//     version anterior usaba listAllAccessible que confiaba en
+//     RLS, pero la policy "Authenticated users view published
+//     courses" deja a cualquier teacher ver cursos publicados
+//     aunque no este asignado. Resultado: el teacher veia cursos
+//     fantasma en su dashboard con modulos vacios al entrar.
+//     listForTeacher consulta course_teachers directamente y
+//     refleja la asignacion real (igual que /teacher del
+//     Bloque 13).
 //
-// Una sola fuente de verdad para "tus cursos"; el sidebar global
-// no necesita un item "Foros" ni un "Mis cursos" por rol.
+//   - Admin: listAllAccessible. Admin no se asigna a cursos
+//     (acceso global via RLS); ve todo el catalogo.
+//
+// summary=null para teacher/admin: CourseCard en variante
+// simplificada (sin progreso porque no es propio del rol). Boton
+// "Ver curso" -> /learn/[courseId] -> entry point a foros, libro
+// de notas, etc.
 
 import { redirect } from "next/navigation";
 import { profileRepository } from "@/modules/auth/data/profile.repository";
@@ -35,9 +45,12 @@ export default async function DashboardPage() {
   if (!user) redirect("/login");
 
   const isStudent = user.role === "student";
-  const courses = isStudent
-    ? await courseRepository.listForUser(user.id)
-    : await courseRepository.listAllAccessible();
+  const courses =
+    user.role === "student"
+      ? await courseRepository.listForUser(user.id)
+      : user.role === "teacher"
+        ? await courseRepository.listForTeacher(user.id)
+        : await courseRepository.listAllAccessible();
 
   const [summaries, certificates] = await Promise.all([
     isStudent
