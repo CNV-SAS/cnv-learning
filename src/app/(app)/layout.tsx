@@ -8,12 +8,18 @@
 //
 // Items del sidebar vienen filtrados por la policy getNavigationFor
 // (regla dura 3 de ARCHITECTURE.md).
+//
+// Bloque 17 §17.1: Footer compartido al final del area scrolleable.
+// Mismo componente que (public)/layout para consistencia visual y
+// para que los links a /privacy /terms /support sean accesibles
+// desde cualquier ruta autenticada.
 
 import { redirect } from "next/navigation";
 import { profileRepository } from "@/modules/auth/data/profile.repository";
 import { getNavigationFor } from "@/modules/auth/policies/navigation";
 import { Sidebar } from "@/components/layout/sidebar";
 import { Header } from "@/components/layout/header";
+import { Footer } from "@/components/layout/footer";
 import { MobileNav } from "@/components/layout/mobile-nav";
 import { UserDropdown } from "@/components/layout/user-dropdown";
 import { Wordmark } from "@/components/shared/wordmark";
@@ -59,7 +65,10 @@ export default async function AppLayout({
             </>
           }
         />
-        <main className="flex-1 overflow-y-auto p-6 lg:p-10">{children}</main>
+        <div className="flex-1 overflow-y-auto">
+          <main className="p-6 lg:p-10">{children}</main>
+          <Footer />
+        </div>
       </div>
     </div>
   );

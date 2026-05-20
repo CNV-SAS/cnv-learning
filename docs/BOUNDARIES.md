@@ -142,9 +142,9 @@ El productor no conoce al consumidor. Ese desacoplamiento es la regla.
 
 Cuando dos productos comparten un concepto (por ejemplo, identidad de persona), el tipo se define UNA vez en CNV Core y ambos productos lo consumen. Si CNV Core aún no existe como paquete, se duplica el tipo conscientemente en cada producto con comentario indicando que es contrato compartido. Cuando se extraiga CNV Core, se elimina la duplicación.
 
-### Regla B5: ATLAS en CNV Learning es link externo
+### Regla B5: ATLAS no aparece en el LMS del Diplomado (MVP)
 
-En MVP y v1.1, ATLAS aparece en el sidebar de CNV Learning como un link que abre `https://atlas.cnvsystem.com` (o el dominio que tenga ATLAS) en una nueva pestaña. **No hay embed, no hay iframe, no hay SSO.** Es un link.
+**Decisión revisada en Bloque 17 (2026-05-20):** el LMS del Diplomado en Medicina Bioeléctrica y el sistema ATLAS son productos independientes con audiencias distintas. ATLAS no se incluye en el sidebar ni en el footer del LMS para MVP y v1.1.
 
 Cuando se integren más profundamente (v2+), se hace mediante:
 
@@ -152,7 +152,7 @@ Cuando se integren más profundamente (v2+), se hace mediante:
 - **Webhooks o eventos**: ATLAS notifica a Learning cuando un profesional verifica su licencia, Learning notifica a ATLAS cuando un profesional completa un curso de certificación.
 - **API pública limitada**: cada producto expone endpoints específicos al otro, con autenticación inter-servicio.
 
-Pero nada de esto vive en MVP.
+Pero nada de esto vive en MVP, ni siquiera como link de navegación cross-producto.
 
 ## Mecanismos de integración inter-producto
 
