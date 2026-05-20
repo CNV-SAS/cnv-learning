@@ -12,38 +12,13 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "14.5"
   }
-  graphql_public: {
-    Tables: {
-      [_ in never]: never
-    }
-    Views: {
-      [_ in never]: never
-    }
-    Functions: {
-      graphql: {
-        Args: {
-          extensions?: Json
-          operationName?: string
-          query?: string
-          variables?: Json
-        }
-        Returns: Json
-      }
-    }
-    Enums: {
-      [_ in never]: never
-    }
-    CompositeTypes: {
-      [_ in never]: never
-    }
-  }
   public: {
     Tables: {
       ai_grading_suggestions: {
         Row: {
           cost_tokens: number | null
           generated_at: string
-          generated_by: string
+          generated_by: string | null
           generated_feedback: string | null
           id: string
           latency_ms: number | null
@@ -58,7 +33,7 @@ export type Database = {
         Insert: {
           cost_tokens?: number | null
           generated_at?: string
-          generated_by: string
+          generated_by?: string | null
           generated_feedback?: string | null
           id?: string
           latency_ms?: number | null
@@ -73,7 +48,7 @@ export type Database = {
         Update: {
           cost_tokens?: number | null
           generated_at?: string
-          generated_by?: string
+          generated_by?: string | null
           generated_feedback?: string | null
           id?: string
           latency_ms?: number | null
@@ -104,7 +79,7 @@ export type Database = {
       }
       announcements: {
         Row: {
-          author_id: string
+          author_id: string | null
           body: string
           course_id: string | null
           created_at: string
@@ -113,7 +88,7 @@ export type Database = {
           title: string
         }
         Insert: {
-          author_id: string
+          author_id?: string | null
           body: string
           course_id?: string | null
           created_at?: string
@@ -122,7 +97,7 @@ export type Database = {
           title: string
         }
         Update: {
-          author_id?: string
+          author_id?: string | null
           body?: string
           course_id?: string | null
           created_at?: string
@@ -554,7 +529,7 @@ export type Database = {
           feedback: string
           final_grade: number
           graded_at: string
-          graded_by: string
+          graded_by: string | null
           id: string
           submission_id: string
         }
@@ -563,7 +538,7 @@ export type Database = {
           feedback: string
           final_grade: number
           graded_at?: string
-          graded_by: string
+          graded_by?: string | null
           id?: string
           submission_id: string
         }
@@ -572,7 +547,7 @@ export type Database = {
           feedback?: string
           final_grade?: number
           graded_at?: string
-          graded_by?: string
+          graded_by?: string | null
           id?: string
           submission_id?: string
         }
@@ -1125,9 +1100,6 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
-  graphql_public: {
-    Enums: {},
-  },
   public: {
     Enums: {
       assignment_type: ["file_upload", "quiz_multiple_choice", "essay"],
