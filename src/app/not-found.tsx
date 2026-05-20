@@ -24,7 +24,11 @@ export default async function NotFound() {
         </h1>
         <p className="max-w-md text-sm text-muted-foreground">
           La página que buscas no existe o se movió. Si llegaste aquí
-          desde un link interno, repórtalo en soporte.
+          desde un link interno, repórtalo en{" "}
+          <Link href="/support" className="underline hover:text-foreground">
+            soporte
+          </Link>
+          .
         </p>
       </div>
       <Button asChild size="lg" className="px-8">
