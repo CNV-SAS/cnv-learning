@@ -7,6 +7,11 @@ export {
   adminEnrollmentRepository,
   type EnrollmentWithCourse,
 } from "./admin-enrollment.repository";
+export {
+  adminMetricsRepository,
+  type UserCountsByRole,
+  type CertificateCounts,
+} from "./admin-metrics.repository";
 
 export type UserListItem = {
   id: string;
