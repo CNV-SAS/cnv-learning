@@ -15,7 +15,6 @@
 
 import Link from "next/link";
 import {
-  CalendarRange,
   ExternalLink,
   GraduationCap,
   Inbox,
@@ -26,6 +25,7 @@ import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { courseRepository } from "@/modules/courses/data";
 import { teacherPanelService } from "@/modules/teacher-panel/services";
+import { UpcomingEventsPreview } from "@/modules/calendar/components/upcoming-events-preview";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { TeacherCourseOverview } from "@/modules/teacher-panel/types";
@@ -135,16 +135,7 @@ function CourseSection({
           />
         </div>
 
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          <DateBlock
-            label="Inicio"
-            value={formatDate(overview.course.starts_at)}
-          />
-          <DateBlock
-            label="Cierre"
-            value={formatDate(overview.course.ends_at)}
-          />
-        </div>
+        <UpcomingEventsPreview courseId={overview.course.id} limit={3} />
 
         <section className="space-y-3">
           <h3 className="font-display text-base font-bold tracking-tight">
@@ -231,25 +222,3 @@ function StatBlock({
   );
 }
 
-function DateBlock({
-  label,
-  value,
-}: {
-  label: string;
-  value: string;
-}) {
-  return (
-    <div className="flex items-center gap-3 rounded-xl border border-border bg-muted/30 px-4 py-3">
-      <CalendarRange
-        className="h-4 w-4 text-muted-foreground"
-        aria-hidden
-      />
-      <div className="flex flex-col">
-        <span className="text-xs font-black uppercase tracking-widest text-muted-foreground">
-          {label}
-        </span>
-        <span className="text-sm">{value}</span>
-      </div>
-    </div>
-  );
-}
