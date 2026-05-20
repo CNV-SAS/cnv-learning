@@ -23,4 +23,22 @@ export const enrollmentRepository = {
     }
     return data ?? [];
   },
+
+  // Roster del curso: enrollments activos para un course_id. RLS
+  // "Teachers view enrollments of their courses" (0018) deja al
+  // teacher ver los enrollments de sus cursos; el admin via manage.
+  // Usado por teacher-panel para construir la tabla de alumnos.
+  async listActiveByCourse(courseId: string): Promise<Enrollment[]> {
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from("enrollments")
+      .select("*")
+      .eq("course_id", courseId)
+      .eq("is_active", true);
+
+    if (error) {
+      throw new InfrastructureError(ErrorCodes.DATABASE_ERROR, error.message);
+    }
+    return data ?? [];
+  },
 };

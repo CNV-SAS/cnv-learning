@@ -46,6 +46,32 @@ export const lessonProgressRepository = {
     }
   },
 
+  // Fecha de la ultima lesson completada por el user dentro del curso.
+  // Usado por teacher-panel para "ultima actividad" del alumno. RLS
+  // de lesson_progress + lessons + modules cubre la chain (teacher
+  // ve progress de students de sus cursos via policy del 0018).
+  // Retorna null si el user no ha completado ninguna leccion del
+  // curso.
+  async getLastCompletedAtForUserAndCourse(
+    userId: string,
+    courseId: string,
+  ): Promise<string | null> {
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from("lesson_progress")
+      .select("completed_at, lessons!inner(modules!inner(course_id))")
+      .eq("user_id", userId)
+      .eq("lessons.modules.course_id", courseId)
+      .order("completed_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (error) {
+      throw new InfrastructureError(ErrorCodes.DATABASE_ERROR, error.message);
+    }
+    return data?.completed_at ?? null;
+  },
+
   // Lista IDs de lessons completadas por el user dentro del curso. El
   // join lessons -> modules filtra por course_id; la RLS de
   // lesson_progress filtra por user_id (no hace falta agregar la

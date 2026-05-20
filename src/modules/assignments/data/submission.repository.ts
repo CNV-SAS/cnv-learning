@@ -97,6 +97,34 @@ export const submissionRepository = {
     return data ?? [];
   },
 
+  // Fecha de la ultima submission entregada por el user dentro del
+  // curso. Para teacher-panel "ultima actividad" del alumno. RLS de
+  // submissions + assignments + modules cubre la chain (teacher ve
+  // submissions de sus cursos). Retorna null si el user no entrego
+  // nada en el curso.
+  async getLastSubmittedAtForUserAndCourse(
+    userId: string,
+    courseId: string,
+  ): Promise<string | null> {
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from("submissions")
+      .select(
+        "submitted_at, assignments!inner(modules!inner(course_id))",
+      )
+      .eq("user_id", userId)
+      .eq("assignments.modules.course_id", courseId)
+      .not("submitted_at", "is", null)
+      .order("submitted_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (error) {
+      throw new InfrastructureError(ErrorCodes.DATABASE_ERROR, error.message);
+    }
+    return data?.submitted_at ?? null;
+  },
+
   // Bandeja por curso (preservada del 6.1; submission filter cuando
   // el caller ya conoce el courseId). Diferencia con listSubmittedAccessible:
   // este filtra explicitamente por curso, util en panels especificos.
