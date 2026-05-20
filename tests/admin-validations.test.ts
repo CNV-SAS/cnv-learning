@@ -10,6 +10,8 @@ import {
   sendPasswordResetSchema,
   createEnrollmentSchema,
   cancelEnrollmentSchema,
+  assignTeacherToCourseSchema,
+  removeTeacherFromCourseSchema,
 } from "@/modules/admin/validations";
 
 const VALID_UUID = "11111111-1111-4111-8111-111111111111";
@@ -180,6 +182,42 @@ describe("cancelEnrollmentSchema", () => {
   it("rechaza enrollmentId malformado", () => {
     const result = cancelEnrollmentSchema.safeParse({
       enrollmentId: "abc",
+    });
+    expect(result.success).toBe(false);
+  });
+});
+
+describe("assignTeacherToCourseSchema", () => {
+  it("acepta teacherUserId + courseId UUIDs", () => {
+    const result = assignTeacherToCourseSchema.safeParse({
+      teacherUserId: VALID_UUID,
+      courseId: VALID_UUID,
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("rechaza teacherUserId malformado", () => {
+    const result = assignTeacherToCourseSchema.safeParse({
+      teacherUserId: "abc",
+      courseId: VALID_UUID,
+    });
+    expect(result.success).toBe(false);
+  });
+});
+
+describe("removeTeacherFromCourseSchema", () => {
+  it("acepta par UUIDs valido", () => {
+    const result = removeTeacherFromCourseSchema.safeParse({
+      teacherUserId: VALID_UUID,
+      courseId: VALID_UUID,
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("rechaza courseId malformado", () => {
+    const result = removeTeacherFromCourseSchema.safeParse({
+      teacherUserId: VALID_UUID,
+      courseId: "not-uuid",
     });
     expect(result.success).toBe(false);
   });

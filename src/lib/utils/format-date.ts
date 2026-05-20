@@ -11,24 +11,45 @@
 // Fix del BUG 5 del smoke 14: el audit log renderizaba created_at
 // en UTC (la zona default del servidor Vercel) lo cual hacia
 // imposible correlacionar eventos con la hora real de Colombia.
-
-import { format } from "date-fns";
-import { es } from "date-fns/locale";
+//
+// Implementacion: Intl.DateTimeFormat.formatToParts con timeZone
+// nos da los componentes (year, month, day, hour, minute, second)
+// directamente en la zona target. Construimos el string final
+// manualmente con abreviaciones de mes en espanol. NO usamos
+// date-fns format() sobre un Date reconstruido porque date-fns
+// aplica un segundo offset segun la zona del runtime y produce
+// resultados incorrectos en runtimes que no esten en UTC.
 
 const TIMEZONE = "America/Bogota";
 
-// Convierte un ISO string (que es UTC por convencion de Supabase)
-// a la zona Bogota como Date. Por debajo, Intl.DateTimeFormat parte
-// el instante en componentes de la zona destino; reconstruimos un
-// Date "como si" fuera UTC pero con los componentes locales, lo
-// cual permite usar date-fns format() sobre el resultado sin que
-// re-aplique la zona del runtime.
-//
-// El truco: parsear los parts y armar una fecha con
-// Date.UTC(year, month-1, day, hour, minute, second) — el Date
-// resultante representa el mismo wall-time pero "virtualmente
-// UTC" para date-fns.
-function toBogotaWallTime(isoString: string): Date {
+// Abreviaciones de mes en espanol (3 letras minusculas, sin punto).
+// Replica el output de date-fns con locale es para mantener
+// consistencia visual con otros formatters (lessons, courses).
+const ES_MONTH_SHORT: readonly string[] = [
+  "ene",
+  "feb",
+  "mar",
+  "abr",
+  "may",
+  "jun",
+  "jul",
+  "ago",
+  "sep",
+  "oct",
+  "nov",
+  "dic",
+];
+
+interface BogotaParts {
+  year: string;
+  month: number;
+  day: string;
+  hour: string;
+  minute: string;
+  second: string;
+}
+
+function getBogotaParts(isoString: string): BogotaParts {
   const source = new Date(isoString);
   const parts = new Intl.DateTimeFormat("en-US", {
     timeZone: TIMEZONE,
@@ -49,36 +70,37 @@ function toBogotaWallTime(isoString: string): Date {
   // normalizamos a "00".
   const hour = lookup.hour === "24" ? "00" : lookup.hour;
 
-  return new Date(
-    Date.UTC(
-      Number(lookup.year),
-      Number(lookup.month) - 1,
-      Number(lookup.day),
-      Number(hour),
-      Number(lookup.minute),
-      Number(lookup.second),
-    ),
-  );
+  return {
+    year: lookup.year,
+    month: Number(lookup.month),
+    day: String(Number(lookup.day)),
+    hour,
+    minute: lookup.minute,
+    second: lookup.second,
+  };
 }
 
 // Formatea timestamp con fecha + hora en zona Bogota.
-// Ejemplo: "20 may 2026, 16:42:08".
+// Ejemplo: "20 may 2026, 11:42:08".
 export function formatBogotaDateTime(isoString: string): string {
-  const wallTime = toBogotaWallTime(isoString);
-  return format(wallTime, "d MMM y, HH:mm:ss", { locale: es });
+  const p = getBogotaParts(isoString);
+  const monthLabel = ES_MONTH_SHORT[p.month - 1];
+  return `${p.day} ${monthLabel} ${p.year}, ${p.hour}:${p.minute}:${p.second}`;
 }
 
 // Formatea timestamp con fecha + hora corta (sin segundos).
-// Ejemplo: "20 may 2026, 16:42".
+// Ejemplo: "20 may 2026, 11:42".
 export function formatBogotaDateTimeShort(isoString: string): string {
-  const wallTime = toBogotaWallTime(isoString);
-  return format(wallTime, "d MMM y, HH:mm", { locale: es });
+  const p = getBogotaParts(isoString);
+  const monthLabel = ES_MONTH_SHORT[p.month - 1];
+  return `${p.day} ${monthLabel} ${p.year}, ${p.hour}:${p.minute}`;
 }
 
 // Formatea solo fecha en zona Bogota (sin hora). Usar cuando el
 // componente no necesita precision horaria.
 // Ejemplo: "20 may 2026".
 export function formatBogotaDate(isoString: string): string {
-  const wallTime = toBogotaWallTime(isoString);
-  return format(wallTime, "d MMM y", { locale: es });
+  const p = getBogotaParts(isoString);
+  const monthLabel = ES_MONTH_SHORT[p.month - 1];
+  return `${p.day} ${monthLabel} ${p.year}`;
 }
