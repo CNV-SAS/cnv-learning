@@ -23,7 +23,7 @@ function makeUser(role: UserRole): AuthenticatedUser {
 }
 
 describe("getNavigationFor", () => {
-  it("admin ve Dashboard + Admin + Perfil (sin Por calificar)", () => {
+  it("admin ve Dashboard + Admin + Perfil (sin Panel docente)", () => {
     const items = getNavigationFor(makeUser("admin"));
     expect(items.map((i) => i.href)).toEqual([
       "/dashboard",
@@ -32,13 +32,15 @@ describe("getNavigationFor", () => {
     ]);
   });
 
-  it("teacher ve Dashboard + Por calificar + Perfil (en ese orden)", () => {
+  it("teacher ve Dashboard + Panel docente + Perfil (en ese orden)", () => {
     const items = getNavigationFor(makeUser("teacher"));
     expect(items.map((i) => i.href)).toEqual([
       "/dashboard",
       "/teacher",
       "/profile",
     ]);
+    const teacherItem = items.find((i) => i.href === "/teacher");
+    expect(teacherItem?.label).toBe("Panel docente");
   });
 
   it("student ve Dashboard + Perfil", () => {

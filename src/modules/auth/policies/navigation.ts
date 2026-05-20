@@ -23,7 +23,7 @@
 //
 // Orden del sidebar:
 // 1. Dashboard (todos los roles, entrada principal).
-// 2. Por calificar (solo teacher, accion contextual).
+// 2. Panel docente (solo teacher, overview + bandeja + estudiantes).
 // 3. Admin (solo admin, panel administrativo).
 // 4. Perfil (todos los roles, ultimo por convencion estandar).
 
@@ -46,7 +46,7 @@ const NAV_ITEMS: readonly NavItem[] = [
     allowedRoles: ["admin", "teacher", "student"],
   },
   {
-    label: "Por calificar",
+    label: "Panel docente",
     href: "/teacher",
     iconName: "inbox",
     allowedRoles: ["teacher"],
