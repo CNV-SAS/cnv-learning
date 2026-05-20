@@ -3,6 +3,10 @@ export {
   type CreatedAuthUser,
   type AuthUserLookup,
 } from "./admin-user.repository";
+export {
+  adminEnrollmentRepository,
+  type EnrollmentWithCourse,
+} from "./admin-enrollment.repository";
 
 export type UserListItem = {
   id: string;

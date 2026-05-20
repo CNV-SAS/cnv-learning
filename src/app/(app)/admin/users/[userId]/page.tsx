@@ -5,7 +5,7 @@
 
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { ArrowLeft, ShieldCheck, ShieldOff } from "lucide-react";
+import { ArrowLeft, BookOpen, ShieldCheck, ShieldOff } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { profileRepository } from "@/modules/auth/data/profile.repository";
@@ -106,6 +106,23 @@ export default async function AdminUserDetailPage({
           </CardContent>
         </Card>
       )}
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Inscripciones</CardTitle>
+          <CardDescription>
+            Asigna cursos al usuario o cancela inscripciones existentes.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Button asChild variant="outline">
+            <Link href={`/admin/users/${target.id}/enrollments`}>
+              <BookOpen className="mr-2 h-4 w-4" />
+              Gestionar inscripciones
+            </Link>
+          </Button>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>
