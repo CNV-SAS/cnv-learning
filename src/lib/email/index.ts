@@ -5,6 +5,8 @@ export {
   sendCertificateIssuedEmail,
   sendCertificateRevokedEmail,
 } from "./certificate-notification";
+export { sendUserInvitationEmail } from "./user-invitation";
+export { sendUserPasswordResetEmail } from "./user-password-reset";
 export {
   gradingPublishedTemplate,
   type GradingPublishedEmail,
@@ -18,3 +20,11 @@ export {
   type CertificateNotificationEmail,
   type CertificateEmailKind,
 } from "./templates/certificate-notification";
+export {
+  userInvitationTemplate,
+  type UserInvitationEmail,
+} from "./templates/user-invitation";
+export {
+  userPasswordResetTemplate,
+  type UserPasswordResetEmail,
+} from "./templates/user-password-reset";
