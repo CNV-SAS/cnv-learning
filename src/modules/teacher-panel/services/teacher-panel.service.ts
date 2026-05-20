@@ -10,13 +10,13 @@
 // agregada o batch fetch de lesson_progress + submissions por
 // curso una sola vez con group by en TS.
 
-import { courseRepository } from "@/modules/courses/data";
 import { enrollmentRepository } from "@/modules/enrollments/data";
 import { profileRepository } from "@/modules/auth/data/profile.repository";
 import { lessonProgressRepository } from "@/modules/progress/data";
 import { submissionRepository } from "@/modules/assignments/data/submission.repository";
 import { gradingRepository } from "@/modules/assignments/data/grading.repository";
 import { progressService } from "@/modules/progress/services/progress.service";
+import type { Course } from "@/modules/courses/types";
 import type {
   TeacherCourseOverview,
   StudentRosterEntry,
@@ -40,13 +40,13 @@ async function pendingSubmissionsCount(courseId: string): Promise<number> {
 }
 
 export const teacherPanelService = {
-  // Overview cards por cada curso que el teacher imparte. Para admin
-  // que entra a /teacher (panel), retorna por cada curso accesible
-  // (no via course_teachers). El caller decide que metodo usar.
+  // Overview cards para los cursos pasados por el caller. El page
+  // resuelve la lista segun rol (teacher: listForTeacher, admin:
+  // listAllAccessible) y se la pasa aqui. Pattern para que el
+  // service sea agnostico del rol.
   async getCoursesOverview(
-    teacherId: string,
+    courses: Course[],
   ): Promise<TeacherCourseOverview[]> {
-    const courses = await courseRepository.listForTeacher(teacherId);
     if (courses.length === 0) return [];
 
     return await Promise.all(
