@@ -24,6 +24,16 @@ export interface EnrollmentWithCourse {
   course: Course;
 }
 
+// Row de course_teachers + course joineado. course_teachers tiene
+// PK compuesto sin id propio, por eso la composicion es por par
+// (teacherId, courseId) en lugar de id unico.
+export interface TeacherCourseAssignment {
+  teacherId: string;
+  courseId: string;
+  assignedAt: string;
+  course: Course;
+}
+
 export const adminEnrollmentRepository = {
   // Lista todos los enrollments del user (activos e historicos) con
   // el curso joineado. UI /admin/users/[id]/enrollments lo consume.
@@ -142,6 +152,95 @@ export const adminEnrollmentRepository = {
       .from("enrollments")
       .update({ is_active: false })
       .eq("id", enrollmentId);
+
+    if (error) {
+      throw new InfrastructureError(ErrorCodes.DATABASE_ERROR, error.message);
+    }
+  },
+
+  // ============================================================
+  // Teacher <-> course assignments (tabla course_teachers).
+  //
+  // Diferencias clave vs enrollments:
+  //   - PK compuesto (course_id, teacher_id), sin id propio.
+  //   - Sin is_active: hard delete (DELETE WHERE) en lugar de soft.
+  //   - Sin enrolled_by: course_teachers no audita el actor en la
+  //     row (lo registra el audit_logs via service).
+  //
+  // Fix del BUG 2 del smoke 14: asignar curso a un teacher debia
+  // ir a course_teachers, no a enrollments. La discriminacion
+  // ocurre en la UI (target.role) + service (operaciones distintas).
+  // ============================================================
+
+  async listCoursesAssignedToTeacher(
+    teacherId: string,
+  ): Promise<TeacherCourseAssignment[]> {
+    const supabase = createAdminClient();
+    const { data, error } = await supabase
+      .from("course_teachers")
+      .select("course_id, teacher_id, assigned_at, course:courses(*)")
+      .eq("teacher_id", teacherId)
+      .order("assigned_at", { ascending: false });
+
+    if (error) {
+      throw new InfrastructureError(ErrorCodes.DATABASE_ERROR, error.message);
+    }
+
+    const result: TeacherCourseAssignment[] = [];
+    for (const row of data ?? []) {
+      if (!row.course) continue;
+      result.push({
+        teacherId: row.teacher_id,
+        courseId: row.course_id,
+        assignedAt: row.assigned_at,
+        course: row.course,
+      });
+    }
+    return result;
+  },
+
+  async isTeacherAssignedToCourse(input: {
+    teacherId: string;
+    courseId: string;
+  }): Promise<boolean> {
+    const supabase = createAdminClient();
+    const { count, error } = await supabase
+      .from("course_teachers")
+      .select("*", { count: "exact", head: true })
+      .eq("teacher_id", input.teacherId)
+      .eq("course_id", input.courseId);
+
+    if (error) {
+      throw new InfrastructureError(ErrorCodes.DATABASE_ERROR, error.message);
+    }
+    return (count ?? 0) > 0;
+  },
+
+  async assignTeacherToCourse(input: {
+    teacherId: string;
+    courseId: string;
+  }): Promise<void> {
+    const supabase = createAdminClient();
+    const { error } = await supabase.from("course_teachers").insert({
+      teacher_id: input.teacherId,
+      course_id: input.courseId,
+    });
+
+    if (error) {
+      throw new InfrastructureError(ErrorCodes.DATABASE_ERROR, error.message);
+    }
+  },
+
+  async removeTeacherFromCourse(input: {
+    teacherId: string;
+    courseId: string;
+  }): Promise<void> {
+    const supabase = createAdminClient();
+    const { error } = await supabase
+      .from("course_teachers")
+      .delete()
+      .eq("teacher_id", input.teacherId)
+      .eq("course_id", input.courseId);
 
     if (error) {
       throw new InfrastructureError(ErrorCodes.DATABASE_ERROR, error.message);

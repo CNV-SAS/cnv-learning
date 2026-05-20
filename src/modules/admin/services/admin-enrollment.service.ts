@@ -1,13 +1,22 @@
-// Service: inscripcion manual de usuarios a cursos desde el panel
-// admin (Bloque 14.6). ARCHITECTURE.md regla 2: logica aqui, no en
-// la action.
+// Service: gestion de cursos asignados a un usuario desde el panel
+// admin (Bloque 14.6 + fix 14.11). ARCHITECTURE.md regla 2: logica
+// aqui, no en la action.
 //
-// 2 operaciones:
-//   1. enrollUser: si ya existe enrollment cancelado, reactiva (no
-//      hace insert duplicado). Si no, crea nuevo. Audit
-//      enrollment.created en ambos casos.
-//   2. cancelEnrollment: soft delete (is_active=false). Preserva
-//      progreso historico. Audit enrollment.cancelled.
+// Discrimina por rol del target (BUG 2 del smoke 14):
+//   - student -> enrollments table (soft delete via is_active).
+//   - teacher -> course_teachers table (hard delete, PK compuesto).
+//   - admin   -> sin asignacion (acceso global via RLS).
+//
+// 4 operaciones:
+//   1. enrollUser (student): si ya existe enrollment cancelado,
+//      reactiva. Si no, crea nuevo. Audit enrollment.created.
+//   2. cancelEnrollment (student): soft delete (is_active=false).
+//      Preserva progreso. Audit enrollment.cancelled.
+//   3. assignTeacherToCourse: INSERT en course_teachers.
+//      Audit course_teacher.assigned.
+//   4. removeTeacherFromCourse: DELETE de course_teachers. El
+//      teacher pierde acceso de docente al curso. Audit
+//      course_teacher.removed.
 
 import {
   adminEnrollmentRepository,
@@ -36,6 +45,18 @@ interface EnrollUserParams {
 interface CancelEnrollmentParams {
   actor: AuthenticatedUser;
   enrollmentId: string;
+}
+
+interface AssignTeacherToCourseParams {
+  actor: AuthenticatedUser;
+  teacherUserId: string;
+  courseId: string;
+}
+
+interface RemoveTeacherFromCourseParams {
+  actor: AuthenticatedUser;
+  teacherUserId: string;
+  courseId: string;
 }
 
 function authzCannotManage(): AuthorizationError {
@@ -168,6 +189,144 @@ export const adminEnrollmentService = {
         targetUserFullName: targetUser?.full_name ?? null,
         courseId: enrollment.course_id,
         courseTitle: course?.title ?? null,
+      },
+    });
+
+    return ok(undefined);
+  },
+
+  async assignTeacherToCourse(
+    params: AssignTeacherToCourseParams,
+  ): Promise<Result<void, AppError>> {
+    if (!canManageUsers(params.actor)) {
+      return err(authzCannotManage());
+    }
+
+    const targetUser = await adminUserRepository.findProfileById(
+      params.teacherUserId,
+    );
+    if (!targetUser) {
+      return err(
+        new NotFoundError(
+          ErrorCodes.USER_NOT_FOUND,
+          "Usuario no encontrado.",
+        ),
+      );
+    }
+    if (targetUser.role !== "teacher") {
+      return err(
+        new DomainError(
+          ErrorCodes.VALIDATION_FAILED,
+          "Solo usuarios con rol docente pueden ser asignados a cursos como docentes.",
+        ),
+      );
+    }
+
+    const course = await courseRepository.findById(params.courseId);
+    if (!course) {
+      return err(
+        new NotFoundError(
+          ErrorCodes.COURSE_NOT_FOUND,
+          "Curso no encontrado.",
+        ),
+      );
+    }
+
+    const alreadyAssigned =
+      await adminEnrollmentRepository.isTeacherAssignedToCourse({
+        teacherId: params.teacherUserId,
+        courseId: params.courseId,
+      });
+    if (alreadyAssigned) {
+      return err(
+        new DomainError(
+          ErrorCodes.VALIDATION_FAILED,
+          "El docente ya está asignado a este curso.",
+        ),
+      );
+    }
+
+    await adminEnrollmentRepository.assignTeacherToCourse({
+      teacherId: params.teacherUserId,
+      courseId: params.courseId,
+    });
+
+    await auditRepository.record({
+      event: "course_teacher.assigned",
+      resourceType: "course_teacher",
+      // course_teachers no tiene id propio; resourceId compuesto
+      // para que audit search por resource pueda inferir el par.
+      resourceId: `${params.courseId}:${params.teacherUserId}`,
+      actorId: params.actor.id,
+      actorEmail: params.actor.email,
+      metadata: {
+        teacherUserId: params.teacherUserId,
+        teacherEmail: targetUser.email,
+        teacherFullName: targetUser.full_name,
+        courseId: params.courseId,
+        courseTitle: course.title,
+      },
+    });
+
+    return ok(undefined);
+  },
+
+  async removeTeacherFromCourse(
+    params: RemoveTeacherFromCourseParams,
+  ): Promise<Result<void, AppError>> {
+    if (!canManageUsers(params.actor)) {
+      return err(authzCannotManage());
+    }
+
+    const targetUser = await adminUserRepository.findProfileById(
+      params.teacherUserId,
+    );
+    if (!targetUser) {
+      return err(
+        new NotFoundError(
+          ErrorCodes.USER_NOT_FOUND,
+          "Usuario no encontrado.",
+        ),
+      );
+    }
+
+    const course = await courseRepository.findById(params.courseId);
+    if (!course) {
+      return err(
+        new NotFoundError(
+          ErrorCodes.COURSE_NOT_FOUND,
+          "Curso no encontrado.",
+        ),
+      );
+    }
+
+    const isAssigned =
+      await adminEnrollmentRepository.isTeacherAssignedToCourse({
+        teacherId: params.teacherUserId,
+        courseId: params.courseId,
+      });
+    if (!isAssigned) {
+      // Idempotente: no estaba asignado, no-op + no audit.
+      return ok(undefined);
+    }
+
+    await adminEnrollmentRepository.removeTeacherFromCourse({
+      teacherId: params.teacherUserId,
+      courseId: params.courseId,
+    });
+
+    await auditRepository.record({
+      event: "course_teacher.removed",
+      resourceType: "course_teacher",
+      resourceId: `${params.courseId}:${params.teacherUserId}`,
+      actorId: params.actor.id,
+      actorEmail: params.actor.email,
+      metadata: {
+        teacherUserId: params.teacherUserId,
+        teacherEmail: targetUser.email,
+        teacherFullName: targetUser.full_name,
+        courseId: params.courseId,
+        courseTitle: course.title,
       },
     });
 

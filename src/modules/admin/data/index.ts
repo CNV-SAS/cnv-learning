@@ -6,6 +6,7 @@ export {
 export {
   adminEnrollmentRepository,
   type EnrollmentWithCourse,
+  type TeacherCourseAssignment,
 } from "./admin-enrollment.repository";
 export {
   adminMetricsRepository,

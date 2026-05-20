@@ -28,3 +28,9 @@ export {
   cancelEnrollmentSchema,
   type CancelEnrollmentInput,
 } from "./cancel-enrollment";
+export {
+  assignTeacherToCourseSchema,
+  removeTeacherFromCourseSchema,
+  type AssignTeacherToCourseInput,
+  type RemoveTeacherFromCourseInput,
+} from "./teacher-course-assignment";
