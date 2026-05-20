@@ -106,7 +106,7 @@ Ver `DATABASE.md` para el detalle completo.
 - Barra de progreso por módulo y por curso, calculada en tiempo real.
 - "Continuar donde quedé" en el dashboard.
 - Todos los módulos abiertos desde el inicio (no hay desbloqueo progresivo en MVP).
-- Insignia automática según porcentaje: Junior Bioimpedancia (0 a 59%), Senior Medicina Bioeléctrica (60 a 99%), Master ATLAS (100%).
+- Insignia automática según porcentaje: Junior Bioimpedancia (0 a 49%), Senior Medicina Bioeléctrica (50 a 84%), Master ATLAS (85 a 100%).
 
 **Criterio de aceptación:** marcando lecciones como completadas, la barra avanza, la insignia cambia en los umbrales, y el "continuar" lleva a la última lección no completada.
 
