@@ -422,14 +422,18 @@ Antes del lanzamiento, ejecutar una prueba:
 
 ## Runbook: crear un usuario manualmente
 
+**Camino recomendado (Bloque 14 ya implementado):** desde el panel admin del LMS, `/admin/users` → "Nuevo usuario" → llenar correo, nombre, rol → click "Crear usuario". El sistema crea el auth user, dispara el trigger que crea el profile, y envía email de invitación con link a `/auth/confirm` → `/reset-password` para que el usuario defina su contraseña.
+
+Audit log generado: `user.created` con metadata `{targetEmail, targetFullName, targetRole, inviteSent}`.
+
+**Camino fallback (sin acceso al LMS, ej. el LMS está caído):**
+
 1. Ir a `https://supabase.com/dashboard/project/YOUR_PROJECT/auth/users`.
 2. Click "Add user" → "Send invitation".
 3. Email del usuario, opcionalmente metadata `{ full_name: "Nombre", role: "student" }`.
 4. El usuario recibe email con link de invitación.
 5. Al hacer clic, define su contraseña.
 6. Verificar en `https://supabase.com/dashboard/project/YOUR_PROJECT/editor/profiles` que el profile se creó automáticamente por trigger.
-
-Alternativa: desde el panel admin del LMS (cuando esté hecho el Bloque 14), Santiago crea el usuario directamente con un formulario que llama service role.
 
 ## Runbook: forzar reset de contraseña
 
@@ -456,7 +460,89 @@ Audit log generado: `admin.password_reset_forced`.
 4. El sistema actualiza `certificates.status = 'revoked'`, `revoked_at = now()`, `revoked_by = admin.id`, `revoked_reason`.
 5. La página pública `/verify/<id>` ahora muestra "Revocado: <razón>".
 6. Audit log generado: `certificate.revoked`.
-7. Email automático al alumno (si está activado).
+7. Email automático al alumno notificando la revocación.
+
+## Runbook: limpiar audit_logs antes del lanzamiento real
+
+Durante los Bloques 0-18 se acumularon eventos de testing y smoke. Antes del primer login del cohorte real conviene limpiar el log para que la traza productiva arranque limpia.
+
+1. Backup defensivo (opcional pero recomendado): `pg_dump --table=public.audit_logs` o screenshot del estado actual en Supabase Dashboard.
+2. Abrir `https://supabase.com/dashboard/project/YOUR_PROJECT/sql/new`.
+3. Elegir una de las dos opciones:
+
+   **Opción A (preservar fecha de corte):**
+   ```sql
+   DELETE FROM audit_logs WHERE created_at < '2026-XX-XX 00:00:00';
+   ```
+   Reemplazar la fecha por el día del lanzamiento. Conserva eventos posteriores si los hay.
+
+   **Opción B (borrón total):**
+   ```sql
+   TRUNCATE TABLE audit_logs RESTART IDENTITY;
+   ```
+   Limpia todo. Solo si estás seguro que no hay eventos de cohorte real ya registrados.
+
+4. Documentar la opción elegida + fecha en el commit de prelanzamiento (o en una nota interna).
+
+## Runbook: recuperar acceso admin (lockout accidental)
+
+Si Santiago es el único admin y por accidente otro admin lo degrada a teacher/student, queda sin acceso al panel admin. Las policies anti-lockout normalmente lo previenen, pero ante race conditions o estados raros, este es el procedimiento de recuperación.
+
+1. Abrir `https://supabase.com/dashboard/project/YOUR_PROJECT/sql/new`.
+2. Ejecutar:
+   ```sql
+   UPDATE profiles SET role = 'admin' WHERE email = 'santiago@cnvsystem.com';
+   ```
+   (Reemplazar por el email real del admin lockeado.)
+3. Santiago cierra y reabre sesión en `/login` para que el nuevo rol aplique en su token JWT.
+
+Mitigación operativa: mantener al menos 2 admins activos en producción para evitar usar este fallback. Cuando un segundo admin de confianza se incorpore al equipo, asignarle el rol y compartirle este procedimiento.
+
+## Runbook: revisar logs de producción
+
+Tres fuentes complementarias según el síntoma:
+
+**Sentry** (errores y excepciones del frontend/backend):
+1. Ir a `https://sentry.io/organizations/YOUR_ORG/issues/`.
+2. Filtrar por `project: cnv-learning` y `environment: production`.
+3. Cada issue tiene stack trace, breadcrumbs, request context.
+4. Si un issue es ruidoso pero no crítico, marcar como "Resolved in next release" para mantener el dashboard limpio.
+
+**Vercel Functions Logs** (server actions, route handlers, server components):
+1. Ir a `https://vercel.com/YOUR_TEAM/cnv-learning/logs`.
+2. Filtrar por timestamp + path si se conoce.
+3. Útil para ver el output de `logger.info`, `logger.warn`, `logger.error` que no llegó a Sentry.
+
+**Supabase Logs** (queries SQL, auth events, edge functions):
+1. Ir a `https://supabase.com/dashboard/project/YOUR_PROJECT/logs/explorer`.
+2. Categorías: `postgres_logs`, `auth_logs`, `realtime_logs`, `storage_logs`.
+3. Útil para diagnosticar fallos de RLS, queries lentas, errores de Storage.
+
+## Runbook: rollback de deploy en Vercel
+
+Si un deploy nuevo rompe producción:
+
+1. Ir a `https://vercel.com/YOUR_TEAM/cnv-learning/deployments`.
+2. Localizar el deploy estable previo (verde, con la fecha conocida buena).
+3. Click en los tres puntos `⋯` del deploy estable → "Promote to Production".
+4. Vercel reemplaza el alias `lms.cnvsystem.com` apuntando al deploy estable en segundos.
+5. Investigar la causa del deploy malo en el repo (commit relacionado), arreglar en una nueva rama, mergear a `main`, verificar el deploy automático.
+
+Notas:
+- Rollback NO revierte migraciones de base de datos. Si el deploy malo aplicó una migración, evaluar si la migración es compatible con el código previo o si hay que escribir una migración correctiva.
+- Rollback NO afecta el estado de Supabase Storage ni el contenido de los blobs.
+
+## Runbook: cambiar variables de entorno
+
+Cuando se rota una API key (Resend, Gemini, Supabase service role, Sentry):
+
+1. Ir a `https://vercel.com/YOUR_TEAM/cnv-learning/settings/environment-variables`.
+2. Editar la variable correspondiente. Marcar el scope (Production / Preview / Development).
+3. Click "Save".
+4. **Redeploy obligatorio**: las env vars solo se aplican en un build nuevo. Ir a Deployments → último deploy → "Redeploy" sin cache.
+5. Verificar tras el redeploy que la funcionalidad afectada sigue funcionando (ej. enviar un email de prueba si rotaste `RESEND_API_KEY`).
+
+Variables sensibles que NO deben publicarse al cliente: `SUPABASE_SERVICE_ROLE_KEY`, `GEMINI_API_KEY`, `RESEND_API_KEY`, `SENTRY_AUTH_TOKEN`. Ninguna lleva prefijo `NEXT_PUBLIC_`.
 
 ## Limites del plan Free de Supabase
 
@@ -481,7 +567,7 @@ Cuando Vercel marque que estamos al 80% de algún límite, evaluar upgrade a Pro
 
 ## Smoke test manual antes del lanzamiento
 
-Antes de declarar el MVP terminado, ejecutar este checklist completo. Ver `docs/SMOKE-TEST.md` que se genera al final del Bloque 18 con los 30 puntos detallados. Aquí solo los grupos:
+Antes de declarar el MVP terminado, ejecutar el checklist completo de `docs/SMOKE_CHECKLIST.md` (creado en Bloque 18.7, secciones por rol + flujos cross-rol + verificación final pre-lanzamiento). Aquí solo los grupos macro:
 
 1. **Auth flow:** login, logout, forgot password, reset password.
 2. **Estudiante:** entrar a curso, navegar lecciones, marcar completadas, ver progreso, entregar tarea, ver calificación, descargar certificado.
