@@ -212,7 +212,7 @@ export default async function AdminAuditPage({
                           ) : null}
                         </span>
                       ) : (
-                        <span className="italic">—</span>
+                        <span className="italic">-</span>
                       )}
                     </td>
                     <td className="px-4 py-3 align-top">

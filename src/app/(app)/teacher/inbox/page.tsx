@@ -84,7 +84,7 @@ export default async function TeacherInboxPage() {
                           "d MMM yyyy, h:mm a",
                           { locale: es },
                         )
-                      : "—"}
+                      : "-"}
                   </td>
                   <td className="px-4 py-3 align-top text-right">
                     <Button asChild size="sm">

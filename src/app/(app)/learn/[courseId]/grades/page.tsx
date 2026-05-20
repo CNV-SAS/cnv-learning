@@ -100,7 +100,7 @@ export default async function GradesPage({ params }: GradesPageProps) {
                         {entry.assignment.max_score}
                       </span>
                     ) : (
-                      <span className="text-muted-foreground">—</span>
+                      <span className="text-muted-foreground">-</span>
                     )}
                   </td>
                 </tr>

@@ -36,7 +36,7 @@ interface TeacherPanelOverviewProps {
 }
 
 function formatDate(iso: string | null): string {
-  if (!iso) return "—";
+  if (!iso) return "-";
   return format(new Date(iso), "d MMM y", { locale: es });
 }
 

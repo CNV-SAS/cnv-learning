@@ -255,7 +255,7 @@ export default async function TeacherStudentDetailPage({
                           </Button>
                         ) : (
                           <span className="text-xs text-muted-foreground">
-                            —
+                            -
                           </span>
                         )}
                       </td>
