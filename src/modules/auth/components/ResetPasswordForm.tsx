@@ -38,7 +38,7 @@ export function ResetPasswordForm() {
         toast.error(result.error.message);
         return;
       }
-      toast.success("Contraseña actualizada. Inicia sesión.");
+      toast.success("Contraseña guardada. Inicia sesión.");
       router.push(result.value.redirectTo);
     } catch {
       // Catch defensivo. Mensaje generico (no leak detalles tecnicos).
@@ -56,7 +56,7 @@ export function ResetPasswordForm() {
           name="password"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Nueva contraseña</FormLabel>
+              <FormLabel>Contraseña</FormLabel>
               <FormControl>
                 <PasswordInput
                   autoComplete="new-password"
@@ -84,7 +84,7 @@ export function ResetPasswordForm() {
           )}
         />
         <Button type="submit" disabled={loading} className="w-full">
-          {loading ? "Guardando..." : "Cambiar contraseña"}
+          {loading ? "Guardando..." : "Guardar contraseña"}
         </Button>
       </form>
     </Form>

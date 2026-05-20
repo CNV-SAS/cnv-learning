@@ -45,19 +45,6 @@ import { ErrorCodes } from "@/core/errors/codes";
 import { ok, err, type Result } from "@/lib/utils/result";
 import type { AuthenticatedUser, Profile, UserRole } from "@/modules/auth/types";
 
-const DEFAULT_APP_URL = "https://lms.cnvsystem.com";
-
-function buildResetRedirectUrl(): string {
-  const base = (process.env.NEXT_PUBLIC_APP_URL ?? DEFAULT_APP_URL).replace(
-    /\/$/,
-    "",
-  );
-  // Mismo flow que /forgot-password publico: /auth/confirm hace
-  // verifyOtp con token_hash + type=recovery y redirige a
-  // /reset-password con sesion temporal.
-  return `${base}/auth/confirm?next=/reset-password`;
-}
-
 interface CreateUserParams {
   actor: AuthenticatedUser;
   email: string;
@@ -161,7 +148,6 @@ export const adminUserService = {
     try {
       inviteUrl = await adminUserRepository.generateRecoveryLink({
         email: params.email,
-        redirectTo: buildResetRedirectUrl(),
       });
     } catch (e) {
       logger.error("createUser: generateRecoveryLink failed", {
@@ -381,7 +367,6 @@ export const adminUserService = {
 
     const resetUrl = await adminUserRepository.generateRecoveryLink({
       email: target.email,
-      redirectTo: buildResetRedirectUrl(),
     });
 
     await sendUserPasswordResetEmail({

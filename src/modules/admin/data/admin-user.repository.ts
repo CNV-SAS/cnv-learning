@@ -179,30 +179,46 @@ export const adminUserRepository = {
     }
   },
 
-  // Genera un recovery link via Admin API. El user lo recibe por
-  // email y al click hace verifyOtp + redirect a /reset-password
-  // (mismo flow que forgot-password publico).
+  // Genera un recovery link via Admin API y construye la URL de
+  // /auth/confirm con el hashed_token. NO devolvemos el
+  // properties.action_link directamente porque ese link va al
+  // endpoint /auth/v1/verify de Supabase que aplica flow implicit
+  // grant (token en URL fragment) y depende del Site URL del
+  // Dashboard, lo cual rompe el flow (BUG 1 del smoke 14):
+  // el browser cae en /login#access_token=... y queda atrapado.
   //
-  // Devolvemos el action_link directamente; el caller decide a quien
-  // enviarlo (sendUserInvitationEmail / sendUserPasswordResetEmail).
-  async generateRecoveryLink(input: {
-    email: string;
-    redirectTo: string;
-  }): Promise<string> {
+  // En su lugar, construimos manualmente la URL apuntando a
+  // /auth/confirm?token_hash=&type=recovery&next=/reset-password,
+  // identico al patron que produce supabase.auth.resetPasswordForEmail
+  // (Bloque 2 /forgot-password) cuando el template de email del
+  // Dashboard usa {{ .TokenHash }} y {{ .Type }}. /auth/confirm
+  // hace verifyOtp server-side y redirige a next con sesion creada.
+  //
+  // Reuso del mismo flow para invitacion (createUser) y reset
+  // forzado (sendPasswordReset): el copy del email es lo que
+  // diferencia el contexto; el flow de password setup es identico.
+  async generateRecoveryLink(input: { email: string }): Promise<string> {
     const supabase = createAdminClient();
     const { data, error } = await supabase.auth.admin.generateLink({
       type: "recovery",
       email: input.email,
-      options: { redirectTo: input.redirectTo },
     });
 
-    if (error || !data.properties?.action_link) {
+    if (error || !data.properties?.hashed_token) {
       throw new InfrastructureError(
         ErrorCodes.DATABASE_ERROR,
         error?.message ?? "No se pudo generar el link de recuperacion",
       );
     }
-    return data.properties.action_link;
+
+    const base = (
+      process.env.NEXT_PUBLIC_APP_URL ?? "https://lms.cnvsystem.com"
+    ).replace(/\/$/, "");
+    const url = new URL(`${base}/auth/confirm`);
+    url.searchParams.set("token_hash", data.properties.hashed_token);
+    url.searchParams.set("type", "recovery");
+    url.searchParams.set("next", "/reset-password");
+    return url.toString();
   },
 
   // Lookup en auth.users por email. Usado por createUser para
