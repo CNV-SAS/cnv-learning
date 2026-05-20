@@ -105,4 +105,37 @@ export const profileRepository = {
     }
     return data;
   },
+
+  // Update parcial del propio profile (Bloque 16). Server client +
+  // RLS "Users can update own profile" (migracion 0017) garantiza
+  // que solo se actualiza la row WHERE id = auth.uid(). El service
+  // pasa userId solo por explicitud + defensa en profundidad; la
+  // RLS bloquea cualquier intento de pasar otro id.
+  async updateOwnProfile(
+    userId: string,
+    fields: {
+      full_name?: string;
+      bio?: string | null;
+      professional_license?: string | null;
+      institution?: string | null;
+      specialization?: string | null;
+      avatar_url?: string | null;
+    },
+  ): Promise<Profile> {
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from("profiles")
+      .update(fields)
+      .eq("id", userId)
+      .select()
+      .single();
+
+    if (error || !data) {
+      throw new InfrastructureError(
+        ErrorCodes.DATABASE_ERROR,
+        error?.message ?? "No se pudo actualizar el perfil",
+      );
+    }
+    return data;
+  },
 };
