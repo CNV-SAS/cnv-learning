@@ -239,4 +239,43 @@ export const adminUserRepository = {
     }
     return data;
   },
+
+  // Resuelve isSuspended para un set de userIds via Admin API.
+  // banned_until > now() => suspended. Pagina con perPage=1000
+  // (MVP tiene <50 users; muy debajo del limite).
+  async resolveSuspensionMap(
+    userIds: string[],
+  ): Promise<Map<string, boolean>> {
+    const map = new Map<string, boolean>();
+    if (userIds.length === 0) return map;
+
+    const supabase = createAdminClient();
+    const targetSet = new Set(userIds);
+    const { data, error } = await supabase.auth.admin.listUsers({
+      page: 1,
+      perPage: 1000,
+    });
+
+    if (error) {
+      throw new InfrastructureError(ErrorCodes.DATABASE_ERROR, error.message);
+    }
+
+    const now = Date.now();
+    for (const u of data.users) {
+      if (!targetSet.has(u.id)) continue;
+      const bannedUntil = u.banned_until ? new Date(u.banned_until).getTime() : 0;
+      map.set(u.id, bannedUntil > now);
+    }
+    return map;
+  },
+
+  async isUserSuspended(userId: string): Promise<boolean> {
+    const supabase = createAdminClient();
+    const { data, error } = await supabase.auth.admin.getUserById(userId);
+    if (error) {
+      throw new InfrastructureError(ErrorCodes.DATABASE_ERROR, error.message);
+    }
+    if (!data.user.banned_until) return false;
+    return new Date(data.user.banned_until).getTime() > Date.now();
+  },
 };

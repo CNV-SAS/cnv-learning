@@ -5,7 +5,7 @@
 //   - Certificados (gestion + revocacion, Bloque 12).
 
 import Link from "next/link";
-import { Award, Globe, GraduationCap } from "lucide-react";
+import { Award, Globe, GraduationCap, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export default function AdminPage() {
@@ -22,6 +22,12 @@ export default function AdminPage() {
       </div>
       <div className="flex flex-wrap gap-2">
         <Button asChild>
+          <Link href="/admin/users">
+            <Users className="mr-2 h-4 w-4" />
+            Usuarios
+          </Link>
+        </Button>
+        <Button asChild variant="outline">
           <Link href="/admin/announce">
             <Globe className="mr-2 h-4 w-4" />
             Nuevo anuncio global
