@@ -12,6 +12,11 @@
 //   siguiente sin colarse el toggle (mejor UX con teclado).
 // - aria-label dinamico para lectores de pantalla.
 // - pr-10 en el Input reserva espacio para el boton sin overlap.
+// - pointer-events-none en los SVG hijos del toggle: bug detectado
+//   en smoke pre-18, los clicks que caian exactamente sobre el path
+//   del SVG no propagaban al onClick del button padre. Forzar que
+//   el SVG sea no-clickable hace que todos los clicks dentro del
+//   area del button suban al handler correctamente.
 
 import { forwardRef, useState } from "react";
 import { Eye, EyeOff } from "lucide-react";
@@ -45,7 +50,11 @@ export const PasswordInput = forwardRef<
         aria-label={show ? "Ocultar contraseña" : "Mostrar contraseña"}
         tabIndex={-1}
       >
-        {show ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+        {show ? (
+          <EyeOff className="h-4 w-4 pointer-events-none" />
+        ) : (
+          <Eye className="h-4 w-4 pointer-events-none" />
+        )}
       </Button>
     </div>
   );
