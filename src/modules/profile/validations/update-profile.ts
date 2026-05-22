@@ -26,11 +26,14 @@ function optionalText(maxLength: number, label: string) {
 }
 
 export const updateProfileSchema = z.object({
+  // Mismo criterio que createUserSchema (S1.2): al menos una letra
+  // Unicode, evita aceptar "123456" como nombre humano.
   fullName: z
     .string()
     .trim()
     .min(3, "El nombre debe tener al menos 3 caracteres")
-    .max(200, "El nombre no puede superar 200 caracteres"),
+    .max(200, "El nombre no puede superar 200 caracteres")
+    .regex(/\p{L}/u, "El nombre debe contener al menos una letra"),
   bio: optionalText(1000, "La biografía"),
   professionalLicense: optionalText(100, "El número de licencia"),
   institution: optionalText(200, "La institución"),

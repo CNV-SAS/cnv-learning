@@ -56,6 +56,24 @@ describe("createUserSchema", () => {
     expect(result.success).toBe(false);
   });
 
+  it("rechaza nombre solo digitos (S1.2)", () => {
+    const result = createUserSchema.safeParse({
+      email: "x@y.com",
+      fullName: "123456",
+      role: "student",
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("acepta nombre con digitos si tiene al menos una letra (S1.2)", () => {
+    const result = createUserSchema.safeParse({
+      email: "x@y.com",
+      fullName: "Juan Pablo II",
+      role: "student",
+    });
+    expect(result.success).toBe(true);
+  });
+
   it("rechaza rol invalido", () => {
     const result = createUserSchema.safeParse({
       email: "x@y.com",

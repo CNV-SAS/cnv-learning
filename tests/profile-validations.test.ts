@@ -55,6 +55,20 @@ describe("updateProfileSchema", () => {
     expect(result.success).toBe(false);
   });
 
+  it("rechaza fullName solo digitos (S1.2)", () => {
+    const result = updateProfileSchema.safeParse({
+      fullName: "123456",
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("acepta fullName con digitos si tiene letra (S1.2)", () => {
+    const result = updateProfileSchema.safeParse({
+      fullName: "Juan Pablo II",
+    });
+    expect(result.success).toBe(true);
+  });
+
   it("rechaza bio > 1000 chars", () => {
     const result = updateProfileSchema.safeParse({
       fullName: "Juan",
