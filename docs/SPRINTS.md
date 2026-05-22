@@ -4,17 +4,17 @@ Documento maestro del trabajo posterior al cierre del MVP (Bloque 18). Última a
 
 ## Estado del MVP
 
-MVP cerrado en Bloque 18. 18/18 bloques completos. 320 tests verdes. Smoke E2E aprobado con tester externo, con 3 bugs bloqueantes detectados (ver Sprint 1).
+MVP cerrado en Bloque 18. 18/18 bloques completos. 328 tests verdes (320 MVP + 8 nuevos del Sprint 1). Smoke E2E aprobado con tester externo, con 3 bugs bloqueantes detectados (ver Sprint 1, todos cerrados).
 
 ## Sprint 1: Fixes bloqueantes pre-lanzamiento
 
-Status: in-progress
+Status: done
 
 Bugs detectados durante el smoke con tester externo que deben corregirse antes del lanzamiento real.
 
 ### S1.1: Bug del PasswordInput (ojo no toggle correctamente)
 
-Status: pending
+Status: done (commits 59a0b08 + a866e36)
 
 Síntoma: el click en el área del ojo ejecuta la animación del SVG pero NO ejecuta el toggle de visibilidad de la contraseña. Solo funciona si el click cae en el borde inferior del button. Reportado desde el Bloque 18 pre-fix A, no resuelto.
 
@@ -26,7 +26,7 @@ Verificación: click en cualquier punto del área del ojo (centro, lados, esquin
 
 ### S1.2: Validación de nombre solo números
 
-Status: pending
+Status: done (commit e1dd186)
 
 Síntoma: el admin puede crear un usuario con nombre "123456" (solo números). No es un nombre humano válido.
 
@@ -38,7 +38,7 @@ Aplicar el mismo validation a updateProfile en el módulo profile (si el user ed
 
 ### S1.3: Solo students pueden completar lecciones
 
-Status: pending
+Status: done (commit cf751b8 + migración 0026 aplicada por Santiago via SQL Editor)
 
 Síntoma: admin y teacher pueden marcar lecciones como completadas. Esto causa que aparezcan como "alumnos" en la lista del docente (porque tienen lesson_progress rows). También genera errores inconsistentes (a veces deja, a veces no).
 
@@ -58,7 +58,9 @@ C. Datos pre-existentes:
 
 ### S1.4: Auditoría de acciones por rol
 
-Status: pending
+Status: done (sin fix adicional requerido, audit limpio)
+
+Resultado: 31 server actions auditadas action-level + 6 áreas críticas auditadas service-level. Todas las actions mutativas usan policies específicas de mutación (canSubmitAssignment, canRevokeCertificate, canEmitCourseAnnouncement, canManageUsers, canCompleteLesson tras S1.3, etc.) en lugar de policies "view". El bug de S1.3 fue una excepción puntual, no patrón sistémico.
 
 Acción preventiva: revisar TODAS las server actions del codebase y verificar que cada una valida correctamente el rol del caller.
 
@@ -74,7 +76,7 @@ Output esperado: lista de todas las actions con su validación de rol actual. Si
 
 ### S1.5: Push + smoke + cierre Sprint 1
 
-Status: pending
+Status: in-progress (SPRINTS.md actualizado; push + smoke pendientes de Santiago)
 
 Push de todos los commits del Sprint 1, smoke en producción de los 4 fixes, actualizar SPRINTS.md con status done del Sprint 1.
 
