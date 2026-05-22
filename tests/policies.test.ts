@@ -8,6 +8,7 @@ import { getNavigationFor } from "@/modules/auth/policies/navigation";
 import { canAccessTeacherPanel } from "@/modules/auth/policies/can-access-teacher-panel";
 import { canViewCourse } from "@/modules/courses/policies/can-view-course";
 import { canViewLesson } from "@/modules/courses/policies/can-view-lesson";
+import { canCompleteLesson } from "@/modules/courses/policies/can-complete-lesson";
 import { canSubmitAssignment } from "@/modules/assignments/policies/can-submit-assignment";
 import { canGradeAssignment } from "@/modules/assignments/policies/can-grade-assignment";
 import { canViewGrading } from "@/modules/assignments/policies/can-view-grading";
@@ -136,6 +137,32 @@ describe("canViewLesson", () => {
   it("teacher no ve leccion cuando RLS no la retorna", () => {
     expect(
       canViewLesson(makeUser("teacher"), { lessonExists: false }),
+    ).toBe(false);
+  });
+});
+
+describe("canCompleteLesson (S1.3)", () => {
+  it("student completa cuando la leccion existe", () => {
+    expect(
+      canCompleteLesson(makeUser("student"), { lessonExists: true }),
+    ).toBe(true);
+  });
+
+  it("student no completa si RLS bloqueo la leccion", () => {
+    expect(
+      canCompleteLesson(makeUser("student"), { lessonExists: false }),
+    ).toBe(false);
+  });
+
+  it("admin NO completa (no registra progreso)", () => {
+    expect(
+      canCompleteLesson(makeUser("admin"), { lessonExists: true }),
+    ).toBe(false);
+  });
+
+  it("teacher NO completa (no registra progreso)", () => {
+    expect(
+      canCompleteLesson(makeUser("teacher"), { lessonExists: true }),
     ).toBe(false);
   });
 });

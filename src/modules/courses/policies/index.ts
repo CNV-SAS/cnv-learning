@@ -6,3 +6,7 @@ export {
   canViewLesson,
   type LessonAccessContext,
 } from "./can-view-lesson";
+export {
+  canCompleteLesson,
+  type LessonCompleteContext,
+} from "./can-complete-lesson";

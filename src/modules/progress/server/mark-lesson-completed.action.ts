@@ -17,7 +17,7 @@
 
 import { profileRepository } from "@/modules/auth/data/profile.repository";
 import { lessonRepository } from "@/modules/courses/data";
-import { canViewLesson } from "@/modules/courses/policies";
+import { canCompleteLesson } from "@/modules/courses/policies";
 import { progressService } from "@/modules/progress/services/progress.service";
 import { markLessonCompletedSchema } from "@/modules/progress/validations";
 import { ok, err, type Result } from "@/lib/utils/result";
@@ -60,14 +60,18 @@ export async function markLessonCompletedAction(
 
       const lesson = await lessonRepository.findById(parsed.data.lessonId);
       if (
-        !canViewLesson(user, { lessonExists: lesson !== null }) ||
+        !canCompleteLesson(user, { lessonExists: lesson !== null }) ||
         !lesson
       ) {
+        // Mensaje cubre dos casos: (a) RLS bloqueo (lesson inaccessible)
+        // y (b) rol != student. Para students el primer caso se muestra
+        // como tal; para admin/teacher el segundo es lo esperado. Texto
+        // generico evita filtrar la razon exacta.
         return err(
           toActionError(
             new AuthorizationError(
               ErrorCodes.AUTHZ_CANNOT_MARK_LESSON,
-              "No puedes marcar esta lección.",
+              "Solo los estudiantes pueden completar lecciones.",
             ),
           ),
         );

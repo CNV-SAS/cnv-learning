@@ -135,7 +135,16 @@ export default async function LessonPage({ params }: LessonPageProps) {
 
       <AttachmentList attachments={attachments} />
 
-      <CompleteLessonButton lessonId={lesson.id} completed={completed} />
+      {/* S1.3: solo students registran progreso. Admin y teacher ven
+       * la leccion pero no pueden marcarla; mostramos un mensaje
+       * muted en lugar del boton para que la vista no quede vacia. */}
+      {isStudent ? (
+        <CompleteLessonButton lessonId={lesson.id} completed={completed} />
+      ) : (
+        <p className="rounded-md bg-muted/40 px-3 py-2 text-center text-sm text-muted-foreground">
+          Vista de docente: solo los estudiantes registran progreso.
+        </p>
+      )}
       <LessonNav
         courseId={courseId}
         prev={neighbors.prev}
