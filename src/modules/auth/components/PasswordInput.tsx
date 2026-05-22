@@ -30,10 +30,15 @@
 //      en algunos browsers, combinado con (1), perdia el click bubble.
 //
 // Fix multinivel:
-//   - <button> HTML plano (no shadcn Button) para evitar el
-//     translate-y-px del cva.
+//   - <button> HTML plano (no shadcn Button) para tener control
+//     directo del cva.
 //   - Toggle en onMouseDown con preventDefault: el toggle ocurre
-//     antes del focus change y no depende del bubble del click.
+//     antes del focus change y no depende del bubble del click. Esto
+//     tambien hace seguro mantener el active:translate-y-px (press
+//     feedback de 1px hacia abajo): en el original ese translate
+//     desplazaba el mouseup fuera del area del button y perdia el
+//     click; ahora el toggle ya fue ejecutado en mouseDown antes
+//     de que el active state se aplique.
 //   - <span className="pointer-events-none"> wrapper sobre el icono:
 //     un span HTML propaga pointer-events: none a TODOS sus
 //     descendientes (incluyendo path, circle internos del SVG), de
@@ -60,7 +65,7 @@ export const PasswordInput = forwardRef<
       />
       <button
         type="button"
-        className="absolute right-1 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className="absolute right-1 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground transition-all hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:translate-y-px"
         onMouseDown={(e) => {
           e.preventDefault();
           setShow((v) => !v);
