@@ -5,6 +5,7 @@
 // rango 1-999 cuando se especifica.
 
 import { z } from "zod";
+import { UUID_FORMAT } from "@/lib/utils/uuid";
 
 function nullableTrimmedText(maxLength: number, label: string) {
   return z
@@ -40,7 +41,7 @@ function nullableUrl() {
 
 export const createLessonSchema = z
   .object({
-    moduleId: z.string().uuid(),
+    moduleId: z.string().regex(UUID_FORMAT, "ID de módulo inválido"),
     title: z
       .string()
       .trim()

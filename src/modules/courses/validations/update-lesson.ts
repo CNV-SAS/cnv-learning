@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { UUID_FORMAT } from "@/lib/utils/uuid";
 
 function nullableTrimmedText(maxLength: number, label: string) {
   return z
@@ -34,7 +35,7 @@ function nullableUrl() {
 
 export const updateLessonSchema = z
   .object({
-    lessonId: z.string().uuid(),
+    lessonId: z.string().regex(UUID_FORMAT, "ID de lección inválido"),
     title: z
       .string()
       .trim()

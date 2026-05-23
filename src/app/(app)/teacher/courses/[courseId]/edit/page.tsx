@@ -4,7 +4,7 @@
 
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { ChevronRight, FileText, GraduationCap, Layers } from "lucide-react";
+import { ChevronRight, GraduationCap, Layers } from "lucide-react";
 import { profileRepository } from "@/modules/auth/data/profile.repository";
 import { courseRepository } from "@/modules/courses/data";
 import { canEditCourseContent } from "@/modules/courses/policies";
@@ -131,12 +131,28 @@ export default async function EditCoursePage({ params }: EditCoursePageProps) {
                       canMoveDown={idx < modulesWithImpact.length - 1}
                     />
                     <div className="space-y-1">
-                      <div className="flex items-center gap-2">
+                      {/* Chips de stats por modulo. Colores distinguen:
+                       * muted = peso (metadato de configuracion),
+                       * emerald = lecciones (contenido positivo),
+                       * amber = tareas (trabajo evaluable). */}
+                      <div className="flex flex-wrap items-center gap-2">
                         <span className="text-xs font-black uppercase tracking-widest text-muted-foreground">
                           Módulo {entry.module.position}
                         </span>
                         <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
                           Peso {Number(entry.module.weight ?? 0)}
+                        </span>
+                        <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700">
+                          {entry.impact.lessonCount}{" "}
+                          {entry.impact.lessonCount === 1
+                            ? "lección"
+                            : "lecciones"}
+                        </span>
+                        <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">
+                          {entry.impact.assignmentCount}{" "}
+                          {entry.impact.assignmentCount === 1
+                            ? "tarea"
+                            : "tareas"}
                         </span>
                       </div>
                       <h2 className="font-display text-lg font-bold tracking-tight">
@@ -147,18 +163,6 @@ export default async function EditCoursePage({ params }: EditCoursePageProps) {
                           {entry.module.description}
                         </p>
                       )}
-                      <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
-                        <span className="flex items-center gap-1">
-                          <FileText className="h-3 w-3" />
-                          {entry.impact.lessonCount} lección
-                          {entry.impact.lessonCount === 1 ? "" : "es"}
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <GraduationCap className="h-3 w-3" />
-                          {entry.impact.assignmentCount} tarea
-                          {entry.impact.assignmentCount === 1 ? "" : "s"}
-                        </span>
-                      </div>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">

@@ -4,9 +4,10 @@
 // service (requiere fetch de modulos del curso) y no en Zod.
 
 import { z } from "zod";
+import { UUID_FORMAT } from "@/lib/utils/uuid";
 
 export const createModuleSchema = z.object({
-  courseId: z.string().uuid(),
+  courseId: z.string().regex(UUID_FORMAT, "ID de curso inválido"),
   title: z
     .string()
     .trim()

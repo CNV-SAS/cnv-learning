@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { UUID_FORMAT } from "@/lib/utils/uuid";
 
 function nullableTrimmedText(maxLength: number, label: string) {
   return z
@@ -14,7 +15,7 @@ function nullableTrimmedText(maxLength: number, label: string) {
 }
 
 export const updateAssignmentSchema = z.object({
-  assignmentId: z.string().uuid(),
+  assignmentId: z.string().regex(UUID_FORMAT, "ID de tarea inválido"),
   title: z
     .string()
     .trim()

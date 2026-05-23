@@ -3,6 +3,7 @@
 // preguntas/opciones se difiere a v1.2.
 
 import { z } from "zod";
+import { UUID_FORMAT } from "@/lib/utils/uuid";
 
 function nullableTrimmedText(maxLength: number, label: string) {
   return z
@@ -18,7 +19,7 @@ function nullableTrimmedText(maxLength: number, label: string) {
 }
 
 export const createAssignmentSchema = z.object({
-  moduleId: z.string().uuid(),
+  moduleId: z.string().regex(UUID_FORMAT, "ID de módulo inválido"),
   title: z
     .string()
     .trim()
