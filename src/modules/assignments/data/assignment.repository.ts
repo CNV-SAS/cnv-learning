@@ -8,7 +8,26 @@
 import { createClient } from "@/lib/supabase/server";
 import { InfrastructureError } from "@/core/errors/classes";
 import { ErrorCodes } from "@/core/errors/codes";
-import type { Assignment } from "../types";
+import type { Assignment, AssignmentType } from "../types";
+
+export interface CreateAssignmentInput {
+  module_id: string;
+  title: string;
+  description: string | null;
+  type: AssignmentType;
+  due_at: string | null;
+  max_score: number;
+  is_required: boolean;
+}
+
+export interface UpdateAssignmentInput {
+  title: string;
+  description: string | null;
+  type: AssignmentType;
+  due_at: string | null;
+  max_score: number;
+  is_required: boolean;
+}
 
 export const assignmentRepository = {
   async findById(id: string): Promise<Assignment | null> {
@@ -40,6 +59,44 @@ export const assignmentRepository = {
       throw new InfrastructureError(ErrorCodes.DATABASE_ERROR, error.message);
     }
     return data ?? [];
+  },
+
+  async create(input: CreateAssignmentInput): Promise<Assignment> {
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from("assignments")
+      .insert(input)
+      .select("*")
+      .single();
+    if (error) {
+      throw new InfrastructureError(ErrorCodes.DATABASE_ERROR, error.message);
+    }
+    return data;
+  },
+
+  async update(
+    id: string,
+    input: UpdateAssignmentInput,
+  ): Promise<Assignment> {
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from("assignments")
+      .update(input)
+      .eq("id", id)
+      .select("*")
+      .single();
+    if (error) {
+      throw new InfrastructureError(ErrorCodes.DATABASE_ERROR, error.message);
+    }
+    return data;
+  },
+
+  async delete(id: string): Promise<void> {
+    const supabase = await createClient();
+    const { error } = await supabase.from("assignments").delete().eq("id", id);
+    if (error) {
+      throw new InfrastructureError(ErrorCodes.DATABASE_ERROR, error.message);
+    }
   },
 
   // Todas las assignments del curso ordenadas por (module.position,

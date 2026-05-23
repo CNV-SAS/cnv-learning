@@ -4,6 +4,8 @@
 import type { Database } from "@/types/database.generated";
 
 export type Assignment = Database["public"]["Tables"]["assignments"]["Row"];
+export type AssignmentType =
+  Database["public"]["Enums"]["assignment_type"];
 export type Submission = Database["public"]["Tables"]["submissions"]["Row"];
 export type Grading = Database["public"]["Tables"]["gradings"]["Row"];
 export type QuizQuestion =

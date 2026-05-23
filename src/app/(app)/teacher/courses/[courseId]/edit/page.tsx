@@ -189,8 +189,7 @@ export default async function EditCoursePage({ params }: EditCoursePageProps) {
       )}
 
       <p className="text-xs text-muted-foreground">
-        Para editar lecciones de un módulo, abre &quot;Gestionar lecciones&quot;.
-        Edición de tareas disponible desde 19.4.
+        Para editar lecciones y tareas de un módulo, abre &quot;Gestionar lecciones&quot;.
       </p>
     </div>
   );

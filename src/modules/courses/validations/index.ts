@@ -30,3 +30,15 @@ export {
   reorderLessonSchema,
   type ReorderLessonInput,
 } from "./reorder-lesson";
+export {
+  createAssignmentSchema,
+  type CreateAssignmentInput,
+} from "./create-assignment";
+export {
+  updateAssignmentSchema,
+  type UpdateAssignmentInput,
+} from "./update-assignment";
+export {
+  deleteAssignmentSchema,
+  type DeleteAssignmentInput,
+} from "./delete-assignment";

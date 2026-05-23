@@ -6,3 +6,6 @@ export { createLessonAction } from "./create-lesson.action";
 export { updateLessonAction } from "./update-lesson.action";
 export { deleteLessonAction } from "./delete-lesson.action";
 export { reorderLessonAction } from "./reorder-lesson.action";
+export { createAssignmentAction } from "./create-assignment.action";
+export { updateAssignmentAction } from "./update-assignment.action";
+export { deleteAssignmentAction } from "./delete-assignment.action";

@@ -24,6 +24,7 @@ import {
 import { assignmentRepository } from "@/modules/assignments/data";
 import { submissionRepository } from "@/modules/assignments/data";
 import { gradingRepository } from "@/modules/assignments/data";
+import type { Assignment, AssignmentType } from "@/modules/assignments/types";
 import { lessonProgressRepository } from "@/modules/progress/data";
 import { canEditCourseContent } from "@/modules/courses/policies";
 import { auditRepository } from "@/modules/audit/data";
@@ -62,6 +63,19 @@ export interface LessonDeleteImpact {
 export interface LessonWithImpact {
   lesson: Lesson;
   impact: LessonDeleteImpact;
+}
+
+export interface AssignmentDeleteImpact {
+  // Para assignments el bloqueo se da por submissions (cualquier
+  // estado, incluyendo draft). Gradings se cascadean junto a las
+  // submissions; reportamos ambas para transparencia.
+  submissionCount: number;
+  gradingCount: number;
+}
+
+export interface AssignmentWithImpact {
+  assignment: Assignment;
+  impact: AssignmentDeleteImpact;
 }
 
 // Resuelve el context comun de canEditCourseContent + existencia del
@@ -617,6 +631,226 @@ export const courseContentEditorService = {
       neighbor.position,
     );
 
+    return ok(undefined);
+  },
+
+  // -----------------------------------------------------------------
+  // Assignments CRUD (Bloque 19.4). Sin reorder: assignments no
+  // tiene columna position. Quiz editor (preguntas/opciones) se
+  // difiere a v1.2.
+  // -----------------------------------------------------------------
+
+  async listAssignmentsWithImpact(
+    moduleId: string,
+  ): Promise<AssignmentWithImpact[]> {
+    const assignments = await assignmentRepository.listByModule(moduleId);
+    const entries = await Promise.all(
+      assignments.map(async (assignment) => {
+        const submissions =
+          await submissionRepository.listByAssignmentIds([assignment.id]);
+        const submissionIds = submissions.map((s) => s.id);
+        const gradings =
+          submissionIds.length > 0
+            ? await gradingRepository.listBySubmissionIds(submissionIds)
+            : [];
+        return {
+          assignment,
+          impact: {
+            submissionCount: submissions.length,
+            gradingCount: gradings.length,
+          },
+        };
+      }),
+    );
+    return entries;
+  },
+
+  async createAssignment(params: {
+    user: AuthenticatedUser;
+    moduleId: string;
+    title: string;
+    description: string | null;
+    type: AssignmentType;
+    dueAt: string | null;
+    maxScore: number;
+    isRequired: boolean;
+  }): Promise<Result<Assignment, AppError>> {
+    const module = await moduleRepository.findById(params.moduleId);
+    if (!module) {
+      return err(
+        new NotFoundError(
+          ErrorCodes.MODULE_NOT_FOUND,
+          "Módulo no encontrado.",
+        ),
+      );
+    }
+    const auth = await authorizeCourseEdit(params.user, module.course_id);
+    if (!auth.ok) return err(auth.error);
+
+    const created = await assignmentRepository.create({
+      module_id: params.moduleId,
+      title: params.title,
+      description: params.description,
+      type: params.type,
+      due_at: params.dueAt,
+      max_score: params.maxScore,
+      is_required: params.isRequired,
+    });
+    return ok(created);
+  },
+
+  async updateAssignment(params: {
+    user: AuthenticatedUser;
+    assignmentId: string;
+    title: string;
+    description: string | null;
+    type: AssignmentType;
+    dueAt: string | null;
+    maxScore: number;
+    isRequired: boolean;
+  }): Promise<Result<Assignment, AppError>> {
+    const assignment = await assignmentRepository.findById(
+      params.assignmentId,
+    );
+    if (!assignment) {
+      return err(
+        new NotFoundError(
+          ErrorCodes.ASSIGNMENT_NOT_FOUND,
+          "Tarea no encontrada.",
+        ),
+      );
+    }
+    const module = await moduleRepository.findById(assignment.module_id);
+    if (!module) {
+      return err(
+        new NotFoundError(
+          ErrorCodes.MODULE_NOT_FOUND,
+          "Módulo no encontrado.",
+        ),
+      );
+    }
+    const auth = await authorizeCourseEdit(params.user, module.course_id);
+    if (!auth.ok) return err(auth.error);
+
+    const updated = await assignmentRepository.update(params.assignmentId, {
+      title: params.title,
+      description: params.description,
+      type: params.type,
+      due_at: params.dueAt,
+      max_score: params.maxScore,
+      is_required: params.isRequired,
+    });
+    return ok(updated);
+  },
+
+  async getAssignmentDeleteImpact(params: {
+    user: AuthenticatedUser;
+    assignmentId: string;
+  }): Promise<Result<AssignmentDeleteImpact, AppError>> {
+    const assignment = await assignmentRepository.findById(
+      params.assignmentId,
+    );
+    if (!assignment) {
+      return err(
+        new NotFoundError(
+          ErrorCodes.ASSIGNMENT_NOT_FOUND,
+          "Tarea no encontrada.",
+        ),
+      );
+    }
+    const module = await moduleRepository.findById(assignment.module_id);
+    if (!module) {
+      return err(
+        new NotFoundError(
+          ErrorCodes.MODULE_NOT_FOUND,
+          "Módulo no encontrado.",
+        ),
+      );
+    }
+    const auth = await authorizeCourseEdit(params.user, module.course_id);
+    if (!auth.ok) return err(auth.error);
+
+    const submissions = await submissionRepository.listByAssignmentIds([
+      params.assignmentId,
+    ]);
+    const submissionIds = submissions.map((s) => s.id);
+    const gradings =
+      submissionIds.length > 0
+        ? await gradingRepository.listBySubmissionIds(submissionIds)
+        : [];
+
+    return ok({
+      submissionCount: submissions.length,
+      gradingCount: gradings.length,
+    });
+  },
+
+  async deleteAssignment(params: {
+    user: AuthenticatedUser;
+    assignmentId: string;
+  }): Promise<Result<void, AppError>> {
+    const assignment = await assignmentRepository.findById(
+      params.assignmentId,
+    );
+    if (!assignment) {
+      return err(
+        new NotFoundError(
+          ErrorCodes.ASSIGNMENT_NOT_FOUND,
+          "Tarea no encontrada.",
+        ),
+      );
+    }
+    const module = await moduleRepository.findById(assignment.module_id);
+    if (!module) {
+      return err(
+        new NotFoundError(
+          ErrorCodes.MODULE_NOT_FOUND,
+          "Módulo no encontrado.",
+        ),
+      );
+    }
+    const auth = await authorizeCourseEdit(params.user, module.course_id);
+    if (!auth.ok) return err(auth.error);
+
+    const submissions = await submissionRepository.listByAssignmentIds([
+      params.assignmentId,
+    ]);
+    if (submissions.length > 0) {
+      const submissionIds = submissions.map((s) => s.id);
+      const gradings =
+        await gradingRepository.listBySubmissionIds(submissionIds);
+      return err(
+        new DomainError(
+          ErrorCodes.ASSIGNMENT_HAS_DEPENDENCIES,
+          `La tarea tiene ${submissions.length} entrega${submissions.length === 1 ? "" : "s"} y ${gradings.length} calificacion${gradings.length === 1 ? "" : "es"}.`,
+        ),
+      );
+    }
+
+    // Audit ANTES del delete con snapshot completo (regla 8).
+    await auditRepository.record({
+      event: "course_assignment.deleted",
+      resourceType: "assignment",
+      resourceId: assignment.id,
+      actorId: params.user.id,
+      actorEmail: params.user.email,
+      metadata: {
+        snapshot: {
+          id: assignment.id,
+          module_id: assignment.module_id,
+          title: assignment.title,
+          description: assignment.description,
+          type: assignment.type,
+          due_at: assignment.due_at,
+          max_score: assignment.max_score,
+          is_required: assignment.is_required,
+          created_at: assignment.created_at,
+          updated_at: assignment.updated_at,
+        },
+      },
+    });
+
+    await assignmentRepository.delete(params.assignmentId);
     return ok(undefined);
   },
 };

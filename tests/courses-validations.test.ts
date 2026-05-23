@@ -8,6 +8,8 @@ import {
   createLessonSchema,
   updateLessonSchema,
   reorderLessonSchema,
+  createAssignmentSchema,
+  updateAssignmentSchema,
 } from "@/modules/courses/validations";
 
 const VALID_UUID = "11111111-1111-4111-8111-111111111111";
@@ -308,5 +310,129 @@ describe("reorderLessonSchema", () => {
       direction: "sideways",
     });
     expect(result.success).toBe(false);
+  });
+});
+
+describe("createAssignmentSchema", () => {
+  it("acepta input valido tipo essay sin dueAt", () => {
+    const result = createAssignmentSchema.safeParse({
+      moduleId: VALID_UUID,
+      title: "Ensayo final",
+      type: "essay",
+      maxScore: 100,
+      isRequired: true,
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.dueAt).toBeNull();
+    }
+  });
+
+  it("acepta input valido tipo file_upload con dueAt ISO", () => {
+    const result = createAssignmentSchema.safeParse({
+      moduleId: VALID_UUID,
+      title: "Subir laboratorio",
+      type: "file_upload",
+      dueAt: "2026-06-30T23:59:00.000Z",
+      maxScore: 50,
+      isRequired: true,
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("acepta tipo quiz_multiple_choice como cabecera", () => {
+    const result = createAssignmentSchema.safeParse({
+      moduleId: VALID_UUID,
+      title: "Quiz módulo 1",
+      type: "quiz_multiple_choice",
+      maxScore: 20,
+      isRequired: true,
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("rechaza maxScore 0", () => {
+    const result = createAssignmentSchema.safeParse({
+      moduleId: VALID_UUID,
+      title: "Ensayo",
+      type: "essay",
+      maxScore: 0,
+      isRequired: true,
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("rechaza maxScore > 100", () => {
+    const result = createAssignmentSchema.safeParse({
+      moduleId: VALID_UUID,
+      title: "Ensayo",
+      type: "essay",
+      maxScore: 200,
+      isRequired: true,
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("rechaza dueAt no ISO", () => {
+    const result = createAssignmentSchema.safeParse({
+      moduleId: VALID_UUID,
+      title: "Ensayo",
+      type: "essay",
+      dueAt: "2026-06-30 23:59",
+      maxScore: 100,
+      isRequired: true,
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("rechaza title < 3 chars", () => {
+    const result = createAssignmentSchema.safeParse({
+      moduleId: VALID_UUID,
+      title: "ab",
+      type: "essay",
+      maxScore: 100,
+      isRequired: true,
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("rechaza type invalido", () => {
+    const result = createAssignmentSchema.safeParse({
+      moduleId: VALID_UUID,
+      title: "Ensayo",
+      type: "drawing",
+      maxScore: 100,
+      isRequired: true,
+    });
+    expect(result.success).toBe(false);
+  });
+});
+
+describe("updateAssignmentSchema", () => {
+  it("acepta input valido", () => {
+    const result = updateAssignmentSchema.safeParse({
+      assignmentId: VALID_UUID,
+      title: "Editada",
+      type: "essay",
+      dueAt: null,
+      maxScore: 50,
+      isRequired: false,
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("normaliza description vacia a null", () => {
+    const result = updateAssignmentSchema.safeParse({
+      assignmentId: VALID_UUID,
+      title: "Editada",
+      description: "   ",
+      type: "essay",
+      maxScore: 100,
+      isRequired: true,
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.description).toBeNull();
+    }
   });
 });
