@@ -9,11 +9,15 @@ import { notFound, redirect } from "next/navigation";
 import {
   BookOpen,
   CalendarRange,
+  FolderOpen,
   Megaphone,
   MessageSquare,
 } from "lucide-react";
 import { profileRepository } from "@/modules/auth/data/profile.repository";
-import { courseRepository } from "@/modules/courses/data";
+import {
+  courseRepository,
+  courseResourceRepository,
+} from "@/modules/courses/data";
 import { canViewCourse } from "@/modules/courses/policies";
 import { progressService } from "@/modules/progress/services/progress.service";
 import {
@@ -43,12 +47,15 @@ export default async function CoursePage({ params }: CoursePageProps) {
     notFound();
   }
 
-  // Phase 1: modulos+lessons+progreso (servicio) y assignments del
-  // curso en paralelo. Independientes a este punto.
-  const [modulesWithProgress, allAssignments] = await Promise.all([
-    progressService.getModulesWithProgress(user.id, courseId),
-    assignmentRepository.listByCourse(courseId),
-  ]);
+  // Phase 1: modulos+lessons+progreso (servicio), assignments del
+  // curso y existencia de recursos (Bloque 20.3, decision A4 del
+  // planning: solo mostrar link "Recursos" si hay >=1) en paralelo.
+  const [modulesWithProgress, allAssignments, hasAnyResource] =
+    await Promise.all([
+      progressService.getModulesWithProgress(user.id, courseId),
+      assignmentRepository.listByCourse(courseId),
+      courseResourceRepository.hasAnyForCourse(courseId),
+    ]);
 
   // Phase 2: submissions del user requieren los assignmentIds. Una
   // sola query bulk via .in() en el repo.
@@ -108,6 +115,14 @@ export default async function CoursePage({ params }: CoursePageProps) {
                 Calendario
               </Link>
             </Button>
+            {hasAnyResource && (
+              <Button asChild variant="outline">
+                <Link href={`/learn/${courseId}/resources`}>
+                  <FolderOpen className="mr-2 h-4 w-4" />
+                  Recursos
+                </Link>
+              </Button>
+            )}
             {(user.role === "teacher" || user.role === "admin") && (
               <Button asChild variant="outline">
                 <Link href={`/teacher/announce?courseId=${courseId}`}>

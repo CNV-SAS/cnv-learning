@@ -12,6 +12,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { InfrastructureError } from "@/core/errors/classes";
 import { ErrorCodes } from "@/core/errors/codes";
+import { logger } from "@/core/logger/logger";
 import type { Database } from "@/types/database.generated";
 import type { CourseResource } from "../types";
 
@@ -22,6 +23,9 @@ export interface UpdateCourseResourceInput {
   title: string;
   description: string | null;
 }
+
+const SIGNED_URL_TTL_SECONDS = 15 * 60;
+const COURSE_RESOURCES_BUCKET = "course-resources";
 
 export const courseResourceRepository = {
   async findById(id: string): Promise<CourseResource | null> {
@@ -96,6 +100,45 @@ export const courseResourceRepository = {
     if (error) {
       throw new InfrastructureError(ErrorCodes.DATABASE_ERROR, error.message);
     }
+  },
+
+  // Existencia rapida (head + count: 'exact' + limit 1) para decidir
+  // si renderizar el link "Recursos" en la nav del curso de la vista
+  // del estudiante (Bloque 20.3). Evita query completa solo para
+  // saber si hay >= 1 row.
+  async hasAnyForCourse(courseId: string): Promise<boolean> {
+    const supabase = await createClient();
+    const { count, error } = await supabase
+      .from("course_resources")
+      .select("*", { count: "exact", head: true })
+      .eq("course_id", courseId)
+      .limit(1);
+
+    if (error) {
+      throw new InfrastructureError(ErrorCodes.DATABASE_ERROR, error.message);
+    }
+    return (count ?? 0) > 0;
+  },
+
+  // Signed URL para descarga del archivo desde el bucket privado.
+  // TTL 15 min (mismo que lesson_attachments). Retorna null si el
+  // blob no existe (estado posible si hubo race condition durante
+  // upload o si el blob se perdio en cleanup). El caller filtra.
+  async getSignedUrl(storagePath: string): Promise<string | null> {
+    const supabase = await createClient();
+    const { data, error } = await supabase.storage
+      .from(COURSE_RESOURCES_BUCKET)
+      .createSignedUrl(storagePath, SIGNED_URL_TTL_SECONDS);
+
+    if (error || !data) {
+      logger.warn("getSignedUrl: course resource not found in storage", {
+        storagePath,
+        bucket: COURSE_RESOURCES_BUCKET,
+        supabaseError: error?.message,
+      });
+      return null;
+    }
+    return data.signedUrl;
   },
 
   // Suma de size_bytes para el calculo de quota (500 MB por curso).

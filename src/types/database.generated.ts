@@ -328,8 +328,6 @@ export type Database = {
           },
         ]
       }
-      // Manually added (Bloque 20.1, migracion 0030). Sera regenerado
-      // por MCP cuando Santiago aplique la migracion.
       course_resources: {
         Row: {
           course_id: string
@@ -1104,7 +1102,6 @@ export type Database = {
         | "certificate_issued"
         | "certificate_revoked"
         | "submission_received"
-      // Manually added (Bloque 20.1, migracion 0030).
       resource_kind: "file" | "link"
       submission_status: "draft" | "submitted" | "graded" | "returned"
       user_role: "student" | "teacher" | "admin"
@@ -1246,7 +1243,6 @@ export const Constants = {
         "certificate_revoked",
         "submission_received",
       ],
-      // Manually added (Bloque 20.1, migracion 0030).
       resource_kind: ["file", "link"],
       submission_status: ["draft", "submitted", "graded", "returned"],
       user_role: ["student", "teacher", "admin"],
