@@ -139,26 +139,38 @@ Sub-bloques (5):
 
 ### Bloque 20: Recursos del curso (material descargable + grabaciones)
 
-Status: pending
+Status: done (2026-05-22)
 
 Apartado dedicado para material descargable y links a grabaciones de clases.
 
-Funcionalidades:
-- Subir archivos (PDF, DOCX, slides, audios). Max 20 MB por archivo.
-- Agregar links externos (Zoom recordings, Drive, etc.).
-- Organización: recursos generales del curso + recursos por módulo.
-- Lista descargable visible para students enrolled.
-- Teacher asignado al curso y admin pueden agregar / editar / eliminar.
-- Dashboard de uso de Storage en panel admin (cuánto se ha consumido vs límite).
+Sub-bloques cerrados:
+- 20.1 foundation: schema + bucket + RLS + policy + service shell (commit ece6ac7, migración 0030).
+- 20.2 CRUD + upload flow + quota: validaciones Zod discriminadas (file vs link), upload directo cliente → Storage → server action con quota check (500 MB curso, 20 MB archivo, MIME whitelist), cleanup de blob huérfano si action falla. UI: CreateResourceDialog (Tabs), EditResourceDialog (solo metadata), DeleteResourceDialog (simple), ResourceListItem, StorageUsageBar. Nueva ruta /teacher/courses/[id]/edit/resources + sección Recursos en module detail (commit e026557).
+- 20.3 vista student: nueva ruta /learn/[courseId]/resources con signed URLs en paralelo (TTL 15 min), StudentResourceCard read-only, link "Recursos" condicional solo si hay >=1 recurso (commit 03b2368).
+- 20.4 cierre: SPRINTS.md actualizado, smoke productivo lo ejecuta Santiago.
 
-Decisiones técnicas:
-- Upload directo al browser usando supabase-js (NO pasar por server action; el límite de Next.js es 1 MB). El server action solo persiste la URL del archivo subido.
-- Storage: Supabase Storage en bucket nuevo `course-resources`.
-- Límite por curso: 500 MB.
-- Estructura del bucket: `course-resources/{courseId}/general/...` y `course-resources/{courseId}/modules/{moduleId}/...`.
-- RLS: student enrolled lee, teacher asignado escribe, admin escribe.
+Decisiones aplicadas (resumen del planning):
+- D1 MIME types: PDF, DOCX, PPTX/PPT, MP3, M4A. Sin MP4 video (link externo). Sin imágenes.
+- D2 quota: 500 MB por curso, 20 MB por archivo.
+- D3 upload: client-direct a Storage, server persiste metadata. Race condition aceptable, blob huérfano → cleanup B22.
+- D5 permisos: canEditCourseResources (admin OR teacher-asignado).
+- D6 sin reorder: sort created_at DESC.
+- D7 delete: simple confirm sin escribir título.
+- D8 lesson attachments editor: DIFERIDO a B22.
+- D9 admin storage panel cross-curso: DIFERIDO a B22.
+- A1: stat bar de uso "X MB / 500 MB" en /teacher/courses/[id]/edit/resources.
+- A4: link "Recursos" en /learn/[courseId] solo si hay >=1 recurso.
+- Sin audit log para create/update/delete de recursos (no son evento crítico per regla 8).
 
-Sub-bloques estimados: 4-5.
+Métricas del bloque:
+- 1 migración (0030): enum resource_kind + tabla course_resources + bucket course-resources + 4 policies tabla + 5 policies storage.
+- ~25 archivos nuevos + ~7 modificados.
+- +12 tests Zod en courses-validations.test.ts (suite total: 389/389).
+
+Deferred a Bloque 22:
+- Lesson attachments editor (deferral confirmada: el seed pobla los PDFs de lecciones).
+- Admin storage panel cross-curso.
+- Cleanup batch de blobs huérfanos en Storage (junto con avatars huérfanos).
 
 ### Bloque 21: Rediseño visual del dashboard + badges + módulos
 
