@@ -4,7 +4,7 @@
 
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { FileText, GraduationCap, Layers } from "lucide-react";
+import { ChevronRight, FileText, GraduationCap, Layers } from "lucide-react";
 import { profileRepository } from "@/modules/auth/data/profile.repository";
 import { courseRepository } from "@/modules/courses/data";
 import { canEditCourseContent } from "@/modules/courses/policies";
@@ -12,6 +12,7 @@ import { courseContentEditorService } from "@/modules/courses/services/course-co
 import { ModuleFormDialog } from "@/modules/courses/components/editor/module-form-dialog";
 import { DeleteModuleDialog } from "@/modules/courses/components/editor/delete-module-dialog";
 import { ReorderButtons } from "@/modules/courses/components/editor/reorder-buttons";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { requireUuidParam } from "@/lib/utils/params";
 
@@ -161,6 +162,14 @@ export default async function EditCoursePage({ params }: EditCoursePageProps) {
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
+                    <Button asChild variant="outline" size="sm">
+                      <Link
+                        href={`/teacher/courses/${courseId}/edit/modules/${entry.module.id}`}
+                      >
+                        Gestionar lecciones
+                        <ChevronRight className="ml-1 h-3.5 w-3.5" />
+                      </Link>
+                    </Button>
                     <ModuleFormDialog
                       mode="edit"
                       courseId={courseId}
@@ -180,7 +189,8 @@ export default async function EditCoursePage({ params }: EditCoursePageProps) {
       )}
 
       <p className="text-xs text-muted-foreground">
-        Edición de lecciones y tareas disponible desde 19.3 y 19.4.
+        Para editar lecciones de un módulo, abre &quot;Gestionar lecciones&quot;.
+        Edición de tareas disponible desde 19.4.
       </p>
     </div>
   );

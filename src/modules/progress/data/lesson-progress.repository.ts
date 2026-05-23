@@ -17,6 +17,22 @@ import { InfrastructureError } from "@/core/errors/classes";
 import { ErrorCodes } from "@/core/errors/codes";
 
 export const lessonProgressRepository = {
+  // Conteo de alumnos que completaron una leccion. Usado por el
+  // editor de contenidos (Bloque 19.3) para calcular el impacto de
+  // borrar una leccion. RLS filtra teacher a sus cursos / admin todo.
+  async countByLessonId(lessonId: string): Promise<number> {
+    const supabase = await createClient();
+    const { count, error } = await supabase
+      .from("lesson_progress")
+      .select("*", { count: "exact", head: true })
+      .eq("lesson_id", lessonId);
+
+    if (error) {
+      throw new InfrastructureError(ErrorCodes.DATABASE_ERROR, error.message);
+    }
+    return count ?? 0;
+  },
+
   async hasCompleted(userId: string, lessonId: string): Promise<boolean> {
     const supabase = await createClient();
     const { data, error } = await supabase

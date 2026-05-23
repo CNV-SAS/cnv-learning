@@ -24,6 +24,7 @@ import {
 import { assignmentRepository } from "@/modules/assignments/data";
 import { submissionRepository } from "@/modules/assignments/data";
 import { gradingRepository } from "@/modules/assignments/data";
+import { lessonProgressRepository } from "@/modules/progress/data";
 import { canEditCourseContent } from "@/modules/courses/policies";
 import { auditRepository } from "@/modules/audit/data";
 import {
@@ -35,7 +36,7 @@ import {
 import { ErrorCodes } from "@/core/errors/codes";
 import { ok, err, type Result } from "@/lib/utils/result";
 import type { AuthenticatedUser } from "@/modules/auth/types";
-import type { Module } from "@/modules/courses/types";
+import type { Lesson, LessonType, Module } from "@/modules/courses/types";
 
 export interface ModuleDeleteImpact {
   lessonCount: number;
@@ -47,6 +48,20 @@ export interface ModuleDeleteImpact {
 export interface ModuleWithImpact {
   module: Module;
   impact: ModuleDeleteImpact;
+}
+
+export interface LessonDeleteImpact {
+  // Conteo de alumnos que marcaron la leccion como completada. La
+  // unica dependencia que bloquea: borrar la leccion cascadea esos
+  // rows y borra data del cohorte. Lesson_attachments cascadean pero
+  // son contenido del docente (no bloquean; cleanup de Storage queda
+  // en Bloque 22).
+  progressCount: number;
+}
+
+export interface LessonWithImpact {
+  lesson: Lesson;
+  impact: LessonDeleteImpact;
 }
 
 // Resuelve el context comun de canEditCourseContent + existencia del
@@ -356,6 +371,249 @@ export const courseContentEditorService = {
     await moduleRepository.swapPositions(
       module.course_id,
       module.position,
+      neighbor.position,
+    );
+
+    return ok(undefined);
+  },
+
+  // -----------------------------------------------------------------
+  // Lessons CRUD (Bloque 19.3)
+  // -----------------------------------------------------------------
+
+  async listLessonsWithImpact(
+    moduleId: string,
+  ): Promise<LessonWithImpact[]> {
+    const lessons = await lessonRepository.listByModule(moduleId);
+    const entries = await Promise.all(
+      lessons.map(async (lesson) => {
+        const progressCount =
+          await lessonProgressRepository.countByLessonId(lesson.id);
+        return { lesson, impact: { progressCount } };
+      }),
+    );
+    return entries;
+  },
+
+  async createLesson(params: {
+    user: AuthenticatedUser;
+    moduleId: string;
+    title: string;
+    type: LessonType;
+    contentMarkdown: string | null;
+    videoUrl: string | null;
+    durationMinutes: number | null;
+  }): Promise<Result<Lesson, AppError>> {
+    const module = await moduleRepository.findById(params.moduleId);
+    if (!module) {
+      return err(
+        new NotFoundError(
+          ErrorCodes.MODULE_NOT_FOUND,
+          "Módulo no encontrado.",
+        ),
+      );
+    }
+    const auth = await authorizeCourseEdit(params.user, module.course_id);
+    if (!auth.ok) return err(auth.error);
+
+    const max = await lessonRepository.maxPosition(params.moduleId);
+    const nextPosition = (max ?? 0) + 1;
+
+    const lesson = await lessonRepository.create({
+      module_id: params.moduleId,
+      title: params.title,
+      type: params.type,
+      content_markdown: params.contentMarkdown,
+      video_url: params.videoUrl,
+      duration_minutes: params.durationMinutes,
+      position: nextPosition,
+    });
+
+    return ok(lesson);
+  },
+
+  async updateLesson(params: {
+    user: AuthenticatedUser;
+    lessonId: string;
+    title: string;
+    type: LessonType;
+    contentMarkdown: string | null;
+    videoUrl: string | null;
+    durationMinutes: number | null;
+  }): Promise<Result<Lesson, AppError>> {
+    const lesson = await lessonRepository.findById(params.lessonId);
+    if (!lesson) {
+      return err(
+        new NotFoundError(
+          ErrorCodes.LESSON_NOT_FOUND,
+          "Lección no encontrada.",
+        ),
+      );
+    }
+    const module = await moduleRepository.findById(lesson.module_id);
+    if (!module) {
+      return err(
+        new NotFoundError(
+          ErrorCodes.MODULE_NOT_FOUND,
+          "Módulo no encontrado.",
+        ),
+      );
+    }
+    const auth = await authorizeCourseEdit(params.user, module.course_id);
+    if (!auth.ok) return err(auth.error);
+
+    const updated = await lessonRepository.update(params.lessonId, {
+      title: params.title,
+      type: params.type,
+      content_markdown: params.contentMarkdown,
+      video_url: params.videoUrl,
+      duration_minutes: params.durationMinutes,
+    });
+
+    return ok(updated);
+  },
+
+  async getLessonDeleteImpact(params: {
+    user: AuthenticatedUser;
+    lessonId: string;
+  }): Promise<Result<LessonDeleteImpact, AppError>> {
+    const lesson = await lessonRepository.findById(params.lessonId);
+    if (!lesson) {
+      return err(
+        new NotFoundError(
+          ErrorCodes.LESSON_NOT_FOUND,
+          "Lección no encontrada.",
+        ),
+      );
+    }
+    const module = await moduleRepository.findById(lesson.module_id);
+    if (!module) {
+      return err(
+        new NotFoundError(
+          ErrorCodes.MODULE_NOT_FOUND,
+          "Módulo no encontrado.",
+        ),
+      );
+    }
+    const auth = await authorizeCourseEdit(params.user, module.course_id);
+    if (!auth.ok) return err(auth.error);
+
+    const progressCount = await lessonProgressRepository.countByLessonId(
+      params.lessonId,
+    );
+
+    return ok({ progressCount });
+  },
+
+  async deleteLesson(params: {
+    user: AuthenticatedUser;
+    lessonId: string;
+  }): Promise<Result<void, AppError>> {
+    const lesson = await lessonRepository.findById(params.lessonId);
+    if (!lesson) {
+      return err(
+        new NotFoundError(
+          ErrorCodes.LESSON_NOT_FOUND,
+          "Lección no encontrada.",
+        ),
+      );
+    }
+    const module = await moduleRepository.findById(lesson.module_id);
+    if (!module) {
+      return err(
+        new NotFoundError(
+          ErrorCodes.MODULE_NOT_FOUND,
+          "Módulo no encontrado.",
+        ),
+      );
+    }
+    const auth = await authorizeCourseEdit(params.user, module.course_id);
+    if (!auth.ok) return err(auth.error);
+
+    const progressCount = await lessonProgressRepository.countByLessonId(
+      params.lessonId,
+    );
+    if (progressCount > 0) {
+      return err(
+        new DomainError(
+          ErrorCodes.LESSON_HAS_DEPENDENCIES,
+          `La lección tiene progreso registrado: ${progressCount} alumno${progressCount === 1 ? "" : "s"}.`,
+        ),
+      );
+    }
+
+    // Audit ANTES del delete con snapshot completo (regla 8).
+    await auditRepository.record({
+      event: "course_lesson.deleted",
+      resourceType: "lesson",
+      resourceId: lesson.id,
+      actorId: params.user.id,
+      actorEmail: params.user.email,
+      metadata: {
+        snapshot: {
+          id: lesson.id,
+          module_id: lesson.module_id,
+          title: lesson.title,
+          type: lesson.type,
+          content_markdown: lesson.content_markdown,
+          video_url: lesson.video_url,
+          position: lesson.position,
+          duration_minutes: lesson.duration_minutes,
+          created_at: lesson.created_at,
+          updated_at: lesson.updated_at,
+        },
+      },
+    });
+
+    await lessonRepository.delete(params.lessonId);
+    return ok(undefined);
+  },
+
+  async reorderLesson(params: {
+    user: AuthenticatedUser;
+    lessonId: string;
+    direction: "up" | "down";
+  }): Promise<Result<void, AppError>> {
+    const lesson = await lessonRepository.findById(params.lessonId);
+    if (!lesson) {
+      return err(
+        new NotFoundError(
+          ErrorCodes.LESSON_NOT_FOUND,
+          "Lección no encontrada.",
+        ),
+      );
+    }
+    const module = await moduleRepository.findById(lesson.module_id);
+    if (!module) {
+      return err(
+        new NotFoundError(
+          ErrorCodes.MODULE_NOT_FOUND,
+          "Módulo no encontrado.",
+        ),
+      );
+    }
+    const auth = await authorizeCourseEdit(params.user, module.course_id);
+    if (!auth.ok) return err(auth.error);
+
+    const all = await lessonRepository.listByModule(lesson.module_id);
+    const idx = all.findIndex((l) => l.id === params.lessonId);
+    const neighborIdx = params.direction === "up" ? idx - 1 : idx + 1;
+    const neighbor = all[neighborIdx];
+
+    if (!neighbor) {
+      return err(
+        new DomainError(
+          ErrorCodes.LESSON_REORDER_NO_NEIGHBOR,
+          params.direction === "up"
+            ? "La lección ya está en la primera posición."
+            : "La lección ya está en la última posición.",
+        ),
+      );
+    }
+
+    await lessonRepository.swapPositions(
+      lesson.module_id,
+      lesson.position,
       neighbor.position,
     );
 

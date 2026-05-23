@@ -1018,6 +1018,12 @@ export type Database = {
         Args: { p_course_id: string; p_pos_a: number; p_pos_b: number }
         Returns: undefined
       }
+      // Manually added (Bloque 19.3, migracion 0028). Sera regenerado
+      // por `supabase gen types` cuando Santiago aplique la migracion.
+      swap_lesson_positions: {
+        Args: { p_module_id: string; p_pos_a: number; p_pos_b: number }
+        Returns: undefined
+      }
     }
     Enums: {
       assignment_type: "file_upload" | "quiz_multiple_choice" | "essay"

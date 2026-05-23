@@ -2,3 +2,7 @@ export { createModuleAction } from "./create-module.action";
 export { updateModuleAction } from "./update-module.action";
 export { deleteModuleAction } from "./delete-module.action";
 export { reorderModuleAction } from "./reorder-module.action";
+export { createLessonAction } from "./create-lesson.action";
+export { updateLessonAction } from "./update-lesson.action";
+export { deleteLessonAction } from "./delete-lesson.action";
+export { reorderLessonAction } from "./reorder-lesson.action";

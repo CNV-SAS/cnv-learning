@@ -11,5 +11,6 @@ import type { Database } from "@/types/database.generated";
 export type Course = Database["public"]["Tables"]["courses"]["Row"];
 export type Module = Database["public"]["Tables"]["modules"]["Row"];
 export type Lesson = Database["public"]["Tables"]["lessons"]["Row"];
+export type LessonType = Database["public"]["Enums"]["lesson_type"];
 export type LessonAttachment =
   Database["public"]["Tables"]["lesson_attachments"]["Row"];
