@@ -10,3 +10,7 @@ export {
   canCompleteLesson,
   type LessonCompleteContext,
 } from "./can-complete-lesson";
+export {
+  canEditCourseContent,
+  type CourseContentEditContext,
+} from "./can-edit-course-content";

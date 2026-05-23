@@ -9,6 +9,7 @@ import { canAccessTeacherPanel } from "@/modules/auth/policies/can-access-teache
 import { canViewCourse } from "@/modules/courses/policies/can-view-course";
 import { canViewLesson } from "@/modules/courses/policies/can-view-lesson";
 import { canCompleteLesson } from "@/modules/courses/policies/can-complete-lesson";
+import { canEditCourseContent } from "@/modules/courses/policies/can-edit-course-content";
 import { canSubmitAssignment } from "@/modules/assignments/policies/can-submit-assignment";
 import { canGradeAssignment } from "@/modules/assignments/policies/can-grade-assignment";
 import { canViewGrading } from "@/modules/assignments/policies/can-view-grading";
@@ -163,6 +164,53 @@ describe("canCompleteLesson (S1.3)", () => {
   it("teacher NO completa (no registra progreso)", () => {
     expect(
       canCompleteLesson(makeUser("teacher"), { lessonExists: true }),
+    ).toBe(false);
+  });
+});
+
+describe("canEditCourseContent (Bloque 19)", () => {
+  it("admin edita cualquier curso que existe", () => {
+    expect(
+      canEditCourseContent(makeUser("admin"), {
+        courseExists: true,
+        isTeacherOfCourse: false,
+      }),
+    ).toBe(true);
+  });
+
+  it("admin NO edita curso inexistente (defense in depth)", () => {
+    expect(
+      canEditCourseContent(makeUser("admin"), {
+        courseExists: false,
+        isTeacherOfCourse: false,
+      }),
+    ).toBe(false);
+  });
+
+  it("teacher asignado edita el curso", () => {
+    expect(
+      canEditCourseContent(makeUser("teacher"), {
+        courseExists: true,
+        isTeacherOfCourse: true,
+      }),
+    ).toBe(true);
+  });
+
+  it("teacher NO asignado NO edita (aunque el curso exista)", () => {
+    expect(
+      canEditCourseContent(makeUser("teacher"), {
+        courseExists: true,
+        isTeacherOfCourse: false,
+      }),
+    ).toBe(false);
+  });
+
+  it("student NO edita nunca", () => {
+    expect(
+      canEditCourseContent(makeUser("student"), {
+        courseExists: true,
+        isTeacherOfCourse: false,
+      }),
     ).toBe(false);
   });
 });

@@ -100,12 +100,22 @@ Funcionalidades:
 - CRUD de tareas (crear, editar, eliminar).
 - Vista previa del contenido como lo ve el estudiante.
 
-Decisiones técnicas:
-- Rich text editor: Tiptap.
-- Permisos: teacher asignado al curso + admin.
-- Sin versionado de contenido (v1.2).
+Decisiones técnicas (revisadas durante planning del Bloque 19, 2026-05-22):
+- Rich text editor: **textarea + preview en vivo** (no Tiptap). El stack `react-markdown + remark-gfm` ya está instalado para el render del alumno; cero dependencias nuevas. Tiptap aporta WYSIWYG pero suma ~6 paquetes y ~150KB de bundle; el cohorte médico no presenta fricción documentada con markdown básico. Se reevalúa en v1.2 si docentes reportan fricción real.
+- Reordenamiento: flechas ↑↓ por item (no drag-and-drop). 10 módulos por curso máximo + 10 lessons por módulo no justifica `@dnd-kit`.
+- Borrado: blocking estricto. Si el módulo/lección/tarea tiene datos asociados (lessons, submissions, gradings, etc.), bloquear delete con mensaje contextual que enumera qué bloquea. Soft delete con `deleted_at` se difiere al Bloque 22.
+- Permisos: admin OR (teacher AND isTeacherOfCourse). Policy `canEditCourseContent` siguiendo el modelo de `canEmitCourseAnnouncement`.
+- Validación: max_score 1-100 (sistema opera 0-100), weight 0-100 con validación de suma ≤100 del curso (informativo en MVP; el cálculo ponderado real se difiere a v1.2).
+- Quiz editor (preguntas + opciones de quiz_multiple_choice) y attachments (PDFs) se difieren: quiz editor a v1.2, attachments al Bloque 20 (Recursos) para no duplicar.
+- Audit log de deletes: 3 eventos nuevos (`course_module.deleted`, `course_lesson.deleted`, `course_assignment.deleted`) con snapshot completo del objeto en metadata. Creates y updates NO se auditan.
+- Preview "como alumno": misma lesson page del student con flag `previewMode=true` que desactiva side effects (markLessonCompleted, last_visited, etc.).
 
-Sub-bloques estimados: 5-7.
+Sub-bloques (5):
+- 19.1: Foundation (policy + service shell + landing page + CTA en panel docente).
+- 19.2: CRUD módulos (incluyendo reorder con flechas).
+- 19.3: CRUD lecciones con textarea + preview en vivo (incluyendo reorder).
+- 19.4: CRUD assignments (sin position; sin quiz editor).
+- 19.5: Preview "como alumno" + cierre.
 
 ### Bloque 20: Recursos del curso (material descargable + grabaciones)
 

@@ -19,6 +19,7 @@ import {
   GraduationCap,
   Inbox,
   Megaphone,
+  Pencil,
   Users,
 } from "lucide-react";
 import { format } from "date-fns";
@@ -105,6 +106,12 @@ function CourseSection({
               >
                 <Megaphone className="mr-2 h-3.5 w-3.5" />
                 Nuevo anuncio
+              </Link>
+            </Button>
+            <Button asChild variant="outline" size="sm">
+              <Link href={`/teacher/courses/${overview.course.id}/edit`}>
+                <Pencil className="mr-2 h-3.5 w-3.5" />
+                Editar contenido
               </Link>
             </Button>
             <Button asChild variant="outline" size="sm">
