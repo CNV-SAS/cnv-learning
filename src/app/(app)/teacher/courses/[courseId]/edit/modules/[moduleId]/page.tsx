@@ -10,12 +10,13 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import {
-  FileVideo,
+  CalendarClock,
+  Eye,
   FileText,
+  FileVideo,
   GraduationCap,
   Layers,
   Users,
-  CalendarClock,
 } from "lucide-react";
 import { profileRepository } from "@/modules/auth/data/profile.repository";
 import {
@@ -29,6 +30,7 @@ import { DeleteLessonDialog } from "@/modules/courses/components/editor/delete-l
 import { ReorderLessonButtons } from "@/modules/courses/components/editor/reorder-lesson-buttons";
 import { AssignmentFormDialog } from "@/modules/courses/components/editor/assignment-form-dialog";
 import { DeleteAssignmentDialog } from "@/modules/courses/components/editor/delete-assignment-dialog";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { requireUuidParam } from "@/lib/utils/params";
 import { formatBogotaDateTimeShort } from "@/lib/utils/format-date";
@@ -203,6 +205,14 @@ export default async function ModuleEditPage({ params }: ModuleEditPageProps) {
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
+                      <Button asChild variant="outline" size="sm">
+                        <Link
+                          href={`/teacher/courses/${courseId}/preview/lesson/${entry.lesson.id}`}
+                        >
+                          <Eye className="mr-2 h-3.5 w-3.5" />
+                          Preview
+                        </Link>
+                      </Button>
                       <LessonFormDialog
                         mode="edit"
                         moduleId={moduleId}

@@ -15,14 +15,28 @@ interface LessonNavProps {
   courseId: string;
   prev: Lesson | null;
   next: Lesson | null;
+  // Callback opcional para construir las URLs prev/next. Default: la
+  // ruta del estudiante /learn/[courseId]/lesson/[lessonId]. La
+  // preview del docente (Bloque 19.5) pasa un builder distinto para
+  // mantener la navegacion dentro de /teacher/.../preview/...
+  urlBuilder?: (courseId: string, lessonId: string) => string;
 }
 
-export function LessonNav({ courseId, prev, next }: LessonNavProps) {
+function defaultUrlBuilder(courseId: string, lessonId: string): string {
+  return `/learn/${courseId}/lesson/${lessonId}`;
+}
+
+export function LessonNav({
+  courseId,
+  prev,
+  next,
+  urlBuilder = defaultUrlBuilder,
+}: LessonNavProps) {
   return (
     <div className="flex items-center justify-between gap-3">
       {prev ? (
         <Button asChild variant="outline">
-          <Link href={`/learn/${courseId}/lesson/${prev.id}`}>
+          <Link href={urlBuilder(courseId, prev.id)}>
             <ArrowLeft className="mr-2 h-4 w-4" />
             Anterior
           </Link>
@@ -35,7 +49,7 @@ export function LessonNav({ courseId, prev, next }: LessonNavProps) {
       )}
       {next ? (
         <Button asChild variant="outline">
-          <Link href={`/learn/${courseId}/lesson/${next.id}`}>
+          <Link href={urlBuilder(courseId, next.id)}>
             Siguiente
             <ArrowRight className="ml-2 h-4 w-4" />
           </Link>

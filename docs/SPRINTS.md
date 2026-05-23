@@ -90,7 +90,19 @@ Features post-MVP críticas antes del lanzamiento real con los 10 alumnos del co
 
 ### Bloque 19: Editor de contenidos para docentes
 
-Status: pending
+Status: done (2026-05-22)
+
+Sub-bloques cerrados:
+- 19.1 foundation + landing page (commit b365c74).
+- 19.2 CRUD módulos + reorder + audit course_module.deleted (commit 216c965, migración 0027).
+- 19.3 CRUD lecciones con textarea + preview en vivo + reorder + audit course_lesson.deleted (commit 8a604b3, migración 0028).
+- 19.4 CRUD tareas (assignments) sin reorder + audit course_assignment.deleted (commit 894e1e9, migración 0029).
+- 19.5 preview "como alumno" para docente + cierre del Bloque 19.
+
+Deferred a v1.2: editor de preguntas/opciones de quiz_multiple_choice. La cabecera del quiz se crea normalmente en 19.4.
+
+Deferred a Bloque 20 (Recursos): editor de attachments (PDFs adjuntos a lecciones).
+
 
 UI para que el teacher gestione módulos, lecciones y tareas del curso sin tocar BD directamente.
 
