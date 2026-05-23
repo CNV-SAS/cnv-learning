@@ -328,6 +328,78 @@ export type Database = {
           },
         ]
       }
+      // Manually added (Bloque 20.1, migracion 0030). Sera regenerado
+      // por MCP cuando Santiago aplique la migracion.
+      course_resources: {
+        Row: {
+          course_id: string
+          created_at: string
+          created_by: string | null
+          description: string | null
+          external_url: string | null
+          id: string
+          kind: Database["public"]["Enums"]["resource_kind"]
+          mime_type: string | null
+          module_id: string | null
+          size_bytes: number | null
+          storage_path: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          course_id: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          external_url?: string | null
+          id?: string
+          kind: Database["public"]["Enums"]["resource_kind"]
+          mime_type?: string | null
+          module_id?: string | null
+          size_bytes?: number | null
+          storage_path?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          course_id?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          external_url?: string | null
+          id?: string
+          kind?: Database["public"]["Enums"]["resource_kind"]
+          mime_type?: string | null
+          module_id?: string | null
+          size_bytes?: number | null
+          storage_path?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "course_resources_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "course_resources_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "course_resources_module_id_fkey"
+            columns: ["module_id"]
+            isOneToOne: false
+            referencedRelation: "modules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       course_teachers: {
         Row: {
           assigned_at: string
@@ -1032,6 +1104,8 @@ export type Database = {
         | "certificate_issued"
         | "certificate_revoked"
         | "submission_received"
+      // Manually added (Bloque 20.1, migracion 0030).
+      resource_kind: "file" | "link"
       submission_status: "draft" | "submitted" | "graded" | "returned"
       user_role: "student" | "teacher" | "admin"
     }
@@ -1172,6 +1246,8 @@ export const Constants = {
         "certificate_revoked",
         "submission_received",
       ],
+      // Manually added (Bloque 20.1, migracion 0030).
+      resource_kind: ["file", "link"],
       submission_status: ["draft", "submitted", "graded", "returned"],
       user_role: ["student", "teacher", "admin"],
     },

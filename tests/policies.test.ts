@@ -10,6 +10,7 @@ import { canViewCourse } from "@/modules/courses/policies/can-view-course";
 import { canViewLesson } from "@/modules/courses/policies/can-view-lesson";
 import { canCompleteLesson } from "@/modules/courses/policies/can-complete-lesson";
 import { canEditCourseContent } from "@/modules/courses/policies/can-edit-course-content";
+import { canEditCourseResources } from "@/modules/courses/policies/can-edit-course-resources";
 import { canSubmitAssignment } from "@/modules/assignments/policies/can-submit-assignment";
 import { canGradeAssignment } from "@/modules/assignments/policies/can-grade-assignment";
 import { canViewGrading } from "@/modules/assignments/policies/can-view-grading";
@@ -208,6 +209,53 @@ describe("canEditCourseContent (Bloque 19)", () => {
   it("student NO edita nunca", () => {
     expect(
       canEditCourseContent(makeUser("student"), {
+        courseExists: true,
+        isTeacherOfCourse: false,
+      }),
+    ).toBe(false);
+  });
+});
+
+describe("canEditCourseResources (Bloque 20)", () => {
+  it("admin edita recursos de cualquier curso que existe", () => {
+    expect(
+      canEditCourseResources(makeUser("admin"), {
+        courseExists: true,
+        isTeacherOfCourse: false,
+      }),
+    ).toBe(true);
+  });
+
+  it("admin NO edita si el curso no existe (defense in depth)", () => {
+    expect(
+      canEditCourseResources(makeUser("admin"), {
+        courseExists: false,
+        isTeacherOfCourse: false,
+      }),
+    ).toBe(false);
+  });
+
+  it("teacher asignado edita recursos del curso", () => {
+    expect(
+      canEditCourseResources(makeUser("teacher"), {
+        courseExists: true,
+        isTeacherOfCourse: true,
+      }),
+    ).toBe(true);
+  });
+
+  it("teacher NO asignado NO edita", () => {
+    expect(
+      canEditCourseResources(makeUser("teacher"), {
+        courseExists: true,
+        isTeacherOfCourse: false,
+      }),
+    ).toBe(false);
+  });
+
+  it("student NO edita nunca", () => {
+    expect(
+      canEditCourseResources(makeUser("student"), {
         courseExists: true,
         isTeacherOfCourse: false,
       }),

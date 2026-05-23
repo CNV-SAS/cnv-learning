@@ -14,3 +14,6 @@ export type Lesson = Database["public"]["Tables"]["lessons"]["Row"];
 export type LessonType = Database["public"]["Enums"]["lesson_type"];
 export type LessonAttachment =
   Database["public"]["Tables"]["lesson_attachments"]["Row"];
+export type CourseResource =
+  Database["public"]["Tables"]["course_resources"]["Row"];
+export type ResourceKind = Database["public"]["Enums"]["resource_kind"];

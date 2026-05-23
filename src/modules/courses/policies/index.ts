@@ -14,3 +14,7 @@ export {
   canEditCourseContent,
   type CourseContentEditContext,
 } from "./can-edit-course-content";
+export {
+  canEditCourseResources,
+  type CourseResourceEditContext,
+} from "./can-edit-course-resources";
