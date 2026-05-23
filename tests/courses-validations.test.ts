@@ -10,6 +10,8 @@ import {
   reorderLessonSchema,
   createAssignmentSchema,
   updateAssignmentSchema,
+  createCourseResourceSchema,
+  updateCourseResourceSchema,
 } from "@/modules/courses/validations";
 
 const VALID_UUID = "11111111-1111-4111-8111-111111111111";
@@ -434,5 +436,136 @@ describe("updateAssignmentSchema", () => {
     if (result.success) {
       expect(result.data.description).toBeNull();
     }
+  });
+});
+
+describe("createCourseResourceSchema (Bloque 20.2)", () => {
+  it("acepta file resource con storage_path + size + mime", () => {
+    const result = createCourseResourceSchema.safeParse({
+      courseId: VALID_UUID,
+      moduleId: null,
+      kind: "file",
+      title: "Guia de bioimpedancia",
+      storagePath: `${VALID_UUID}/general/${VALID_UUID}.pdf`,
+      sizeBytes: 1024 * 1024,
+      mimeType: "application/pdf",
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("acepta link resource con external_url valido", () => {
+    const result = createCourseResourceSchema.safeParse({
+      courseId: VALID_UUID,
+      moduleId: null,
+      kind: "link",
+      title: "Grabacion Zoom",
+      externalUrl: "https://zoom.us/rec/share/abc",
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("acepta moduleId set (scope modulo)", () => {
+    const result = createCourseResourceSchema.safeParse({
+      courseId: VALID_UUID,
+      moduleId: VALID_UUID,
+      kind: "link",
+      title: "Lectura recomendada",
+      externalUrl: "https://drive.google.com/file/d/abc",
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("rechaza file sin storagePath (superRefine)", () => {
+    const result = createCourseResourceSchema.safeParse({
+      courseId: VALID_UUID,
+      kind: "file",
+      title: "Sin archivo",
+      sizeBytes: 1000,
+      mimeType: "application/pdf",
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("rechaza file sin sizeBytes (superRefine)", () => {
+    const result = createCourseResourceSchema.safeParse({
+      courseId: VALID_UUID,
+      kind: "file",
+      title: "Sin size",
+      storagePath: "path/foo.pdf",
+      mimeType: "application/pdf",
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("rechaza link sin externalUrl (superRefine)", () => {
+    const result = createCourseResourceSchema.safeParse({
+      courseId: VALID_UUID,
+      kind: "link",
+      title: "Sin URL",
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("rechaza link con URL invalida", () => {
+    const result = createCourseResourceSchema.safeParse({
+      courseId: VALID_UUID,
+      kind: "link",
+      title: "URL mala",
+      externalUrl: "no-es-url",
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("rechaza sizeBytes > 20MB", () => {
+    const result = createCourseResourceSchema.safeParse({
+      courseId: VALID_UUID,
+      kind: "file",
+      title: "Muy grande",
+      storagePath: "path/big.pdf",
+      sizeBytes: 21 * 1024 * 1024,
+      mimeType: "application/pdf",
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("rechaza title < 3 chars", () => {
+    const result = createCourseResourceSchema.safeParse({
+      courseId: VALID_UUID,
+      kind: "link",
+      title: "ab",
+      externalUrl: "https://x.com",
+    });
+    expect(result.success).toBe(false);
+  });
+});
+
+describe("updateCourseResourceSchema (Bloque 20.2)", () => {
+  it("acepta title + description", () => {
+    const result = updateCourseResourceSchema.safeParse({
+      resourceId: VALID_UUID,
+      title: "Nuevo titulo",
+      description: "Descripcion actualizada",
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("normaliza description vacia a null", () => {
+    const result = updateCourseResourceSchema.safeParse({
+      resourceId: VALID_UUID,
+      title: "Titulo",
+      description: "   ",
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.description).toBeNull();
+    }
+  });
+
+  it("rechaza resourceId mal formado", () => {
+    const result = updateCourseResourceSchema.safeParse({
+      resourceId: "not-uuid",
+      title: "Titulo",
+    });
+    expect(result.success).toBe(false);
   });
 });

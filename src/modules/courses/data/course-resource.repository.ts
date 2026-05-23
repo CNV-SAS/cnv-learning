@@ -12,7 +12,16 @@
 import { createClient } from "@/lib/supabase/server";
 import { InfrastructureError } from "@/core/errors/classes";
 import { ErrorCodes } from "@/core/errors/codes";
+import type { Database } from "@/types/database.generated";
 import type { CourseResource } from "../types";
+
+type CourseResourceInsert =
+  Database["public"]["Tables"]["course_resources"]["Insert"];
+
+export interface UpdateCourseResourceInput {
+  title: string;
+  description: string | null;
+}
 
 export const courseResourceRepository = {
   async findById(id: string): Promise<CourseResource | null> {
@@ -46,6 +55,47 @@ export const courseResourceRepository = {
       throw new InfrastructureError(ErrorCodes.DATABASE_ERROR, error.message);
     }
     return data ?? [];
+  },
+
+  async create(input: CourseResourceInsert): Promise<CourseResource> {
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from("course_resources")
+      .insert(input)
+      .select("*")
+      .single();
+    if (error) {
+      throw new InfrastructureError(ErrorCodes.DATABASE_ERROR, error.message);
+    }
+    return data;
+  },
+
+  async update(
+    id: string,
+    input: UpdateCourseResourceInput,
+  ): Promise<CourseResource> {
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from("course_resources")
+      .update(input)
+      .eq("id", id)
+      .select("*")
+      .single();
+    if (error) {
+      throw new InfrastructureError(ErrorCodes.DATABASE_ERROR, error.message);
+    }
+    return data;
+  },
+
+  async delete(id: string): Promise<void> {
+    const supabase = await createClient();
+    const { error } = await supabase
+      .from("course_resources")
+      .delete()
+      .eq("id", id);
+    if (error) {
+      throw new InfrastructureError(ErrorCodes.DATABASE_ERROR, error.message);
+    }
   },
 
   // Suma de size_bytes para el calculo de quota (500 MB por curso).

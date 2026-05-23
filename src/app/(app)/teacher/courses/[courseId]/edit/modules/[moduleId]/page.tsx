@@ -25,6 +25,9 @@ import {
 } from "@/modules/courses/data";
 import { canEditCourseContent } from "@/modules/courses/policies";
 import { courseContentEditorService } from "@/modules/courses/services/course-content-editor.service";
+import { courseResourceService } from "@/modules/courses/services/course-resource.service";
+import { CreateResourceDialog } from "@/modules/courses/components/editor/create-resource-dialog";
+import { ResourceListItem } from "@/modules/courses/components/editor/resource-list-item";
 import { LessonFormDialog } from "@/modules/courses/components/editor/lesson-form-dialog";
 import { DeleteLessonDialog } from "@/modules/courses/components/editor/delete-lesson-dialog";
 import { ReorderLessonButtons } from "@/modules/courses/components/editor/reorder-lesson-buttons";
@@ -82,10 +85,13 @@ export default async function ModuleEditPage({ params }: ModuleEditPageProps) {
     notFound();
   }
 
-  const [lessonsWithImpact, assignmentsWithImpact] = await Promise.all([
-    courseContentEditorService.listLessonsWithImpact(moduleId),
-    courseContentEditorService.listAssignmentsWithImpact(moduleId),
-  ]);
+  const [lessonsWithImpact, assignmentsWithImpact, resourcesGrouped] =
+    await Promise.all([
+      courseContentEditorService.listLessonsWithImpact(moduleId),
+      courseContentEditorService.listAssignmentsWithImpact(moduleId),
+      courseResourceService.listByCourseGrouped(courseId),
+    ]);
+  const moduleResources = resourcesGrouped.byModule.get(moduleId) ?? [];
 
   return (
     <div className="mx-auto max-w-5xl space-y-8">
@@ -314,6 +320,32 @@ export default async function ModuleEditPage({ params }: ModuleEditPageProps) {
                     </div>
                   </CardContent>
                 </Card>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      {/* Recursos del modulo (Bloque 20.2) */}
+      <section className="space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 className="font-display text-xl font-bold tracking-tight">
+            Recursos del módulo
+          </h2>
+          <CreateResourceDialog courseId={courseId} moduleId={moduleId} />
+        </div>
+
+        {moduleResources.length === 0 ? (
+          <Card>
+            <CardContent className="py-6 text-center text-sm text-muted-foreground">
+              Este módulo aún no tiene recursos.
+            </CardContent>
+          </Card>
+        ) : (
+          <ul className="space-y-3">
+            {moduleResources.map((resource) => (
+              <li key={resource.id}>
+                <ResourceListItem resource={resource} />
               </li>
             ))}
           </ul>

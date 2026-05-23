@@ -9,3 +9,6 @@ export { reorderLessonAction } from "./reorder-lesson.action";
 export { createAssignmentAction } from "./create-assignment.action";
 export { updateAssignmentAction } from "./update-assignment.action";
 export { deleteAssignmentAction } from "./delete-assignment.action";
+export { createCourseResourceAction } from "./create-resource.action";
+export { updateCourseResourceAction } from "./update-resource.action";
+export { deleteCourseResourceAction } from "./delete-resource.action";

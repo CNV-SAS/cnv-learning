@@ -4,7 +4,12 @@
 
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { ChevronRight, GraduationCap, Layers } from "lucide-react";
+import {
+  ChevronRight,
+  FolderOpen,
+  GraduationCap,
+  Layers,
+} from "lucide-react";
 import { profileRepository } from "@/modules/auth/data/profile.repository";
 import { courseRepository } from "@/modules/courses/data";
 import { canEditCourseContent } from "@/modules/courses/policies";
@@ -80,7 +85,15 @@ export default async function EditCoursePage({ params }: EditCoursePageProps) {
             inscritos.
           </p>
         </div>
-        <ModuleFormDialog mode="create" courseId={courseId} />
+        <div className="flex flex-wrap items-center gap-2">
+          <Button asChild variant="outline">
+            <Link href={`/teacher/courses/${courseId}/edit/resources`}>
+              <FolderOpen className="mr-2 h-4 w-4" />
+              Recursos del curso
+            </Link>
+          </Button>
+          <ModuleFormDialog mode="create" courseId={courseId} />
+        </div>
       </div>
 
       <Card>

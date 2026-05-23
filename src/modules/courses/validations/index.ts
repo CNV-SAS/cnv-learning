@@ -42,3 +42,15 @@ export {
   deleteAssignmentSchema,
   type DeleteAssignmentInput,
 } from "./delete-assignment";
+export {
+  createCourseResourceSchema,
+  type CreateCourseResourceInput,
+} from "./create-resource";
+export {
+  updateCourseResourceSchema,
+  type UpdateCourseResourceInput,
+} from "./update-resource";
+export {
+  deleteCourseResourceSchema,
+  type DeleteCourseResourceInput,
+} from "./delete-resource";
