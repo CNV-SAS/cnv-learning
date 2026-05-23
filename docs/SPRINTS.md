@@ -97,7 +97,15 @@ Sub-bloques cerrados:
 - 19.2 CRUD módulos + reorder + audit course_module.deleted (commit 216c965, migración 0027).
 - 19.3 CRUD lecciones con textarea + preview en vivo + reorder + audit course_lesson.deleted (commit 8a604b3, migración 0028).
 - 19.4 CRUD tareas (assignments) sin reorder + audit course_assignment.deleted (commit 894e1e9, migración 0029).
-- 19.5 preview "como alumno" para docente + cierre del Bloque 19.
+- 19.5 preview "como alumno" para docente + cierre del Bloque 19 (commit e49b40b).
+
+Fixes post-smoke (commit e6a72bb):
+- Bug crítico: toast "Invalid UUID" al crear/editar/reordenar contenido. El Bloque 19 introdujo `z.string().uuid()` (RFC 4122 estricto) en 11 schemas, que rechaza los UUIDs v0 del seed. Reemplazo por `z.string().regex(UUID_FORMAT, ...)`, el patrón ya establecido en el resto del codebase. Comment de `lib/utils/uuid.ts` reforzado para prevenir recurrencia.
+- Bug visual: conteos de lecciones y tareas en cards de módulo eran texto plano gris pequeño, demasiado sutiles. Elevados a chips coloreados (emerald para lecciones, amber para tareas) en la misma fila que "Módulo N" y "Peso N".
+
+Ajustes UX post-smoke (siguiente commit):
+- Labels del editor de lección sin jerga técnica: tab "Editar" → "Contenido de texto", tab "Preview" → "Vista previa", placeholder y hint del textarea simplificados.
+- Labels del Select de tipo de lección orientados al docente: "PDF" → "Solo texto", "Mixto" → "Video y texto". Enum en BD sin cambio.
 
 Deferred a v1.2: editor de preguntas/opciones de quiz_multiple_choice. La cabecera del quiz se crea normalmente en 19.4.
 

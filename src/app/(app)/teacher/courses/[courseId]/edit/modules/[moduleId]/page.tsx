@@ -39,10 +39,13 @@ interface ModuleEditPageProps {
   params: Promise<{ courseId: string; moduleId: string }>;
 }
 
+// Labels orientados al docente. El enum en BD sigue siendo
+// {video, pdf, mixed}: "pdf" significa solo contenido de texto
+// (sin video; el editor de attachments PDF reales vive en B20).
 const LESSON_TYPE_LABEL: Record<string, string> = {
   video: "Video",
-  pdf: "PDF",
-  mixed: "Mixto",
+  pdf: "Solo texto",
+  mixed: "Video y texto",
 };
 
 const ASSIGNMENT_TYPE_LABEL: Record<string, string> = {

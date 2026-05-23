@@ -180,9 +180,12 @@ export function LessonFormDialog(props: Props) {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
+                  {/* Labels orientados al docente. El enum en BD
+                   * sigue siendo {video, pdf, mixed}: pdf = solo
+                   * texto (sin video), mixed = video + texto. */}
                   <SelectItem value="video">Video</SelectItem>
-                  <SelectItem value="pdf">PDF</SelectItem>
-                  <SelectItem value="mixed">Mixto</SelectItem>
+                  <SelectItem value="pdf">Solo texto</SelectItem>
+                  <SelectItem value="mixed">Video y texto</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -226,11 +229,11 @@ export function LessonFormDialog(props: Props) {
           )}
 
           <div className="space-y-2">
-            <Label htmlFor="lesson-content">Contenido (markdown, opcional)</Label>
+            <Label htmlFor="lesson-content">Contenido (opcional)</Label>
             <Tabs defaultValue="edit">
               <TabsList>
-                <TabsTrigger value="edit">Editar</TabsTrigger>
-                <TabsTrigger value="preview">Preview</TabsTrigger>
+                <TabsTrigger value="edit">Contenido de texto</TabsTrigger>
+                <TabsTrigger value="preview">Vista previa</TabsTrigger>
               </TabsList>
               <TabsContent value="edit">
                 <Textarea
@@ -240,12 +243,12 @@ export function LessonFormDialog(props: Props) {
                   rows={10}
                   maxLength={20000}
                   disabled={isPending}
-                  placeholder="## Encabezado&#10;&#10;Texto con **negrita**, *itálica*, listas, etc."
+                  placeholder="Escribe el contenido de la lección. Puedes usar formato básico: **negrita**, _cursiva_, # títulos, - listas."
                   className="font-mono text-sm"
                 />
                 <p className="mt-1 text-xs text-muted-foreground">
-                  Markdown soportado: encabezados, listas, negrita, itálica,
-                  enlaces, código, citas. GFM (tablas, task lists) habilitado.
+                  Formato básico disponible: títulos, listas, negrita,
+                  cursiva, enlaces.
                 </p>
               </TabsContent>
               <TabsContent value="preview">
