@@ -77,6 +77,26 @@ export const submissionRepository = {
     return data ?? [];
   },
 
+  // Submissions vinculadas a un set de assignments. Usado por el
+  // editor de contenidos (Bloque 19.2) para calcular el impacto de
+  // borrar un modulo (cuantas entregas y calificaciones se
+  // cascadeharian). RLS filtra teacher a sus cursos / admin todo.
+  async listByAssignmentIds(
+    assignmentIds: string[],
+  ): Promise<Submission[]> {
+    if (assignmentIds.length === 0) return [];
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from("submissions")
+      .select("*")
+      .in("assignment_id", assignmentIds);
+
+    if (error) {
+      throw new InfrastructureError(ErrorCodes.DATABASE_ERROR, error.message);
+    }
+    return data ?? [];
+  },
+
   // Bandeja global del docente (Bloque 6 sub-bloque 6.5): submissions
   // con status='submitted' a las que el caller tiene acceso. RLS
   // filtra a los cursos del teacher autenticado; el repo NO agrega

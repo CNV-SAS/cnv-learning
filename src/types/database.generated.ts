@@ -1012,6 +1012,12 @@ export type Database = {
       }
       is_course_teacher: { Args: { p_course_id: string }; Returns: boolean }
       is_enrolled: { Args: { p_course_id: string }; Returns: boolean }
+      // Manually added (Bloque 19.2, migracion 0027). Sera regenerado
+      // por `supabase gen types` cuando Santiago aplique la migracion.
+      swap_module_positions: {
+        Args: { p_course_id: string; p_pos_a: number; p_pos_b: number }
+        Returns: undefined
+      }
     }
     Enums: {
       assignment_type: "file_upload" | "quiz_multiple_choice" | "essay"
