@@ -9,11 +9,14 @@
 // passed as child to client component". Asi el Sidebar Server NO
 // se re-renderiza en cliente al abrir/cerrar el sheet.
 //
-// Sin persistencia de estado (cookies/localStorage): se cierra al
-// navegar (default de Radix Dialog + onOpenChange). Polish para
-// Bloque 18.
+// Cierre automatico al navegar (Bloque 21.1 fix UX reportado en
+// smoke B20): el Radix Dialog NO se cierra solo al hacer click en
+// un Link interno (no observa cambios de ruta de Next). Hookeamos
+// usePathname y llamamos setOpen(false) cuando cambia. setOpen(false)
+// cuando ya esta cerrado es no-op, asi que no hay flickers en mount.
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
 import { Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -30,6 +33,11 @@ interface MobileNavProps {
 
 export function MobileNav({ children }: MobileNavProps) {
   const [open, setOpen] = useState(false);
+  const pathname = usePathname();
+
+  useEffect(() => {
+    setOpen(false);
+  }, [pathname]);
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>

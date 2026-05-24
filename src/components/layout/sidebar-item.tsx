@@ -1,14 +1,12 @@
 "use client";
 
-// SidebarItem: link individual del sidebar con active state via
-// usePathname. Es el unico componente Client del trio sidebar +
-// sidebar-item + sidebar mobile; el contenedor (Sidebar) puede
-// quedar Server porque solo mapea props a items.
+// SidebarItem (Bloque 21.1 redesign): link individual del sidebar
+// con active state via usePathname y styling del prototipo Gildardo:
+// uppercase font-black tracking-widest, item activo con fondo emerald
+// solido y texto blanco.
 //
 // Active state: match exacto o prefix (pathname.startsWith(href + "/"))
-// para soportar rutas anidadas (ej /admin matchea /admin/users en el
-// futuro). En MVP los items son flat asi que el comportamiento es
-// equivalente, pero el prefix-match es free.
+// para soportar rutas anidadas (ej /admin matchea /admin/users).
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -30,13 +28,13 @@ export function SidebarItem({ item }: SidebarItemProps) {
       href={item.href}
       aria-current={isActive ? "page" : undefined}
       className={cn(
-        "flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition-colors",
+        "flex items-center gap-3 rounded-xl px-3 py-2.5 text-xs font-black uppercase tracking-widest transition-colors",
         isActive
-          ? "bg-emerald-50 text-emerald-700"
+          ? "bg-emerald-700 text-white"
           : "text-muted-foreground hover:bg-muted hover:text-foreground",
       )}
     >
-      <NavIcon name={item.iconName} className="h-5 w-5" />
+      <NavIcon name={item.iconName} className="h-4 w-4" />
       <span>{item.label}</span>
     </Link>
   );
