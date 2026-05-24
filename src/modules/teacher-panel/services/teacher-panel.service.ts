@@ -84,6 +84,33 @@ export const teacherPanelService = {
     );
   },
 
+  // Cohort-wide average final grade across los courses del teacher
+  // (Bloque 21.3). Suma final_grade de TODAS las gradings
+  // existentes en los cursos, dividido por la cantidad. Retorna null
+  // si no hay gradings aun (cohorte recien arrancando). En MVP el
+  // teacher tiene 1 curso, pero el calculo generaliza a multi-curso.
+  async getCohortAverageGrade(
+    courseIds: string[],
+  ): Promise<number | null> {
+    if (courseIds.length === 0) return null;
+    const submissionsPerCourse = await Promise.all(
+      courseIds.map((id) =>
+        submissionRepository.listSubmittedByCourse(id),
+      ),
+    );
+    const allSubmissions = submissionsPerCourse.flat();
+    if (allSubmissions.length === 0) return null;
+    const gradings = await gradingRepository.listBySubmissionIds(
+      allSubmissions.map((s) => s.id),
+    );
+    if (gradings.length === 0) return null;
+    const sum = gradings.reduce(
+      (acc, g) => acc + Number(g.final_grade),
+      0,
+    );
+    return Math.round((sum / gradings.length) * 10) / 10;
+  },
+
   // Tabla de alumnos para un curso especifico. RLS valida acceso del
   // teacher al curso; si el caller no tiene RLS para ese curso,
   // listActiveByCourse retorna [].

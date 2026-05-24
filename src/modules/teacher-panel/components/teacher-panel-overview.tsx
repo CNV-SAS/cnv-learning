@@ -15,6 +15,7 @@
 
 import Link from "next/link";
 import {
+  BarChart3,
   ExternalLink,
   GraduationCap,
   Inbox,
@@ -29,6 +30,8 @@ import { teacherPanelService } from "@/modules/teacher-panel/services";
 import { UpcomingEventsPreview } from "@/modules/calendar/components/upcoming-events-preview";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { StatCardLarge } from "@/components/shared/stat-card-large";
+import { StatTile } from "@/components/shared/stat-tile";
 import type { TeacherCourseOverview } from "@/modules/teacher-panel/types";
 
 interface TeacherPanelOverviewProps {
@@ -46,7 +49,10 @@ export async function TeacherPanelOverview({
   emptyMessage,
 }: TeacherPanelOverviewProps) {
   const courses = await courseRepository.listForTeacher(userId);
-  const overviews = await teacherPanelService.getCoursesOverview(courses);
+  const [overviews, cohortAvgGrade] = await Promise.all([
+    teacherPanelService.getCoursesOverview(courses),
+    teacherPanelService.getCohortAverageGrade(courses.map((c) => c.id)),
+  ]);
 
   const rosters = await Promise.all(
     overviews.map((o) =>
@@ -64,8 +70,32 @@ export async function TeacherPanelOverview({
     );
   }
 
+  // Stats agregadas (Bloque 21.3): suma de alumnos + entregas
+  // pendientes, avg de progreso promedio + avg de gradings del
+  // cohorte. En MVP teacher tiene 1 curso, asi que los aggregates
+  // son esencialmente los stats de ese curso unico, pero la formula
+  // generaliza a multi-curso para el futuro.
+  const totalStudents = overviews.reduce(
+    (acc, o) => acc + o.studentsCount,
+    0,
+  );
+  const totalPending = overviews.reduce(
+    (acc, o) => acc + o.pendingSubmissionsCount,
+    0,
+  );
+  const avgProgress = Math.round(
+    overviews.reduce((acc, o) => acc + o.averageProgressPercentage, 0) /
+      overviews.length,
+  );
+
   return (
     <div className="space-y-8">
+      <CohortStats
+        totalStudents={totalStudents}
+        totalPending={totalPending}
+        avgProgress={avgProgress}
+        avgGrade={cohortAvgGrade}
+      />
       {overviews.map((overview, idx) => (
         <CourseSection
           key={overview.course.id}
@@ -73,6 +103,57 @@ export async function TeacherPanelOverview({
           roster={rosters[idx]}
         />
       ))}
+    </div>
+  );
+}
+
+function CohortStats({
+  totalStudents,
+  totalPending,
+  avgProgress,
+  avgGrade,
+}: {
+  totalStudents: number;
+  totalPending: number;
+  avgProgress: number;
+  avgGrade: number | null;
+}) {
+  return (
+    <div className="space-y-4">
+      <div className="grid gap-3 sm:grid-cols-2">
+        <StatTile
+          label="Total alumnos"
+          value={String(totalStudents)}
+          valueColor="text-emerald-700"
+        />
+        <StatTile
+          label="Entregas pendientes"
+          value={String(totalPending)}
+          valueColor={
+            totalPending > 0 ? "text-amber-700" : "text-muted-foreground"
+          }
+        />
+      </div>
+      <div className="grid gap-4 md:grid-cols-2">
+        <StatCardLarge
+          icon={<BarChart3 className="h-4 w-4" />}
+          title="Rendimiento global"
+          value={avgGrade !== null ? `${avgGrade}` : "-"}
+          subtitle={
+            avgGrade !== null
+              ? "Promedio académico del cohorte"
+              : "Aún no hay calificaciones"
+          }
+          color="emerald"
+        />
+        <StatCardLarge
+          icon={<Users className="h-4 w-4" />}
+          title="Progreso promedio"
+          value={`${avgProgress}%`}
+          subtitle="Avance promedio de los alumnos"
+          color="blue"
+        />
+      </div>
     </div>
   );
 }
