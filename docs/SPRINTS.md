@@ -174,34 +174,45 @@ Deferred a Bloque 22:
 
 ### Bloque 21: Rediseño visual del dashboard + badges + módulos
 
-Status: pending
+Status: done (2026-05-24)
 
-Polish visual basado en prototipos de Gildardo.
+Polish visual basado en prototipos de Gildardo en `design/`.
 
-Pre-requisito: pantallazos del prototipo en `design/` (carpetas admin, student, teacher).
+Sub-bloques cerrados:
+- 21.1 foundation visual + fix mobile navbar (commit ef4f693): sidebar redesign (uppercase items, emerald-700 active, RoleLabel "PERFIL X ACTIVO", SidebarLogoutButton al pie), PageHeaderChip rol-aware integrado en layout (dark admin, green teacher), UserDropdown oculto en desktop. 6 shared components creados: HeroCard, StatTile, StatCardLarge, TimelineItem, IconLinkCard, PageHeaderChip. Fix mobile navbar (smoke B20): usePathname + useEffect en MobileNav cierra Sheet on navigate.
+- 21.2 student rediseño + énfasis módulos (commit ecfa862): HeroCard verde en dashboard student con "¡Bienvenido, {Nombre}!" + chips Progreso/Lecciones. Nuevo CourseStructureSidebar lg:block como aside derecho en /learn/[courseId] y lesson view (énfasis Gildardo). Lesson page: breadcrumb módulo + sección "Resumen del módulo" con module.description. Calendar usa TimelineItem. Forum como IconLinkCard grid 2x2. AttachmentList pillow style. BadgeDisplay nueva variante "card".
+- 21.3 teacher panel cohort stats (commit 6abe012): teacherPanelService.getCohortAverageGrade nuevo + TeacherPanelOverview agrega CohortStats section arriba (2 StatTile chips + 2 StatCardLarge). Labels "Rendimiento global" emerald y "Progreso promedio" blue. Sin "EN CURSO HOY" ni "Engagement".
+- 21.4 admin dashboard (commit a65cd68): HeroCard variant=dark "System Administrator" en dashboard admin + grid 4 StatTile (Usuarios, Cursos, Certificados, Entregas pendientes). Pre-fetch en paralelo solo si isAdmin.
+- 21.5 cierre: SPRINTS.md actualizado, smoke productivo lo ejecuta Santiago.
 
-REGLAS sobre los pantallazos:
+Decisiones del planning aplicadas (13 Q):
+- Q1 "MIS ESTUDIOS" item: skip.
+- Q2 label "Calendario": mantenido.
+- Q3 label "Foros": mantenido (no renombrado a Comunidad).
+- Q4 ruta /logros: skip (badge restyling in-place).
+- Q5 PageHeaderChip: layout-level condicional por rol.
+- Q6 "Núcleos de Aprendizaje" = módulo.description en lesson page como "Resumen del módulo".
+- Q7 "Entregables y Recursos" = AttachmentList pillow style.
+- Q8 stats hero student: "X% progreso" + "N lecciones completadas".
+- Q9 "EN CURSO HOY" teacher: quitado.
+- Q10 label "Progreso promedio" (no "Engagement").
+- Q11 "Rendimiento global" = avg(final_grade) del cohorte.
+- Q12 sidebar teacher "FECHAS"/"ANALÍTICA": skip.
+- Q13 solo desktop: confirmado, mobile mantiene B18.3.
 
-1. Los pantallazos son REFERENCIA VISUAL de estilo y de UX.
+Ignorados (per reglas + planning):
+- "ATLAS V7" item del sidebar (B17 BOUNDARIES.md).
+- Botón "Crear Diplomado" en teacher/cursos (admin-only).
+- Items "SALUD INFRA" y "REPORTES BI" en sidebar admin (no existen).
+- Pantallazo admin/status.png (B22).
+- Página /logros separada del student.
+- Rediseño del certificado (decisión Santiago: certificado corporativo "Profesional Conectado CNV" va en v1.2 como módulo independiente).
 
-2. APLICAR fielmente cuando:
-   - El pantallazo muestra una feature que YA EXISTE en el código (dashboard, perfil, lista de cursos, contenido de módulos, etc.). Replicar look & feel, layout, componentes, paleta visual.
-   - El diseño aporta una mejora clara a la experiencia visual sin requerir features nuevas.
-
-3. IGNORAR (no implementar) cuando:
-   - El pantallazo muestra una feature funcional que NO existe en el código actual (ejemplo: si muestra un chat 1-a-1 que el MVP no tiene).
-   - Implementar el diseño rompería funcionalidad existente.
-
-4. PRIORIDAD del rediseño:
-   - Dashboard del estudiante (landing principal).
-   - Contenido de los módulos (Gildardo ha trabajado un diseño especialmente innovador acá, aplicarlo lo más fiel posible).
-   - Badges (más identidad visual que la versión actual).
-   - CourseCard.
-   - Resto: aplicar el lenguaje visual establecido sin pixel-perfect.
-
-5. Funcionalidad y responsive PRIMAN sobre fidelidad pixel-perfect. Si un diseño se rompe en mobile o requiere sacrificar responsive, adaptar el diseño manteniendo el espíritu visual.
-
-Sub-bloques estimados: 4-5.
+Métricas del bloque:
+- 5 sub-bloques.
+- 6 shared components nuevos.
+- ~20 archivos modificados.
+- Suite 389/389 verde, tsc clean.
 
 ### Bloque 22: Cleanup TODOs post-MVP + Status panel
 
