@@ -36,6 +36,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { HeroCard } from "@/components/shared/hero-card";
+import { StatTile } from "@/components/shared/stat-tile";
 import type { CourseSummary } from "@/modules/progress/services/progress.service";
 import type { Certificate } from "@/modules/certificates/types";
 import { getDisplayName } from "@/lib/utils/format";
@@ -74,16 +76,58 @@ export default async function DashboardPage() {
       ? "Aún no tienes cursos asignados"
       : "Aún no hay cursos en el sistema";
 
+  // Stats agregados para el HeroCard student (Bloque 21.2): suma de
+  // lecciones completadas / total a traves de cursos activos + %
+  // global. En MVP cohorte hay 1 curso por student; el calculo
+  // generaliza a multi-curso.
+  const studentTotalCompleted = isStudent
+    ? summaries.reduce(
+        (acc, s) => acc + (s?.progress.completedCount ?? 0),
+        0,
+      )
+    : 0;
+  const studentTotalLessons = isStudent
+    ? summaries.reduce((acc, s) => acc + (s?.progress.totalCount ?? 0), 0)
+    : 0;
+  const studentProgressPct =
+    studentTotalLessons > 0
+      ? Math.round((studentTotalCompleted / studentTotalLessons) * 100)
+      : 0;
+
   return (
     <div className="mx-auto max-w-5xl space-y-8">
-      <div className="space-y-2">
-        <h1 className="font-display text-3xl font-black tracking-tight">
-          Hola, {getDisplayName(user)}
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          Te damos la bienvenida a CNV Learning.
-        </p>
-      </div>
+      {isStudent ? (
+        <HeroCard
+          variant="green"
+          title={`¡Bienvenido, ${getDisplayName(user)}!`}
+          subtitle="Te damos la bienvenida a CNV Learning."
+          rightSlot={
+            courses.length > 0 ? (
+              <>
+                <StatTile
+                  variant="chip"
+                  label="Progreso"
+                  value={`${studentProgressPct}%`}
+                />
+                <StatTile
+                  variant="chip"
+                  label="Lecciones"
+                  value={`${studentTotalCompleted}/${studentTotalLessons}`}
+                />
+              </>
+            ) : undefined
+          }
+        />
+      ) : (
+        <div className="space-y-2">
+          <h1 className="font-display text-3xl font-black tracking-tight">
+            Hola, {getDisplayName(user)}
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            Te damos la bienvenida a CNV Learning.
+          </p>
+        </div>
+      )}
 
       {courses.length === 0 ? (
         <Card>

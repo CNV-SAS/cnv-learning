@@ -1,18 +1,37 @@
 // Lista de foros de un curso (Server Component). Se invoca desde
-// /learn/[courseId]/forum/page.tsx. Cada card es link al detalle
-// del foro; trae thread_count y last_activity_at agregados por el
-// repo (forumRepository.listByCourseWithStats).
+// /learn/[courseId]/forum/page.tsx. Bloque 21.2 rediseno: grid 2x2
+// de IconLinkCard (estilo prototipo Gildardo "Comunidad CNV").
+// Cada card lleva icon emerald + titulo + descripcion + count de
+// posts como subtitulo.
 
-import Link from "next/link";
-import { MessageSquare } from "lucide-react";
-import { format } from "date-fns";
-import { es } from "date-fns/locale";
+import { Brain, Coffee, Info, Users } from "lucide-react";
 import { Card } from "@/components/ui/card";
+import { IconLinkCard } from "@/components/shared/icon-link-card";
 import type { ForumWithStats } from "../types";
 
 interface ForumListProps {
   courseId: string;
   forums: ForumWithStats[];
+}
+
+// Pool de iconos para asignar por slug. Slugs no listados caen al
+// default (Users). Mantener corto: en MVP cohorte hay pocos foros.
+const ICON_BY_SLUG: Record<string, React.ComponentType<{ className?: string }>> = {
+  presentacion: Users,
+  presentation: Users,
+  intro: Users,
+  casos: Brain,
+  "casos-clinicos": Brain,
+  dudas: Info,
+  soporte: Info,
+  ayuda: Info,
+  cafeteria: Coffee,
+  general: Coffee,
+};
+
+function getIconForSlug(slug: string) {
+  const Icon = ICON_BY_SLUG[slug.toLowerCase()] ?? Users;
+  return <Icon className="h-6 w-6" />;
 }
 
 export function ForumList({ courseId, forums }: ForumListProps) {
@@ -24,47 +43,25 @@ export function ForumList({ courseId, forums }: ForumListProps) {
     );
   }
   return (
-    <div className="space-y-3">
-      {forums.map((forum) => (
-        <Link
-          key={forum.id}
-          href={`/learn/${courseId}/forum/${forum.id}`}
-          className="block"
-        >
-          <Card className="p-5 transition-colors hover:border-emerald-300 hover:bg-emerald-50/40">
-            <div className="flex items-start justify-between gap-4">
-              <div className="space-y-1">
-                <h3 className="font-display text-lg font-bold tracking-tight">
-                  {forum.title}
-                </h3>
-                {forum.description && (
-                  <p className="text-sm text-muted-foreground">
-                    {forum.description}
-                  </p>
-                )}
-              </div>
-              <div className="flex shrink-0 flex-col items-end gap-1 text-xs text-muted-foreground">
-                <div className="flex items-center gap-1">
-                  <MessageSquare className="h-3.5 w-3.5" aria-hidden />
-                  <span>
-                    {forum.thread_count === 1
-                      ? "1 post"
-                      : `${forum.thread_count} posts`}
-                  </span>
-                </div>
-                {forum.last_activity_at && (
-                  <span>
-                    Última actividad:{" "}
-                    {format(new Date(forum.last_activity_at), "d MMM y", {
-                      locale: es,
-                    })}
-                  </span>
-                )}
-              </div>
-            </div>
-          </Card>
-        </Link>
-      ))}
+    <div className="grid gap-4 sm:grid-cols-2">
+      {forums.map((forum) => {
+        const postLabel =
+          forum.thread_count === 1
+            ? "1 post"
+            : `${forum.thread_count} posts`;
+        const description = forum.description
+          ? `${forum.description} · ${postLabel}`
+          : postLabel;
+        return (
+          <IconLinkCard
+            key={forum.id}
+            icon={getIconForSlug(forum.slug)}
+            title={forum.title}
+            description={description}
+            href={`/learn/${courseId}/forum/${forum.id}`}
+          />
+        );
+      })}
     </div>
   );
 }

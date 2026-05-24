@@ -28,6 +28,7 @@ import {
   ModuleList,
   type ModuleEntry,
 } from "@/modules/courses/components/module-list";
+import { CourseStructureSidebar } from "@/modules/courses/components/course-structure-sidebar";
 import { Button } from "@/components/ui/button";
 import { requireUuidParam } from "@/lib/utils/params";
 import type { Assignment } from "@/modules/assignments/types";
@@ -90,7 +91,8 @@ export default async function CoursePage({ params }: CoursePageProps) {
   });
 
   return (
-    <div className="mx-auto max-w-4xl space-y-8">
+    <div className="mx-auto flex max-w-7xl gap-8">
+      <div className="flex-1 space-y-8">
       <div className="space-y-3">
         <div className="flex flex-wrap items-start gap-4">
           <h1 className="font-display text-3xl font-black tracking-tight">
@@ -140,6 +142,8 @@ export default async function CoursePage({ params }: CoursePageProps) {
         )}
       </div>
       <ModuleList courseId={courseId} modules={moduleEntries} />
+      </div>
+      <CourseStructureSidebar courseId={courseId} />
     </div>
   );
 }

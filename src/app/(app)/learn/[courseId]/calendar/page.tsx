@@ -25,6 +25,7 @@ import { DeleteEventDialog } from "@/modules/calendar/components/delete-event-di
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { TimelineItem } from "@/components/shared/timeline-item";
 import { formatBogotaDate } from "@/lib/utils/format-date";
 import { requireUuidParam } from "@/lib/utils/params";
 import type { CourseEvent } from "@/modules/calendar/types";
@@ -38,6 +39,34 @@ function formatRange(startsAt: string, endsAt: string | null): string {
   if (!endsAt || endsAt === startsAt) return start;
   const end = formatBogotaDate(`${endsAt}T00:00:00.000Z`);
   return `${start} → ${end}`;
+}
+
+// Descompone una fecha ISO (YYYY-MM-DD) en day + month para el
+// TimelineItem. Mes en abreviatura uppercase de 3 letras en espanol.
+const MONTH_SHORT_ES = [
+  "ENE",
+  "FEB",
+  "MAR",
+  "ABR",
+  "MAY",
+  "JUN",
+  "JUL",
+  "AGO",
+  "SEP",
+  "OCT",
+  "NOV",
+  "DIC",
+];
+
+function splitDate(iso: string): { day: string; month: string } {
+  // iso shape "YYYY-MM-DD". Construimos un Date local solo para
+  // extraer el mes (parts del string son suficientes para el day).
+  const [, monthStr, dayStr] = iso.split("-");
+  const monthIdx = Number(monthStr) - 1;
+  return {
+    day: String(Number(dayStr)).padStart(2, "0"),
+    month: MONTH_SHORT_ES[monthIdx] ?? monthStr,
+  };
 }
 
 export default async function CourseCalendarPage({
@@ -169,28 +198,35 @@ function EventSection({
           {events.length}
         </Badge>
       </div>
-      <ul className="space-y-3">
-        {events.map((event) => (
-          <li
-            key={event.id}
-            className={`rounded-xl border border-border bg-card px-4 py-4 ${
-              muted ? "opacity-60" : ""
-            }`}
-          >
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div className="space-y-1">
-                <h3 className="font-semibold">{event.title}</h3>
-                <p className="text-xs font-medium uppercase tracking-widest text-emerald-700">
-                  {formatRange(event.starts_at, event.ends_at)}
-                </p>
-                {event.description && (
-                  <p className="text-sm text-muted-foreground whitespace-pre-wrap">
-                    {event.description}
-                  </p>
-                )}
+      <div
+        className={
+          muted
+            ? "rounded-2xl border border-border bg-card opacity-60"
+            : "rounded-2xl border border-border bg-card"
+        }
+      >
+        {events.map((event) => {
+          const { day, month } = splitDate(event.starts_at);
+          const rangeLabel = formatRange(event.starts_at, event.ends_at);
+          return (
+            <div
+              key={event.id}
+              className="flex flex-wrap items-start justify-between gap-3 px-5"
+            >
+              <div className="flex-1">
+                <TimelineItem
+                  day={day}
+                  month={month}
+                  title={event.title}
+                  description={
+                    event.description ?? undefined
+                  }
+                  chipLabel={rangeLabel}
+                  chipColor="emerald"
+                />
               </div>
               {canEdit && (
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap gap-2 self-center py-5">
                   <EventFormDialog
                     mode="edit"
                     courseId={courseId}
@@ -208,9 +244,9 @@ function EventSection({
                 </div>
               )}
             </div>
-          </li>
-        ))}
-      </ul>
+          );
+        })}
+      </div>
     </section>
   );
 }

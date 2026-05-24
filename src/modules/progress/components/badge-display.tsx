@@ -8,9 +8,10 @@
 // NO se pasan componentes React como prop.
 //
 // Variants:
-// - default: CourseCard del dashboard, paginas con titulo grande.
-// - sm: usos compactos (header de course view, lista de cursos
-//   secundarios futuros).
+//   - default: pillow grande para titulos.
+//   - sm: pillow compacto inline.
+//   - card: tarjeta cuadrada con icon centrado (Bloque 21.2,
+//     prototipo Gildardo "Insignias" del dashboard student).
 
 import { Award, Sparkles, Trophy, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -22,9 +23,11 @@ const ICON_MAP: Record<BadgeIconName, LucideIcon> = {
   trophy: Trophy,
 };
 
+type Size = "default" | "sm" | "card";
+
 interface BadgeDisplayProps {
   badge: Badge;
-  size?: "default" | "sm";
+  size?: Size;
   className?: string;
 }
 
@@ -34,8 +37,25 @@ export function BadgeDisplay({
   className,
 }: BadgeDisplayProps) {
   const Icon = ICON_MAP[badge.iconName];
-  const isSm = size === "sm";
 
+  if (size === "card") {
+    return (
+      <div
+        className={cn(
+          "flex h-24 w-24 flex-col items-center justify-center gap-1 rounded-2xl border-2 p-2 text-center",
+          badge.colorClass,
+          className,
+        )}
+      >
+        <Icon className="h-7 w-7" />
+        <span className="text-[10px] font-black uppercase tracking-widest leading-tight">
+          {badge.label}
+        </span>
+      </div>
+    );
+  }
+
+  const isSm = size === "sm";
   return (
     <span
       className={cn(

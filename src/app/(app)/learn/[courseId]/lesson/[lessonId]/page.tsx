@@ -22,6 +22,7 @@ import {
   courseRepository,
   lessonRepository,
   lessonAttachmentRepository,
+  moduleRepository,
 } from "@/modules/courses/data";
 import {
   canViewCourse,
@@ -34,6 +35,7 @@ import {
   type AttachmentWithUrl,
 } from "@/modules/courses/components/attachment-list";
 import { CompleteLessonButton } from "@/modules/courses/components/complete-lesson-button";
+import { CourseStructureSidebar } from "@/modules/courses/components/course-structure-sidebar";
 import { LessonNav } from "@/modules/courses/components/lesson-nav";
 import { lessonNavigationService } from "@/modules/courses/services/lesson-navigation";
 import { lessonProgressRepository } from "@/modules/progress/data";
@@ -68,6 +70,11 @@ export default async function LessonPage({ params }: LessonPageProps) {
     courseRepository.findById(courseId),
     lessonRepository.findById(lessonId),
   ]);
+  // Bloque 21.2: fetch del modulo para mostrar Resumen (description)
+  // y activar el item correspondiente en el sidebar derecho.
+  const module = lesson
+    ? await moduleRepository.findById(lesson.module_id)
+    : null;
   if (!canViewCourse(user, { courseExists: course !== null }) || !course) {
     notFound();
   }
@@ -112,43 +119,68 @@ export default async function LessonPage({ params }: LessonPageProps) {
   ).filter((item): item is AttachmentWithUrl => item !== null);
 
   return (
-    <div className="mx-auto max-w-3xl space-y-8">
-      <div className="space-y-2">
-        <h1 className="font-display text-3xl font-black tracking-tight">
-          {lesson.title}
-        </h1>
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
-          {lesson.duration_minutes !== null && (
-            <span>Duración estimada: {lesson.duration_minutes} min</span>
+    <div className="mx-auto flex max-w-7xl gap-8">
+      <div className="flex-1 space-y-8">
+        <div className="space-y-2">
+          {module && (
+            <p className="text-xs font-black uppercase tracking-widest text-muted-foreground">
+              Módulo {module.position}: {module.title}
+            </p>
           )}
-          {courseSummary && (
-            <BadgeDisplay badge={courseSummary.badge} size="sm" />
-          )}
+          <h1 className="font-display text-3xl font-black tracking-tight">
+            {lesson.title}
+          </h1>
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
+            {lesson.duration_minutes !== null && (
+              <span>Duración estimada: {lesson.duration_minutes} min</span>
+            )}
+            {courseSummary && (
+              <BadgeDisplay badge={courseSummary.badge} size="sm" />
+            )}
+          </div>
         </div>
+
+        {lesson.video_url && <VideoEmbed videoUrl={lesson.video_url} />}
+
+        {lesson.content_markdown && (
+          <LessonContent content={lesson.content_markdown} />
+        )}
+
+        {/* Resumen del modulo (Bloque 21.2 / Q6): module.description
+         * en card emerald-50 cuando existe. Sin description la
+         * seccion se omite. */}
+        {module?.description && (
+          <section className="rounded-2xl bg-emerald-50 px-6 py-5">
+            <h2 className="font-display text-base font-bold tracking-tight text-emerald-900">
+              Resumen del módulo
+            </h2>
+            <p className="mt-2 text-sm leading-relaxed text-emerald-900/80">
+              {module.description}
+            </p>
+          </section>
+        )}
+
+        <AttachmentList attachments={attachments} />
+
+        {/* S1.3: solo students registran progreso. Admin y teacher ven
+         * la leccion pero no pueden marcarla; mostramos un mensaje
+         * muted en lugar del boton para que la vista no quede vacia. */}
+        {isStudent ? (
+          <CompleteLessonButton lessonId={lesson.id} completed={completed} />
+        ) : (
+          <p className="rounded-md bg-muted/40 px-3 py-2 text-center text-sm text-muted-foreground">
+            Vista de docente: solo los estudiantes registran progreso.
+          </p>
+        )}
+        <LessonNav
+          courseId={courseId}
+          prev={neighbors.prev}
+          next={neighbors.next}
+        />
       </div>
-
-      {lesson.video_url && <VideoEmbed videoUrl={lesson.video_url} />}
-
-      {lesson.content_markdown && (
-        <LessonContent content={lesson.content_markdown} />
-      )}
-
-      <AttachmentList attachments={attachments} />
-
-      {/* S1.3: solo students registran progreso. Admin y teacher ven
-       * la leccion pero no pueden marcarla; mostramos un mensaje
-       * muted en lugar del boton para que la vista no quede vacia. */}
-      {isStudent ? (
-        <CompleteLessonButton lessonId={lesson.id} completed={completed} />
-      ) : (
-        <p className="rounded-md bg-muted/40 px-3 py-2 text-center text-sm text-muted-foreground">
-          Vista de docente: solo los estudiantes registran progreso.
-        </p>
-      )}
-      <LessonNav
+      <CourseStructureSidebar
         courseId={courseId}
-        prev={neighbors.prev}
-        next={neighbors.next}
+        activeModuleId={module?.id}
       />
     </div>
   );
