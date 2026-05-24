@@ -29,6 +29,7 @@ import { profileRepository } from "@/modules/auth/data/profile.repository";
 import { courseRepository } from "@/modules/courses/data";
 import { progressService } from "@/modules/progress/services/progress.service";
 import { certificateRepository } from "@/modules/certificates/data";
+import { adminMetricsRepository } from "@/modules/admin/data";
 import { CourseCard } from "@/modules/courses/components/course-card";
 import {
   Card,
@@ -47,6 +48,7 @@ export default async function DashboardPage() {
   if (!user) redirect("/login");
 
   const isStudent = user.role === "student";
+  const isAdmin = user.role === "admin";
   const courses =
     user.role === "student"
       ? await courseRepository.listForUser(user.id)
@@ -94,6 +96,19 @@ export default async function DashboardPage() {
       ? Math.round((studentTotalCompleted / studentTotalLessons) * 100)
       : 0;
 
+  // Stats admin (Bloque 21.4): cohort-wide counts via admin metrics
+  // repo. Solo se llama si isAdmin para no penalizar el TTFB de
+  // student/teacher con queries que no van a renderizar.
+  const adminStats = isAdmin
+    ? await Promise.all([
+        adminMetricsRepository.countUsersByRole(),
+        adminMetricsRepository.countCertificates(),
+        adminMetricsRepository.countPendingSubmissions(),
+      ])
+    : null;
+  const [adminUserCounts, adminCertCounts, adminPendingCount] =
+    adminStats ?? [null, null, null];
+
   return (
     <div className="mx-auto max-w-5xl space-y-8">
       {isStudent ? (
@@ -118,6 +133,50 @@ export default async function DashboardPage() {
             ) : undefined
           }
         />
+      ) : isAdmin ? (
+        <>
+          <HeroCard
+            variant="dark"
+            title="System Administrator"
+            subtitle={
+              <>
+                Estado:{" "}
+                <span className="font-semibold text-white">
+                  Consola operativa
+                </span>
+              </>
+            }
+            rightSlot={
+              <StatTile variant="chip" label="Uptime" value="99.9%" />
+            }
+          />
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <StatTile
+              label="Usuarios"
+              value={String(adminUserCounts?.total ?? 0)}
+              valueColor="text-emerald-700"
+            />
+            <StatTile
+              label="Cursos"
+              value={String(courses.length)}
+              valueColor="text-foreground"
+            />
+            <StatTile
+              label="Certificados"
+              value={String(adminCertCounts?.total ?? 0)}
+              valueColor="text-foreground"
+            />
+            <StatTile
+              label="Entregas pendientes"
+              value={String(adminPendingCount ?? 0)}
+              valueColor={
+                (adminPendingCount ?? 0) > 0
+                  ? "text-amber-700"
+                  : "text-muted-foreground"
+              }
+            />
+          </div>
+        </>
       ) : (
         <div className="space-y-2">
           <h1 className="font-display text-3xl font-black tracking-tight">
