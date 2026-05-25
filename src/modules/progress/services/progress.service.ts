@@ -25,6 +25,7 @@ import { moduleRepository } from "@/modules/courses/data/module.repository";
 import { lessonRepository } from "@/modules/courses/data/lesson.repository";
 import type { Lesson, Module } from "@/modules/courses/types";
 import { certificateService } from "@/modules/certificates/services";
+import { enrollmentRepository } from "@/modules/enrollments/data";
 import { logger } from "@/core/logger/logger";
 import { lessonProgressRepository } from "../data/lesson-progress.repository";
 import {
@@ -45,6 +46,15 @@ export interface ModuleWithProgress {
   module: Module;
   lessons: Lesson[];
   progress: ProgressSummary;
+}
+
+export interface RankEarnedDates {
+  // Junior se considera earned al inscribirse al curso (rango 0-49%
+  // por defecto). Fallback al primer lesson_progress si por alguna
+  // razon historica no hay enrollment.
+  juniorAt: string | null;
+  seniorAt: string | null;
+  masterAt: string | null;
 }
 
 export const progressService = {
@@ -127,6 +137,53 @@ export const progressService = {
     );
 
     return { progress, badge, continueLesson };
+  },
+
+  // Calcula la fecha en que el student cruzo cada threshold de
+  // rank (Bloque 22.1): Senior >= 50%, Master >= 85%. Junior se
+  // earned al inscribirse (rango por defecto). Si el student aun
+  // no cruzo un threshold, la fecha es null. Si no esta enrolled,
+  // todas son null.
+  //
+  // Itera lesson_progress ordenado por completed_at ASC, manteniendo
+  // contador, y reporta la lesson row que primero cruzo cada
+  // umbral. Una sola pasada O(n).
+  async getRankEarnedDates(
+    userId: string,
+    courseId: string,
+  ): Promise<RankEarnedDates> {
+    const [modules, progressRows, enrollment] = await Promise.all([
+      moduleRepository.listByCourse(courseId),
+      lessonProgressRepository.listForUserAndCourse(userId, courseId),
+      enrollmentRepository.findActiveByUserAndCourse(userId, courseId),
+    ]);
+    if (!enrollment) {
+      return { juniorAt: null, seniorAt: null, masterAt: null };
+    }
+
+    const lessonsByModule = await Promise.all(
+      modules.map((m) => lessonRepository.listByModule(m.id)),
+    );
+    const totalLessons = lessonsByModule.flat().length;
+
+    let seniorAt: string | null = null;
+    let masterAt: string | null = null;
+    if (totalLessons > 0) {
+      for (let i = 0; i < progressRows.length; i++) {
+        const pct = ((i + 1) / totalLessons) * 100;
+        if (seniorAt === null && pct >= 50)
+          seniorAt = progressRows[i].completed_at;
+        if (masterAt === null && pct >= 85)
+          masterAt = progressRows[i].completed_at;
+        if (seniorAt !== null && masterAt !== null) break;
+      }
+    }
+
+    return {
+      juniorAt: enrollment.enrolled_at,
+      seniorAt,
+      masterAt,
+    };
   },
 
   async getModulesWithProgress(

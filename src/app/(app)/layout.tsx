@@ -14,6 +14,7 @@
 // para que los links a /privacy /terms /support sean accesibles
 // desde cualquier ruta autenticada.
 
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Layers, Settings } from "lucide-react";
 import { profileRepository } from "@/modules/auth/data/profile.repository";
@@ -71,7 +72,15 @@ export default async function AppLayout({
               <MobileNav>
                 <Sidebar items={items} role={user.role} />
               </MobileNav>
-              <Wordmark className="lg:hidden" />
+              {/* 22.1 A: logo movil clickeable a /dashboard (paridad
+               * con el logo desktop del sidebar, smoke B21 fix). */}
+              <Link
+                href="/dashboard"
+                className="lg:hidden"
+                aria-label="Ir al dashboard"
+              >
+                <Wordmark />
+              </Link>
             </>
           }
           rightSlot={

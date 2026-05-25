@@ -107,6 +107,14 @@ export default async function DashboardPage() {
   // de CourseCards con la InsigniasCard arriba como single row.
   const studentHasSingleCourse = isStudent && courses.length === 1;
 
+  // 22.1 B: earned dates de los ranks para los tooltips. Solo se
+  // calcula para student con curso (la InsigniasCard solo renderiza
+  // en ese caso).
+  const studentRankDates =
+    isStudent && courses.length > 0
+      ? await progressService.getRankEarnedDates(user.id, courses[0].id)
+      : null;
+
   return (
     <div className="mx-auto max-w-5xl space-y-8">
       {isStudent ? (
@@ -170,19 +178,27 @@ export default async function DashboardPage() {
             </CardDescription>
           </CardHeader>
         </Card>
-      ) : studentHasSingleCourse && studentBadge ? (
+      ) : studentHasSingleCourse && studentBadge && studentRankDates ? (
         <div className="grid gap-6 lg:grid-cols-2">
           <CourseCard
             course={courses[0]}
             summary={summaries[0]}
             certificate={certByCourseId.get(courses[0].id) ?? null}
           />
-          <InsigniasCard currentBadgeId={studentBadge.id} />
+          <InsigniasCard
+            progressPercentage={summaries[0]?.progress.percentage ?? 0}
+            earnedDates={studentRankDates}
+          />
         </div>
       ) : (
         <>
-          {isStudent && studentBadge && (
-            <InsigniasCard currentBadgeId={studentBadge.id} />
+          {isStudent && studentBadge && studentRankDates && (
+            <InsigniasCard
+              progressPercentage={
+                summaries[0]?.progress.percentage ?? 0
+              }
+              earnedDates={studentRankDates}
+            />
           )}
           <div className="grid gap-6 md:grid-cols-2">
             {courses.map((course, idx) => (

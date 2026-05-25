@@ -88,6 +88,34 @@ export const lessonProgressRepository = {
     return data?.completed_at ?? null;
   },
 
+  // Lista lesson_progress rows del user en el curso, ordenadas por
+  // completed_at ASC. Usado por progressService.getRankEarnedDates
+  // (Bloque 22.1) para localizar la leccion que cruzo el umbral de
+  // Senior (50%) y Master (85%) y reportar la fecha en que el
+  // student "consiguio" cada rank.
+  async listForUserAndCourse(
+    userId: string,
+    courseId: string,
+  ): Promise<Array<{ lesson_id: string; completed_at: string }>> {
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from("lesson_progress")
+      .select(
+        "lesson_id, completed_at, lessons!inner(modules!inner(course_id))",
+      )
+      .eq("user_id", userId)
+      .eq("lessons.modules.course_id", courseId)
+      .order("completed_at", { ascending: true });
+
+    if (error) {
+      throw new InfrastructureError(ErrorCodes.DATABASE_ERROR, error.message);
+    }
+    return (data ?? []).map((row) => ({
+      lesson_id: row.lesson_id,
+      completed_at: row.completed_at,
+    }));
+  },
+
   // Lista IDs de lessons completadas por el user dentro del curso. El
   // join lessons -> modules filtra por course_id; la RLS de
   // lesson_progress filtra por user_id (no hace falta agregar la
