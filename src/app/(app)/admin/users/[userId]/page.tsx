@@ -1,21 +1,44 @@
 // /admin/users/[userId]: detalle de un usuario con cards de gestion.
-// 4 cards: cambiar rol, reseteo password, suspension, zona destructiva
-// (eliminar). El service maneja todos los guards (anti-self,
-// anti-lockout, isLastAdmin) en cada accion.
+// 4 cards base: cambiar rol, reseteo password, suspension, zona
+// destructiva (eliminar). El service maneja todos los guards (anti-
+// self, anti-lockout, isLastAdmin) en cada accion.
+//
+// Si target.role === 'student' se agregan 2 cards adicionales
+// (Bloque 22.3): Certificacion Academica (upload PDF universidad
+// externa) y Profesional Conectado CNV (emitir/revocar manual).
 
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { ArrowLeft, BookOpen, ShieldCheck, ShieldOff } from "lucide-react";
+import {
+  ArrowLeft,
+  Award,
+  BookOpen,
+  ExternalLink,
+  FileText,
+  ShieldCheck,
+  ShieldOff,
+} from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { profileRepository } from "@/modules/auth/data/profile.repository";
 import { canAccessAdmin } from "@/modules/auth/policies";
-import { adminUserRepository } from "@/modules/admin/data";
+import {
+  adminEnrollmentRepository,
+  adminUserRepository,
+} from "@/modules/admin/data";
+import {
+  academicCertificateRepository,
+  corporateCertificateRepository,
+} from "@/modules/certificates/data";
 import { UpdateRoleForm } from "@/modules/admin/components/update-role-form";
 import { SuspendUserDialog } from "@/modules/admin/components/suspend-user-dialog";
 import { UnsuspendUserButton } from "@/modules/admin/components/unsuspend-user-button";
 import { SendPasswordResetButton } from "@/modules/admin/components/send-password-reset-button";
 import { DeleteUserDialog } from "@/modules/admin/components/delete-user-dialog";
+import { UploadAcademicDialog } from "@/modules/certificates/components/upload-academic-dialog";
+import { DeleteAcademicButton } from "@/modules/certificates/components/delete-academic-button";
+import { IssueCorporateButton } from "@/modules/certificates/components/issue-corporate-button";
+import { RevokeCorporateButton } from "@/modules/certificates/components/revoke-corporate-button";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -25,6 +48,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import type { Profile } from "@/modules/auth/types";
 
 function roleLabel(role: "student" | "teacher" | "admin"): string {
   if (role === "admin") return "Administrador";
@@ -48,6 +72,13 @@ export default async function AdminUserDetailPage({
 
   const isSelf = target.id === actor.id;
   const isSuspended = await adminUserRepository.isUserSuspended(target.id);
+
+  // Datos de certificados solo si el target es student (los cards
+  // se renderizan condicionalmente; evita pegar el TTFB con queries
+  // irrelevantes para teacher/admin).
+  const certData = target.role === "student"
+    ? await loadStudentCertificateData(target.id)
+    : null;
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
@@ -123,6 +154,20 @@ export default async function AdminUserDetailPage({
           </Button>
         </CardContent>
       </Card>
+
+      {certData && (
+        <>
+          <AcademicCertificatesCard
+            target={target}
+            certificates={certData.academic}
+            availableCourses={certData.availableCoursesForAcademic}
+          />
+          <CorporateCertificateCard
+            target={target}
+            corporate={certData.corporate}
+          />
+        </>
+      )}
 
       <Card>
         <CardHeader>
@@ -206,5 +251,245 @@ export default async function AdminUserDetailPage({
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+// ---------- helpers de certificados (solo para student) ----------
+
+interface AcademicCertWithCourse {
+  id: string;
+  courseId: string;
+  courseTitle: string;
+  uploadedAt: string;
+  signedUrl: string | null;
+  notes: string | null;
+}
+
+interface CorporateCertSummary {
+  id: string;
+  issuedAt: string;
+  hash: string;
+}
+
+interface StudentCertificateData {
+  academic: AcademicCertWithCourse[];
+  availableCoursesForAcademic: Array<{ id: string; title: string }>;
+  corporate: CorporateCertSummary | null;
+}
+
+async function loadStudentCertificateData(
+  studentId: string,
+): Promise<StudentCertificateData> {
+  // Tres queries en paralelo: certs academicos, cert corporativo
+  // vigente, enrollments con curso joineado (para mapear course_id
+  // -> title y para construir availableCourses del upload dialog).
+  const [academicRows, corporateRow, enrollments] = await Promise.all([
+    academicCertificateRepository.listForUser(studentId),
+    corporateCertificateRepository.findValidByUser(studentId),
+    adminEnrollmentRepository.listForUserWithCourse(studentId),
+  ]);
+
+  // Map courseId -> title (incluye enrollments activos y cancelados
+  // para resolver el title de certs viejos cuyo enrollment ya no
+  // existe activo).
+  const courseTitleById = new Map<string, string>();
+  for (const { course } of enrollments) {
+    courseTitleById.set(course.id, course.title);
+  }
+
+  // Cursos activos = candidatos para upload de nuevo cert.
+  const activeCourses = enrollments
+    .filter((e) => e.enrollment.is_active)
+    .map((e) => ({ id: e.course.id, title: e.course.title }));
+
+  // Pre-fetch signed URL de cada PDF (TTL 15 min). Sequential ok:
+  // expect 0-1 certs por student en MVP (1 curso por cohorte).
+  const academic: AcademicCertWithCourse[] = [];
+  const certCourseIds = new Set<string>();
+  for (const cert of academicRows) {
+    const signedUrl = await academicCertificateRepository.getSignedUrl(
+      cert.storage_path,
+    );
+    academic.push({
+      id: cert.id,
+      courseId: cert.course_id,
+      courseTitle:
+        courseTitleById.get(cert.course_id) ?? "Curso (no disponible)",
+      uploadedAt: cert.uploaded_at,
+      signedUrl,
+      notes: cert.notes,
+    });
+    certCourseIds.add(cert.course_id);
+  }
+
+  const availableCoursesForAcademic = activeCourses.filter(
+    (c) => !certCourseIds.has(c.id),
+  );
+
+  const corporate = corporateRow
+    ? {
+        id: corporateRow.id,
+        issuedAt: corporateRow.issued_at,
+        hash: corporateRow.hash,
+      }
+    : null;
+
+  return { academic, availableCoursesForAcademic, corporate };
+}
+
+function AcademicCertificatesCard({
+  target,
+  certificates,
+  availableCourses,
+}: {
+  target: Profile;
+  certificates: AcademicCertWithCourse[];
+  availableCourses: Array<{ id: string; title: string }>;
+}) {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base">Certificación Académica</CardTitle>
+        <CardDescription>
+          Sube el PDF del certificado emitido por la universidad mexicana
+          asociada al diplomado. Un certificado por curso. El estudiante
+          podrá descargarlo desde su perfil.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {certificates.length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            Aún no se ha subido ningún certificado académico para este
+            estudiante.
+          </p>
+        ) : (
+          <ul className="divide-y divide-border rounded-xl border border-border bg-card">
+            {certificates.map((cert) => (
+              <li
+                key={cert.id}
+                className="flex flex-wrap items-start justify-between gap-3 px-4 py-3"
+              >
+                <div className="min-w-0 space-y-1">
+                  <div className="flex items-center gap-2">
+                    <FileText className="h-4 w-4 text-muted-foreground" />
+                    <span className="font-medium">{cert.courseTitle}</span>
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    Subido el{" "}
+                    {format(new Date(cert.uploadedAt), "d MMM y", {
+                      locale: es,
+                    })}
+                  </div>
+                  {cert.notes && (
+                    <p className="text-xs text-muted-foreground">
+                      {cert.notes}
+                    </p>
+                  )}
+                </div>
+                <div className="flex flex-wrap items-center justify-end gap-2">
+                  {cert.signedUrl ? (
+                    <Button asChild variant="ghost" size="sm">
+                      <a
+                        href={cert.signedUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        <ExternalLink className="mr-1 h-3.5 w-3.5" />
+                        Ver PDF
+                      </a>
+                    </Button>
+                  ) : (
+                    <span className="text-xs text-muted-foreground">
+                      PDF no disponible
+                    </span>
+                  )}
+                  <DeleteAcademicButton
+                    certificateId={cert.id}
+                    courseTitle={cert.courseTitle}
+                  />
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <p className="text-xs text-muted-foreground">
+            {availableCourses.length === 0
+              ? certificates.length === 0
+                ? "Este estudiante no tiene inscripciones activas. Asigna un curso primero."
+                : "Todos los cursos activos ya tienen certificado académico."
+              : "Selecciona un curso enrolled y sube el PDF (máx. 20 MB)."}
+          </p>
+          <UploadAcademicDialog
+            userId={target.id}
+            availableCourses={availableCourses}
+          />
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function CorporateCertificateCard({
+  target,
+  corporate,
+}: {
+  target: Profile;
+  corporate: CorporateCertSummary | null;
+}) {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base">
+          Profesional Conectado CNV
+        </CardTitle>
+        <CardDescription>
+          Certificado corporativo de la red CNV. Se emite manualmente
+          por decisión institucional. El estudiante puede verificarlo
+          públicamente con un código QR y un hash SHA-256.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {corporate ? (
+          <div className="space-y-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge
+                variant="secondary"
+                className="bg-emerald-100 text-emerald-700"
+              >
+                <Award className="mr-1 h-3 w-3" />
+                Vigente
+              </Badge>
+              <span className="text-xs text-muted-foreground">
+                Emitido el{" "}
+                {format(new Date(corporate.issuedAt), "d MMM y", {
+                  locale: es,
+                })}
+              </span>
+            </div>
+            <div className="rounded-md bg-muted/40 px-3 py-2 font-mono text-xs text-muted-foreground break-all">
+              {corporate.hash}
+            </div>
+            <div className="flex flex-wrap justify-end gap-2">
+              <RevokeCorporateButton
+                certificateId={corporate.id}
+                studentName={target.full_name}
+              />
+            </div>
+          </div>
+        ) : (
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="text-sm text-muted-foreground">
+              Este estudiante aún no tiene el certificado Profesional
+              Conectado CNV.
+            </p>
+            <IssueCorporateButton
+              userId={target.id}
+              studentName={target.full_name}
+            />
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }

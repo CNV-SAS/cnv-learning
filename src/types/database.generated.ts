@@ -77,8 +77,6 @@ export type Database = {
           },
         ]
       }
-      // Manually added (Bloque 22.2, migracion 0031). Sera regenerado
-      // por MCP cuando Santiago aplique la migracion.
       academic_certificates: {
         Row: {
           course_id: string
@@ -334,8 +332,6 @@ export type Database = {
           },
         ]
       }
-      // Manually added (Bloque 22.2, migracion 0031). Sera regenerado
-      // por MCP cuando Santiago aplique la migracion.
       corporate_certificates: {
         Row: {
           created_at: string
