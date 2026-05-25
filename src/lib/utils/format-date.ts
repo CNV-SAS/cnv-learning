@@ -104,3 +104,28 @@ export function formatBogotaDate(isoString: string): string {
   const monthLabel = ES_MONTH_SHORT[p.month - 1];
   return `${p.day} ${monthLabel} ${p.year}`;
 }
+
+// Formatea un DATE column de Postgres (string shape "YYYY-MM-DD",
+// sin componente horaria) WITHOUT ninguna conversion via Date object.
+//
+// Fix del bug del smoke B21: pasar "YYYY-MM-DD" a new Date() lo
+// interpreta como UTC midnight, que en Bogota (UTC-5) es 19:00 del
+// dia anterior. El render mostraba un dia menos.
+//
+// La solucion correcta: parsear los componentes del string como
+// texto (sin Date) y emitir el label directamente. Las DATE
+// columns NO tienen timezone semantica, son "fecha calendario";
+// cualquier conversion via Date es incorrecta.
+//
+// Input: "2026-05-15" (o "2026-05-15T..." -- ignora la parte
+// despues de T por si llega un timestamp por error).
+// Output: "15 may 2026".
+export function formatBogotaDateOnly(dateString: string): string {
+  const datePart = dateString.split("T")[0];
+  const [yearStr, monthStr, dayStr] = datePart.split("-");
+  const monthIdx = Number(monthStr) - 1;
+  const monthLabel =
+    ES_MONTH_SHORT[monthIdx] ?? monthStr ?? "";
+  const day = String(Number(dayStr) || dayStr);
+  return `${day} ${monthLabel} ${yearStr}`;
+}

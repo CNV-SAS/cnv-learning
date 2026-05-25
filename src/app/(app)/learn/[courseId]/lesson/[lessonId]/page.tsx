@@ -16,6 +16,7 @@
 // Sub-bloque 4.5 agregara: boton marcar completada + nav prev/next.
 // Por eso este page todavia no muestra controles al final.
 
+import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { profileRepository } from "@/modules/auth/data/profile.repository";
 import {
@@ -121,12 +122,33 @@ export default async function LessonPage({ params }: LessonPageProps) {
   return (
     <div className="mx-auto flex max-w-7xl gap-8">
       <div className="flex-1 space-y-8">
-        <div className="space-y-2">
+        {/* Breadcrumb completo (21.6 D1): Curso > Modulo > Leccion.
+         * Curso linkea al course view, modulo no linkea (no hay
+         * vista de modulo individual student-facing), leccion es
+         * la actual (texto). */}
+        <nav
+          aria-label="Ruta"
+          className="text-xs font-black uppercase tracking-widest text-muted-foreground"
+        >
+          <Link
+            href={`/learn/${courseId}`}
+            className="hover:text-foreground"
+          >
+            {course.title}
+          </Link>
           {module && (
-            <p className="text-xs font-black uppercase tracking-widest text-muted-foreground">
-              Módulo {module.position}: {module.title}
-            </p>
+            <>
+              <span className="mx-2">/</span>
+              <span>
+                Módulo {module.position}: {module.title}
+              </span>
+            </>
           )}
+          <span className="mx-2">/</span>
+          <span className="text-foreground">{lesson.title}</span>
+        </nav>
+
+        <div className="space-y-2">
           <h1 className="font-display text-3xl font-black tracking-tight">
             {lesson.title}
           </h1>
@@ -180,6 +202,7 @@ export default async function LessonPage({ params }: LessonPageProps) {
       </div>
       <CourseStructureSidebar
         courseId={courseId}
+        activeLessonId={lesson.id}
         activeModuleId={module?.id}
       />
     </div>

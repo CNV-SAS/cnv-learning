@@ -3,33 +3,24 @@
 //
 //   - Student: listForUser (filtra por enrollment activo) +
 //     progressService para progreso propio + CourseCard con
-//     summary completo (ProgressBar, BadgeDisplay, continueLesson).
+//     summary completo. Bloque 21.2 agrego HeroCard verde y
+//     Bloque 21.6 ajusto los chips: badge actual + proximo evento
+//     (<=7 dias), evitando duplicar el ProgressBar del CourseCard.
+//     21.6 B2: card de Insignias al lado del CourseCard en lg+.
 //
-//   - Teacher: listForTeacher (filtra estricto contra
-//     course_teachers). Fix del BUG A/B del smoke 14.11: la
-//     version anterior usaba listAllAccessible que confiaba en
-//     RLS, pero la policy "Authenticated users view published
-//     courses" deja a cualquier teacher ver cursos publicados
-//     aunque no este asignado. Resultado: el teacher veia cursos
-//     fantasma en su dashboard con modulos vacios al entrar.
-//     listForTeacher consulta course_teachers directamente y
-//     refleja la asignacion real (igual que /teacher del
-//     Bloque 13).
+//   - Teacher: listForTeacher. h1 simple aqui; el panel docente
+//     completo con cohort stats vive en /teacher.
 //
-//   - Admin: listAllAccessible. Admin no se asigna a cursos
-//     (acceso global via RLS); ve todo el catalogo.
-//
-// summary=null para teacher/admin: CourseCard en variante
-// simplificada (sin progreso porque no es propio del rol). Boton
-// "Ver curso" -> /learn/[courseId] -> entry point a foros, libro
-// de notas, etc.
+//   - Admin: listAllAccessible. 21.6 F1: HeroCard dark + CourseCards.
+//     Las metricas globales (Usuarios, Certificados, etc.) viven en
+//     /admin para no duplicar.
 
 import { redirect } from "next/navigation";
 import { profileRepository } from "@/modules/auth/data/profile.repository";
 import { courseRepository } from "@/modules/courses/data";
 import { progressService } from "@/modules/progress/services/progress.service";
 import { certificateRepository } from "@/modules/certificates/data";
-import { adminMetricsRepository } from "@/modules/admin/data";
+import { courseEventRepository } from "@/modules/calendar/data";
 import { CourseCard } from "@/modules/courses/components/course-card";
 import {
   Card,
@@ -39,6 +30,8 @@ import {
 } from "@/components/ui/card";
 import { HeroCard } from "@/components/shared/hero-card";
 import { StatTile } from "@/components/shared/stat-tile";
+import { InsigniasCard } from "@/modules/progress/components";
+import { formatBogotaDateOnly } from "@/lib/utils/format-date";
 import type { CourseSummary } from "@/modules/progress/services/progress.service";
 import type { Certificate } from "@/modules/certificates/types";
 import { getDisplayName } from "@/lib/utils/format";
@@ -78,36 +71,41 @@ export default async function DashboardPage() {
       ? "Aún no tienes cursos asignados"
       : "Aún no hay cursos en el sistema";
 
-  // Stats agregados para el HeroCard student (Bloque 21.2): suma de
-  // lecciones completadas / total a traves de cursos activos + %
-  // global. En MVP cohorte hay 1 curso por student; el calculo
-  // generaliza a multi-curso.
-  const studentTotalCompleted = isStudent
-    ? summaries.reduce(
-        (acc, s) => acc + (s?.progress.completedCount ?? 0),
-        0,
-      )
-    : 0;
-  const studentTotalLessons = isStudent
-    ? summaries.reduce((acc, s) => acc + (s?.progress.totalCount ?? 0), 0)
-    : 0;
-  const studentProgressPct =
-    studentTotalLessons > 0
-      ? Math.round((studentTotalCompleted / studentTotalLessons) * 100)
-      : 0;
+  // 21.6 B1: chips del hero student = badge actual + proximo evento.
+  // Badge: del summary del primer curso (en MVP hay 1 curso por
+  // student). Proximo evento: oculto si > 7 dias o no hay eventos.
+  const studentBadge =
+    isStudent && summaries.length > 0
+      ? (summaries[0]?.badge ?? null)
+      : null;
 
-  // Stats admin (Bloque 21.4): cohort-wide counts via admin metrics
-  // repo. Solo se llama si isAdmin para no penalizar el TTFB de
-  // student/teacher con queries que no van a renderizar.
-  const adminStats = isAdmin
-    ? await Promise.all([
-        adminMetricsRepository.countUsersByRole(),
-        adminMetricsRepository.countCertificates(),
-        adminMetricsRepository.countPendingSubmissions(),
-      ])
-    : null;
-  const [adminUserCounts, adminCertCounts, adminPendingCount] =
-    adminStats ?? [null, null, null];
+  const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+  const studentNextEvent =
+    isStudent && courses.length > 0
+      ? await courseEventRepository
+          .listUpcomingByCourse(courses[0].id, 1)
+          .then((events) => events[0] ?? null)
+      : null;
+
+  const studentNextEventChip = (() => {
+    if (!studentNextEvent) return null;
+    // starts_at es YYYY-MM-DD. Diff de dias entre noons locales
+    // para no incurrir en el shift UTC->Bogota del bug calendar.
+    const eventDate = new Date(`${studentNextEvent.starts_at}T12:00:00`);
+    const today = new Date();
+    today.setHours(12, 0, 0, 0);
+    const diff = eventDate.getTime() - today.getTime();
+    if (diff < 0 || diff > SEVEN_DAYS_MS) return null;
+    return {
+      label: "Próximo evento",
+      value: formatBogotaDateOnly(studentNextEvent.starts_at),
+    };
+  })();
+
+  // 21.6 B2: layout 2-col para student con 1 curso (CourseCard +
+  // InsigniasCard). Multi-curso (raro en MVP) cae al grid uniforme
+  // de CourseCards con la InsigniasCard arriba como single row.
+  const studentHasSingleCourse = isStudent && courses.length === 1;
 
   return (
     <div className="mx-auto max-w-5xl space-y-8">
@@ -115,68 +113,36 @@ export default async function DashboardPage() {
         <HeroCard
           variant="green"
           title={`¡Bienvenido, ${getDisplayName(user)}!`}
-          subtitle="Te damos la bienvenida a CNV Learning."
+          subtitle={
+            studentBadge
+              ? `Rango actual: ${studentBadge.label}`
+              : "Te damos la bienvenida a CNV Learning."
+          }
           rightSlot={
-            courses.length > 0 ? (
-              <>
+            <>
+              {studentBadge && (
                 <StatTile
                   variant="chip"
-                  label="Progreso"
-                  value={`${studentProgressPct}%`}
+                  label="Insignia"
+                  value={studentBadge.label.split(" ")[0]}
                 />
+              )}
+              {studentNextEventChip && (
                 <StatTile
                   variant="chip"
-                  label="Lecciones"
-                  value={`${studentTotalCompleted}/${studentTotalLessons}`}
+                  label={studentNextEventChip.label}
+                  value={studentNextEventChip.value}
                 />
-              </>
-            ) : undefined
+              )}
+            </>
           }
         />
       ) : isAdmin ? (
-        <>
-          <HeroCard
-            variant="dark"
-            title="System Administrator"
-            subtitle={
-              <>
-                Estado:{" "}
-                <span className="font-semibold text-white">
-                  Consola operativa
-                </span>
-              </>
-            }
-            rightSlot={
-              <StatTile variant="chip" label="Uptime" value="99.9%" />
-            }
-          />
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <StatTile
-              label="Usuarios"
-              value={String(adminUserCounts?.total ?? 0)}
-              valueColor="text-emerald-700"
-            />
-            <StatTile
-              label="Cursos"
-              value={String(courses.length)}
-              valueColor="text-foreground"
-            />
-            <StatTile
-              label="Certificados"
-              value={String(adminCertCounts?.total ?? 0)}
-              valueColor="text-foreground"
-            />
-            <StatTile
-              label="Entregas pendientes"
-              value={String(adminPendingCount ?? 0)}
-              valueColor={
-                (adminPendingCount ?? 0) > 0
-                  ? "text-amber-700"
-                  : "text-muted-foreground"
-              }
-            />
-          </div>
-        </>
+        <HeroCard
+          variant="dark"
+          title="System Administrator"
+          subtitle="Catálogo de cursos del sistema."
+        />
       ) : (
         <div className="space-y-2">
           <h1 className="font-display text-3xl font-black tracking-tight">
@@ -204,17 +170,31 @@ export default async function DashboardPage() {
             </CardDescription>
           </CardHeader>
         </Card>
-      ) : (
-        <div className="grid gap-6 md:grid-cols-2">
-          {courses.map((course, idx) => (
-            <CourseCard
-              key={course.id}
-              course={course}
-              summary={summaries[idx]}
-              certificate={certByCourseId.get(course.id) ?? null}
-            />
-          ))}
+      ) : studentHasSingleCourse && studentBadge ? (
+        <div className="grid gap-6 lg:grid-cols-2">
+          <CourseCard
+            course={courses[0]}
+            summary={summaries[0]}
+            certificate={certByCourseId.get(courses[0].id) ?? null}
+          />
+          <InsigniasCard currentBadgeId={studentBadge.id} />
         </div>
+      ) : (
+        <>
+          {isStudent && studentBadge && (
+            <InsigniasCard currentBadgeId={studentBadge.id} />
+          )}
+          <div className="grid gap-6 md:grid-cols-2">
+            {courses.map((course, idx) => (
+              <CourseCard
+                key={course.id}
+                course={course}
+                summary={summaries[idx]}
+                certificate={certByCourseId.get(course.id) ?? null}
+              />
+            ))}
+          </div>
+        </>
       )}
     </div>
   );

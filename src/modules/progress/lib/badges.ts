@@ -38,6 +38,15 @@ const BADGE_MASTER: Badge = {
   colorClass: "bg-amber-100 text-amber-700",
 };
 
+// Lista completa para renderizar la tarjeta de insignias del
+// dashboard student (Bloque 21.6 B2). El componente muestra las 3
+// en orden ascendente, coloreando solo la actual.
+export const ALL_BADGES: readonly Badge[] = [
+  BADGE_JUNIOR,
+  BADGE_SENIOR,
+  BADGE_MASTER,
+];
+
 // Rangos (ajustados en Bloque 5 sub-bloque 5.3-badges post smoke).
 // Los umbrales originales de MVP.md (Junior 0-59 / Senior 60-99 /
 // Master 100) resultaron desmotivadores: 28/30 lecciones (93%)

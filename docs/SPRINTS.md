@@ -184,6 +184,21 @@ Sub-bloques cerrados:
 - 21.3 teacher panel cohort stats (commit 6abe012): teacherPanelService.getCohortAverageGrade nuevo + TeacherPanelOverview agrega CohortStats section arriba (2 StatTile chips + 2 StatCardLarge). Labels "Rendimiento global" emerald y "Progreso promedio" blue. Sin "EN CURSO HOY" ni "Engagement".
 - 21.4 admin dashboard (commit a65cd68): HeroCard variant=dark "System Administrator" en dashboard admin + grid 4 StatTile (Usuarios, Cursos, Certificados, Entregas pendientes). Pre-fetch en paralelo solo si isAdmin.
 - 21.5 cierre: SPRINTS.md actualizado, smoke productivo lo ejecuta Santiago.
+- 21.6 ajustes post-smoke (en un solo commit antes del push del Bloque 21): ver detalle abajo.
+
+Ajustes post-smoke (21.6):
+- A1 SidebarLogoutButton removido (contraste destructivo rompía consistencia visual). Logout vuelve al UserDropdown del header.
+- A2 UserDropdown restaurado en desktop (removí `lg:hidden`).
+- A3 Logo "CNV Learning" del sidebar ahora linkea a /dashboard.
+- A4 RoleLabel queda informativo (no clickeable).
+- B1 Hero chips student: badge actual + próximo evento (oculto si > 7 días o no hay).
+- B2 InsigniasCard nueva: 3 badges (Junior/Senior/Master) con la actual en color y el resto en gris. Layout 2-col en lg+ junto al CourseCard cuando el student tiene 1 curso.
+- C1 CourseStructureSidebar removido del course view (duplicaba la lista de módulos).
+- C2-C4 CourseStructureSidebar redesignado para lesson view: muestra módulos + lecciones, lecciones son Links navegables, headers de módulo son separadores visuales no clickeables.
+- D1 Breadcrumb completo en lesson view: "Curso > Módulo > Lección" con Curso linkeado.
+- E1 Bug timezone calendar fix: nuevo helper `formatBogotaDateOnly(dateString)` que parsea YYYY-MM-DD por componentes sin Date object (evita el shift UTC->Bogota -5h que mostraba un día menos en columnas DATE).
+- F1 Admin dashboard simplificado: solo HeroCard dark + CourseCards. Métricas globales viven en /admin.
+- F2 Chip UPTIME 99.99% removido del HeroCard admin (era hardcoded; B22 lo reincorpora con Status panel real).
 
 Decisiones del planning aplicadas (13 Q):
 - Q1 "MIS ESTUDIOS" item: skip.

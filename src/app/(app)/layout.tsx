@@ -77,16 +77,16 @@ export default async function AppLayout({
           rightSlot={
             <>
               <NotificationBell />
-              {/* UserDropdown solo mobile: en desktop el sidebar tiene
-               * logout + nav a Perfil, redundante mostrarlo en header. */}
-              <div className="lg:hidden">
-                <UserDropdown
-                  displayName={displayName}
-                  email={user.email}
-                  initials={initials}
-                  avatarUrl={user.avatar_url}
-                />
-              </div>
+              {/* UserDropdown visible en todas las anchuras (21.6
+               * revert): el SidebarLogoutButton se removio del
+               * sidebar por contraste agresivo; el logout vuelve al
+               * dropdown del header como en MVP original. */}
+              <UserDropdown
+                displayName={displayName}
+                email={user.email}
+                initials={initials}
+                avatarUrl={user.avatar_url}
+              />
             </>
           }
         />

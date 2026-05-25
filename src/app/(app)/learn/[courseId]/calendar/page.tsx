@@ -26,7 +26,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { TimelineItem } from "@/components/shared/timeline-item";
-import { formatBogotaDate } from "@/lib/utils/format-date";
+import { formatBogotaDateOnly } from "@/lib/utils/format-date";
 import { requireUuidParam } from "@/lib/utils/params";
 import type { CourseEvent } from "@/modules/calendar/types";
 
@@ -34,10 +34,15 @@ function todayIso(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
+// 21.6 fix bug timezone: pasar "YYYY-MM-DD" a new Date() lo
+// interpreta como UTC midnight, que en Bogota (UTC-5) es 19:00 del
+// dia anterior. formatBogotaDateOnly parsea los componentes del
+// string sin Date object y renderiza correctamente las DATE
+// columns (que no tienen timezone semantica).
 function formatRange(startsAt: string, endsAt: string | null): string {
-  const start = formatBogotaDate(`${startsAt}T00:00:00.000Z`);
+  const start = formatBogotaDateOnly(startsAt);
   if (!endsAt || endsAt === startsAt) return start;
-  const end = formatBogotaDate(`${endsAt}T00:00:00.000Z`);
+  const end = formatBogotaDateOnly(endsAt);
   return `${start} → ${end}`;
 }
 

@@ -1,5 +1,6 @@
 export {
   getBadge,
+  ALL_BADGES,
   type Badge,
   type BadgeId,
   type BadgeIconName,
