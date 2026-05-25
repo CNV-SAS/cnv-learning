@@ -77,6 +77,63 @@ export type Database = {
           },
         ]
       }
+      // Manually added (Bloque 22.2, migracion 0031). Sera regenerado
+      // por MCP cuando Santiago aplique la migracion.
+      academic_certificates: {
+        Row: {
+          course_id: string
+          created_at: string
+          id: string
+          notes: string | null
+          storage_path: string
+          uploaded_at: string
+          uploaded_by: string | null
+          user_id: string
+        }
+        Insert: {
+          course_id: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          storage_path: string
+          uploaded_at?: string
+          uploaded_by?: string | null
+          user_id: string
+        }
+        Update: {
+          course_id?: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          storage_path?: string
+          uploaded_at?: string
+          uploaded_by?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "academic_certificates_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "academic_certificates_uploaded_by_fkey"
+            columns: ["uploaded_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "academic_certificates_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       announcements: {
         Row: {
           author_id: string | null
@@ -270,6 +327,72 @@ export type Database = {
           },
           {
             foreignKeyName: "certificates_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      // Manually added (Bloque 22.2, migracion 0031). Sera regenerado
+      // por MCP cuando Santiago aplique la migracion.
+      corporate_certificates: {
+        Row: {
+          created_at: string
+          hash: string
+          id: string
+          issued_at: string
+          issued_by: string | null
+          revoked_at: string | null
+          revoked_by: string | null
+          revoked_reason: string | null
+          status: Database["public"]["Enums"]["certificate_status"]
+          template_version: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          hash: string
+          id?: string
+          issued_at?: string
+          issued_by?: string | null
+          revoked_at?: string | null
+          revoked_by?: string | null
+          revoked_reason?: string | null
+          status?: Database["public"]["Enums"]["certificate_status"]
+          template_version?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          hash?: string
+          id?: string
+          issued_at?: string
+          issued_by?: string | null
+          revoked_at?: string | null
+          revoked_by?: string | null
+          revoked_reason?: string | null
+          status?: Database["public"]["Enums"]["certificate_status"]
+          template_version?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "corporate_certificates_issued_by_fkey"
+            columns: ["issued_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "corporate_certificates_revoked_by_fkey"
+            columns: ["revoked_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "corporate_certificates_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"

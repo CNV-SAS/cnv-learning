@@ -35,3 +35,24 @@ export function computeCertificateHash(
   ].join("|");
   return createHash("sha256").update(payload, "utf8").digest("hex");
 }
+
+// Hash del certificado corporativo (Bloque 22.2). No tiene course_id
+// (corporate cert no se asocia a curso). Mismo separador y algoritmo
+// para preservar el patron reproducible:
+//   hash = SHA-256(user_id || issued_at || template_version)
+export interface CorporateCertificateHashInput {
+  userId: string;
+  issuedAt: Date;
+  templateVersion: string;
+}
+
+export function computeCorporateCertificateHash(
+  input: CorporateCertificateHashInput,
+): string {
+  const payload = [
+    input.userId,
+    input.issuedAt.toISOString(),
+    input.templateVersion,
+  ].join("|");
+  return createHash("sha256").update(payload, "utf8").digest("hex");
+}

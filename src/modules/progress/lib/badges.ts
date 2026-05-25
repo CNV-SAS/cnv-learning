@@ -1,50 +1,110 @@
-// Catalogo de badges de progreso (MVP.md Bloque 5). Funcion pura:
-// percentage -> Badge. Sin estado persistido en BD; la insignia se
-// calcula al render desde lesson_progress.
+// Catalogo de badges del MVP. Funcion pura: percentage -> Badge
+// (rank). Bloque 22.2 extiende el catalogo con 2 achievements
+// (Graduado CNV, Profesional Conectado CNV).
 //
 // Shape plenamente serializable (strings en todos los campos) para
-// cruzar la frontera Server -> Client sin issues (mismo aprendizaje
-// del sub-bloque 3.5-fix). El colorClass vive aqui para centralizar
-// la decision visual y evitar branching en el componente.
+// cruzar la frontera Server -> Client sin issues.
+//
+// kind distingue:
+//   - rank: progresivos y mutuamente excluyentes pero acumulativos
+//     visualmente (Junior queda activo cuando tienes Senior). Se
+//     calculan al render con percentage del progreso.
+//   - achievement: aditivos, no mutuamente excluyentes. Se
+//     conceden por eventos discretos (constancia emitida,
+//     corporativo emitido).
+//
+// description: texto largo para tooltip de conseguida.
+// requirement: texto para tooltip de no conseguida.
 
-export type BadgeId = "junior" | "senior" | "master";
-export type BadgeIconName = "sparkles" | "award" | "trophy";
+export type BadgeId =
+  | "junior"
+  | "senior"
+  | "master"
+  | "graduated"
+  | "professional_cnv";
+
+export type BadgeIconName =
+  | "sparkles"
+  | "award"
+  | "trophy"
+  | "graduation-cap"
+  | "pro-cnv";
+
+export type BadgeKind = "rank" | "achievement";
 
 export interface Badge {
   id: BadgeId;
+  kind: BadgeKind;
   label: string;
   iconName: BadgeIconName;
   colorClass: string;
+  description: string;
+  requirement: string;
 }
 
 const BADGE_JUNIOR: Badge = {
   id: "junior",
+  kind: "rank",
   label: "Junior Bioimpedancia",
   iconName: "sparkles",
   colorClass: "bg-muted text-muted-foreground",
+  description: "Insignia inicial al inscribirte al diplomado.",
+  requirement: "Solo necesitas inscribirte al curso.",
 };
 
 const BADGE_SENIOR: Badge = {
   id: "senior",
+  kind: "rank",
   label: "Senior Medicina Bioeléctrica",
   iconName: "award",
   colorClass: "bg-emerald-100 text-emerald-700",
+  description: "Has avanzado más del 50% del curso.",
+  requirement: "Alcanza el 50% del curso.",
 };
 
 const BADGE_MASTER: Badge = {
   id: "master",
+  kind: "rank",
   label: "Master ATLAS",
   iconName: "trophy",
   colorClass: "bg-amber-100 text-amber-700",
+  description: "Estás cerca de completar el diplomado.",
+  requirement: "Alcanza el 85% del curso.",
 };
 
-// Lista completa para renderizar la tarjeta de insignias del
-// dashboard student (Bloque 21.6 B2). El componente muestra las 3
-// en orden ascendente, coloreando solo la actual.
+const BADGE_GRADUATED: Badge = {
+  id: "graduated",
+  kind: "achievement",
+  label: "Graduado CNV",
+  iconName: "graduation-cap",
+  colorClass: "bg-emerald-200 text-emerald-800",
+  description:
+    "Completaste el curso al 100% y se emitió tu Constancia de Finalización.",
+  requirement: "Completa el curso al 100%.",
+};
+
+const BADGE_PROFESSIONAL_CNV: Badge = {
+  id: "professional_cnv",
+  kind: "achievement",
+  label: "Profesional Conectado CNV",
+  iconName: "pro-cnv",
+  // Color provisional; el SVG custom del 22.5 maneja su propio styling
+  // (escudo dorado #C9A84C con borde emerald-700).
+  colorClass: "bg-amber-50 text-amber-900 border-emerald-700",
+  description:
+    "Certificado corporativo CNV: reconocimiento como Profesional Conectado de la red CNV.",
+  requirement: "Se otorga manualmente por administración.",
+};
+
+// Lista completa ordenada: ranks primero (Junior -> Master), luego
+// achievements (Graduado -> Profesional CNV). InsigniasCard itera
+// en este orden.
 export const ALL_BADGES: readonly Badge[] = [
   BADGE_JUNIOR,
   BADGE_SENIOR,
   BADGE_MASTER,
+  BADGE_GRADUATED,
+  BADGE_PROFESSIONAL_CNV,
 ];
 
 // Rangos (ajustados en Bloque 5 sub-bloque 5.3-badges post smoke).

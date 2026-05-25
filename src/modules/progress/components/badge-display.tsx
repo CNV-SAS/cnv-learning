@@ -13,14 +13,27 @@
 //   - card: tarjeta cuadrada con icon centrado (Bloque 21.2,
 //     prototipo Gildardo "Insignias" del dashboard student).
 
-import { Award, Sparkles, Trophy, type LucideIcon } from "lucide-react";
+import {
+  Award,
+  GraduationCap,
+  Shield,
+  Sparkles,
+  Trophy,
+  type LucideIcon,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Badge, BadgeIconName } from "@/modules/progress/lib";
 
+// Bloque 22.2 expande el catalogo: graduation-cap y pro-cnv.
+// pro-cnv usa Shield como placeholder; el SVG custom dorado se
+// integra en 22.5 con un componente dedicado (ProCnvInsignia) que
+// reemplaza el render path para esta variante.
 const ICON_MAP: Record<BadgeIconName, LucideIcon> = {
   sparkles: Sparkles,
   award: Award,
   trophy: Trophy,
+  "graduation-cap": GraduationCap,
+  "pro-cnv": Shield,
 };
 
 type Size = "default" | "sm" | "card";

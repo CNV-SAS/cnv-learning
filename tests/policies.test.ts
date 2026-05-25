@@ -15,6 +15,9 @@ import { canSubmitAssignment } from "@/modules/assignments/policies/can-submit-a
 import { canGradeAssignment } from "@/modules/assignments/policies/can-grade-assignment";
 import { canViewGrading } from "@/modules/assignments/policies/can-view-grading";
 import { canViewSubmission } from "@/modules/assignments/policies/can-view-submission";
+import { canManageAcademicCertificate } from "@/modules/certificates/policies/can-manage-academic-certificate";
+import { canIssueCorporateCertificate } from "@/modules/certificates/policies/can-issue-corporate-certificate";
+import { canRevokeCorporateCertificate } from "@/modules/certificates/policies/can-revoke-corporate-certificate";
 import type { AuthenticatedUser, UserRole } from "@/modules/auth/types";
 
 function makeUser(role: UserRole): AuthenticatedUser {
@@ -390,6 +393,84 @@ describe("canViewSubmission", () => {
   it("student no ve submission de otros (RLS bloqueo)", () => {
     expect(
       canViewSubmission(makeUser("student"), { submissionExists: false }),
+    ).toBe(false);
+  });
+});
+
+describe("canManageAcademicCertificate (Bloque 22.2)", () => {
+  it("admin puede", () => {
+    expect(canManageAcademicCertificate(makeUser("admin"))).toBe(true);
+  });
+  it("teacher NO puede", () => {
+    expect(canManageAcademicCertificate(makeUser("teacher"))).toBe(false);
+  });
+  it("student NO puede", () => {
+    expect(canManageAcademicCertificate(makeUser("student"))).toBe(false);
+  });
+});
+
+describe("canIssueCorporateCertificate (Bloque 22.2)", () => {
+  it("admin a student SI", () => {
+    expect(
+      canIssueCorporateCertificate(makeUser("admin"), {
+        targetIsStudent: true,
+      }),
+    ).toBe(true);
+  });
+  it("admin a NO-student NO", () => {
+    expect(
+      canIssueCorporateCertificate(makeUser("admin"), {
+        targetIsStudent: false,
+      }),
+    ).toBe(false);
+  });
+  it("teacher NO puede", () => {
+    expect(
+      canIssueCorporateCertificate(makeUser("teacher"), {
+        targetIsStudent: true,
+      }),
+    ).toBe(false);
+  });
+  it("student NO puede", () => {
+    expect(
+      canIssueCorporateCertificate(makeUser("student"), {
+        targetIsStudent: true,
+      }),
+    ).toBe(false);
+  });
+});
+
+describe("canRevokeCorporateCertificate (Bloque 22.2)", () => {
+  it("admin con cert vigente SI", () => {
+    expect(
+      canRevokeCorporateCertificate(makeUser("admin"), {
+        certificateExists: true,
+        alreadyRevoked: false,
+      }),
+    ).toBe(true);
+  });
+  it("admin con cert ya revocado NO", () => {
+    expect(
+      canRevokeCorporateCertificate(makeUser("admin"), {
+        certificateExists: true,
+        alreadyRevoked: true,
+      }),
+    ).toBe(false);
+  });
+  it("admin con cert inexistente NO", () => {
+    expect(
+      canRevokeCorporateCertificate(makeUser("admin"), {
+        certificateExists: false,
+        alreadyRevoked: false,
+      }),
+    ).toBe(false);
+  });
+  it("teacher NO puede", () => {
+    expect(
+      canRevokeCorporateCertificate(makeUser("teacher"), {
+        certificateExists: true,
+        alreadyRevoked: false,
+      }),
     ).toBe(false);
   });
 });

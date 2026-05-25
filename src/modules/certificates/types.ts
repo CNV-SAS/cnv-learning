@@ -34,3 +34,29 @@ export interface CertificateForVerify {
   studentName: string;
   courseTitle: string;
 }
+
+// Bloque 22.2: Academic certificate (PDF subido por admin desde
+// universidad externa). Sin hash, sin verificacion publica.
+export type AcademicCertificate =
+  Database["public"]["Tables"]["academic_certificates"]["Row"];
+
+// Bloque 22.2: Corporate certificate "Profesional Conectado CNV"
+// (emitido manualmente por admin). Sin course_id. Hash + verify
+// publica + PDF generado.
+export type CorporateCertificate =
+  Database["public"]["Tables"]["corporate_certificates"]["Row"];
+
+// Shape para la pagina publica /verify-corporate/[id]. Mismo
+// patron que CertificateForVerify pero sin curso (corporate no
+// se asocia a uno).
+export interface CorporateCertificateForVerify {
+  id: string;
+  user_id: string;
+  issued_at: string;
+  revoked_at: string | null;
+  revoked_reason: string | null;
+  hash: string;
+  template_version: string;
+  status: CertificateStatus;
+  studentName: string;
+}
