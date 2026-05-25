@@ -13,6 +13,20 @@ const nextConfig: NextConfig = {
       bodySizeLimit: "10mb",
     },
   },
+  // Bloque 22.4: el route handler /api/corporate-certificates/[id]/pdf
+  // lee design/templates/corporate-certificate-template.png con
+  // fs.readFile(process.cwd() + ...) en runtime. Vercel hace tracing
+  // estatico del bundle y NO incluye assets fuera de public/ por
+  // default; sin este include el PDF prod falla con ENOENT.
+  //
+  // Nota Next 16: outputFileTracingIncludes salio de experimental.* en
+  // Next 15.0 y vive en raiz del config. Si en algun futuro upgrade
+  // vuelve a moverse, ajustar aqui.
+  outputFileTracingIncludes: {
+    "/api/corporate-certificates/[id]/pdf": [
+      "./design/templates/corporate-certificate-template.png",
+    ],
+  },
 };
 
 export default withSentryConfig(nextConfig, {
