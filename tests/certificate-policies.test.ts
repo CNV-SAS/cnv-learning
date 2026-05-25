@@ -7,6 +7,7 @@ import {
   canIssueCertificate,
   canRevokeCertificate,
   canViewCertificatePdf,
+  canViewCorporateCertificatePdf,
 } from "@/modules/certificates/policies";
 import type { AuthenticatedUser, UserRole } from "@/modules/auth/types";
 
@@ -139,6 +140,53 @@ describe("canViewCertificatePdf", () => {
   it("nadie ve PDF de cert inexistente", () => {
     expect(
       canViewCertificatePdf(makeUser("admin"), {
+        certificateExists: false,
+        ownerId: OWNER_ID,
+      }),
+    ).toBe(false);
+  });
+});
+
+describe("canViewCorporateCertificatePdf (Bloque 22.4)", () => {
+  it("student propietario ve su PDF corporativo", () => {
+    expect(
+      canViewCorporateCertificatePdf(makeUser("student", OWNER_ID), {
+        certificateExists: true,
+        ownerId: OWNER_ID,
+      }),
+    ).toBe(true);
+  });
+
+  it("student NO ve PDF corporativo ajeno", () => {
+    expect(
+      canViewCorporateCertificatePdf(makeUser("student", OTHER_ID), {
+        certificateExists: true,
+        ownerId: OWNER_ID,
+      }),
+    ).toBe(false);
+  });
+
+  it("admin ve cualquier PDF corporativo", () => {
+    expect(
+      canViewCorporateCertificatePdf(makeUser("admin", OTHER_ID), {
+        certificateExists: true,
+        ownerId: OWNER_ID,
+      }),
+    ).toBe(true);
+  });
+
+  it("teacher NO ve PDF corporativo", () => {
+    expect(
+      canViewCorporateCertificatePdf(makeUser("teacher", OTHER_ID), {
+        certificateExists: true,
+        ownerId: OWNER_ID,
+      }),
+    ).toBe(false);
+  });
+
+  it("nadie ve PDF corporativo de cert inexistente", () => {
+    expect(
+      canViewCorporateCertificatePdf(makeUser("admin"), {
         certificateExists: false,
         ownerId: OWNER_ID,
       }),

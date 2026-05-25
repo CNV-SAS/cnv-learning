@@ -471,6 +471,22 @@ function CorporateCertificateCard({
               {corporate.hash}
             </div>
             <div className="flex flex-wrap justify-end gap-2">
+              <Button asChild variant="ghost" size="sm">
+                <a
+                  href={`/verify-corporate/${corporate.id}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <ExternalLink className="mr-1 h-3.5 w-3.5" />
+                  Verificar
+                </a>
+              </Button>
+              <Button asChild variant="outline" size="sm">
+                <a href={`/api/corporate-certificates/${corporate.id}/pdf`}>
+                  <FileText className="mr-1 h-3.5 w-3.5" />
+                  Descargar PDF
+                </a>
+              </Button>
               <RevokeCorporateButton
                 certificateId={corporate.id}
                 studentName={target.full_name}

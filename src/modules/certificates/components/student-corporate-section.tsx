@@ -6,10 +6,8 @@
 // tipico por student en MVP; el historico cubre el caso de revoke
 // + re-issue posterior).
 //
-// Botones Descargar PDF y Verificacion publica se difieren a 22.4
-// (apuntan al endpoint /api/corporate-certificates/[id]/pdf y a
-// /verify-corporate/[id]). Por ahora se renderizan deshabilitados
-// con texto "Próximamente".
+// 22.4: enables botones Verificar y Descargar PDF apuntando a
+// /verify-corporate/[id] y /api/corporate-certificates/[id]/pdf.
 
 import { Award, Download, ExternalLink, ShieldOff } from "lucide-react";
 import { format } from "date-fns";
@@ -131,13 +129,21 @@ function CorporateCard({
         {cert.hash}
       </div>
       <div className="flex flex-wrap justify-end gap-2">
-        <Button variant="ghost" size="sm" disabled title="Disponible próximamente">
-          <ExternalLink className="mr-1 h-3.5 w-3.5" />
-          Verificar (próximamente)
+        <Button asChild variant="ghost" size="sm">
+          <a
+            href={`/verify-corporate/${cert.id}`}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <ExternalLink className="mr-1 h-3.5 w-3.5" />
+            Verificar
+          </a>
         </Button>
-        <Button variant="outline" size="sm" disabled title="Disponible próximamente">
-          <Download className="mr-1 h-3.5 w-3.5" />
-          Descargar PDF (próximamente)
+        <Button asChild variant="outline" size="sm">
+          <a href={`/api/corporate-certificates/${cert.id}/pdf`}>
+            <Download className="mr-1 h-3.5 w-3.5" />
+            Descargar PDF
+          </a>
         </Button>
       </div>
     </div>

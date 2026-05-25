@@ -10,6 +10,10 @@ export {
   canViewCertificatePdf,
   type ViewCertificatePdfContext,
 } from "./can-view-certificate-pdf";
+export {
+  canViewCorporateCertificatePdf,
+  type ViewCorporateCertificatePdfContext,
+} from "./can-view-corporate-certificate-pdf";
 export { canManageAcademicCertificate } from "./can-manage-academic-certificate";
 export {
   canIssueCorporateCertificate,
