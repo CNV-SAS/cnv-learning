@@ -51,9 +51,13 @@ describe("getNavigationFor", () => {
     expect(teacherItem?.label).toBe("Panel docente");
   });
 
-  it("student ve Dashboard + Perfil", () => {
+  it("student ve Dashboard + Perfil + Mis certificados", () => {
     const items = getNavigationFor(makeUser("student"));
-    expect(items.map((i) => i.href)).toEqual(["/dashboard", "/profile"]);
+    expect(items.map((i) => i.href)).toEqual([
+      "/dashboard",
+      "/profile",
+      "/certificates",
+    ]);
   });
 
   // Regresion del bug de sub-bloque 3.5: si NavItem se llenara con

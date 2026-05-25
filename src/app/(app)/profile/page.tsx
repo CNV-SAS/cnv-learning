@@ -197,7 +197,7 @@ export default async function ProfilePage() {
                             href={`/api/certificates/${certificate.id}/pdf`}
                           >
                             <Download className="mr-2 h-3.5 w-3.5" />
-                            Descargar certificado
+                            Descargar constancia
                           </a>
                         </Button>
                         <p

@@ -17,19 +17,27 @@
 // Items omitidos conscientemente del MVP:
 // - Notificaciones: el bell del header reemplaza la entrada del
 //   sidebar; no se agrega item para no duplicar (Bloque 10).
-// Otros (cursos, foro, certificados) se agregan en sus bloques
-// respectivos cuando exista la ruta correspondiente, agregando
-// tanto el iconName aqui como su mapeo en nav-icon.tsx.
+// Otros (cursos, foro) se agregan en sus bloques respectivos
+// cuando exista la ruta correspondiente, agregando tanto el
+// iconName aqui como su mapeo en nav-icon.tsx.
 //
 // Orden del sidebar:
 // 1. Dashboard (todos los roles, entrada principal).
 // 2. Panel docente (solo teacher, overview + bandeja + estudiantes).
 // 3. Admin (solo admin, panel administrativo).
 // 4. Perfil (todos los roles, ultimo por convencion estandar).
+// 5. Mis certificados (solo student, ruta /certificates del 22.5;
+//    intencionalmente despues de Perfil porque es lista de assets
+//    del student, no navegacion principal de tareas).
 
 import type { AuthenticatedUser, UserRole } from "@/modules/auth/types";
 
-export type NavIconName = "dashboard" | "shield" | "inbox" | "user";
+export type NavIconName =
+  | "dashboard"
+  | "shield"
+  | "inbox"
+  | "user"
+  | "award";
 
 export interface NavItem {
   label: string;
@@ -62,6 +70,12 @@ const NAV_ITEMS: readonly NavItem[] = [
     href: "/profile",
     iconName: "user",
     allowedRoles: ["admin", "teacher", "student"],
+  },
+  {
+    label: "Mis certificados",
+    href: "/certificates",
+    iconName: "award",
+    allowedRoles: ["student"],
   },
 ];
 

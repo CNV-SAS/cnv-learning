@@ -11,6 +11,7 @@
 // key del Record, TypeScript falla en compile time.
 
 import {
+  Award,
   Inbox,
   LayoutDashboard,
   Shield,
@@ -24,6 +25,7 @@ const ICON_MAP: Record<NavIconName, LucideIcon> = {
   shield: Shield,
   inbox: Inbox,
   user: User,
+  award: Award,
 };
 
 interface NavIconProps {

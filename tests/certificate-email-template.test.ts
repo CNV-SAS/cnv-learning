@@ -22,17 +22,17 @@ const baseRevoked = {
 };
 
 describe("certificateNotificationTemplate issued", () => {
-  it("subject incluye 'esta listo' + course title", () => {
+  it("subject incluye 'esta lista' + course title", () => {
     const { subject } = certificateNotificationTemplate(baseIssued);
-    expect(subject).toContain("Tu certificado de");
+    expect(subject).toContain("Tu Constancia de Finalización de");
     expect(subject).toContain("Diplomado de Medicina Bioeléctrica");
-    expect(subject).toContain("está listo");
+    expect(subject).toContain("está lista");
   });
 
   it("HTML contiene CTA al pdfUrl", () => {
     const { html } = certificateNotificationTemplate(baseIssued);
     expect(html).toContain(baseIssued.pdfUrl);
-    expect(html).toContain("Descargar certificado");
+    expect(html).toContain("Descargar constancia");
   });
 
   it("HTML contiene link al verifyUrl", () => {
@@ -49,11 +49,11 @@ describe("certificateNotificationTemplate issued", () => {
 });
 
 describe("certificateNotificationTemplate revoked", () => {
-  it("subject incluye 'fue revocado' + course title", () => {
+  it("subject incluye 'fue revocada' + course title", () => {
     const { subject } = certificateNotificationTemplate(baseRevoked);
-    expect(subject).toContain("Tu certificado de");
+    expect(subject).toContain("Tu Constancia de Finalización de");
     expect(subject).toContain("Diplomado de Medicina Bioeléctrica");
-    expect(subject).toContain("fue revocado");
+    expect(subject).toContain("fue revocada");
   });
 
   it("HTML contiene el motivo de revocacion", () => {
@@ -64,7 +64,7 @@ describe("certificateNotificationTemplate revoked", () => {
   it("HTML NO contiene pdfUrl (cert revocado no se promueve descarga)", () => {
     const { html } = certificateNotificationTemplate(baseRevoked);
     expect(html).not.toContain("/api/certificates/");
-    expect(html).not.toContain("Descargar certificado");
+    expect(html).not.toContain("Descargar constancia");
   });
 
   it("HTML escapa < > & en el motivo (defensa basica)", () => {

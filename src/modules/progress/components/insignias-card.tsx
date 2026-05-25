@@ -4,8 +4,14 @@
 // tambien queda en color (ya no se gris-out). Solo los rangos
 // superiores no conseguidos quedan en muted.
 //
-// Tooltip nativo via title attribute (22.1 minimal scope; tooltip
-// Radix pulido se evalua en 22.5 si el feedback lo justifica):
+// 22.5: filtra a kind === "rank". El catalogo expandido por 22.2
+// incluye 2 achievements (Graduado CNV, Profesional Conectado CNV)
+// que requieren badgesService para resolverse correctamente; este
+// card del dashboard mantiene el resumen compacto solo de ranks.
+// El detalle completo de las 5 insignias vive en /certificates
+// (ExpandedBadgesCard).
+//
+// Tooltip nativo via title attribute:
 //   - Conseguida: "Nombre · Conseguida el DD mes YYYY".
 //   - No conseguida: "Nombre · Alcanza X% para conseguirla".
 //
@@ -54,7 +60,7 @@ export function InsigniasCard({
           </h2>
         </div>
         <div className="flex flex-wrap gap-3">
-          {ALL_BADGES.map((badge) => {
+          {ALL_BADGES.filter((b) => b.kind === "rank").map((badge) => {
             const threshold = RANK_THRESHOLD[badge.id] ?? 0;
             const earned = progressPercentage >= threshold;
             const earnedAt = earned

@@ -1,4 +1,10 @@
-// Verificacion publica de certificado. Server Component, sin auth.
+// Verificacion publica de Constancia de Finalizacion. Server
+// Component, sin auth.
+//
+// 22.5: rename copy a "Constancia de Finalizacion" para alinear
+// con el catalogo expandido de certificados. /verify-corporate/[id]
+// (Bloque 22.4) atiende los Profesionales Conectados CNV; la
+// Certificacion Academica no tiene verificacion publica.
 //
 // El user que escanea el QR del PDF cae aqui. La pagina muestra:
 //   - Status: valido / revocado / no encontrado.
@@ -45,7 +51,7 @@ export default async function VerifyCertificatePage({
       <div className="mx-auto max-w-2xl space-y-6">
         <div className="space-y-2">
           <h1 className="font-display text-3xl font-black tracking-tight">
-            Verificación de certificado
+            Verificación de Constancia de Finalización
           </h1>
           <p className="text-sm text-muted-foreground">
             Resultado de la consulta contra los registros de CNV Learning.
@@ -59,11 +65,12 @@ export default async function VerifyCertificatePage({
             />
             <div className="space-y-1">
               <p className="font-display text-lg font-bold text-amber-900">
-                Certificado no encontrado
+                Constancia no encontrada
               </p>
               <p className="text-sm text-amber-900/80">
-                No se encontró un certificado con el código solicitado.
-                Verifica el enlace o consulta con el emisor.
+                No se encontró una Constancia de Finalización con el
+                código solicitado. Verifica el enlace o consulta con el
+                emisor.
               </p>
             </div>
           </CardContent>
@@ -88,7 +95,7 @@ export default async function VerifyCertificatePage({
     <div className="mx-auto max-w-2xl space-y-6">
       <div className="space-y-2">
         <h1 className="font-display text-3xl font-black tracking-tight">
-          Verificación de certificado
+          Verificación de Constancia de Finalización
         </h1>
         <p className="text-sm text-muted-foreground">
           Resultado de la consulta contra los registros de CNV Learning.
@@ -104,10 +111,11 @@ export default async function VerifyCertificatePage({
             />
             <div className="space-y-1">
               <p className="font-display text-lg font-bold text-rose-900">
-                Certificado revocado
+                Constancia revocada
               </p>
               <p className="text-sm text-rose-900/80">
-                Este certificado fue revocado y ya no es válido.
+                Esta Constancia de Finalización fue revocada y ya no
+                es válida.
               </p>
             </div>
           </CardContent>
@@ -121,10 +129,10 @@ export default async function VerifyCertificatePage({
             />
             <div className="space-y-1">
               <p className="font-display text-lg font-bold text-emerald-900">
-                Certificado válido
+                Constancia válida
               </p>
               <p className="text-sm text-emerald-900/80">
-                Emitido por CNV Learning. Coincide con los registros.
+                Emitida por CNV Learning. Coincide con los registros.
               </p>
             </div>
           </CardContent>
@@ -177,7 +185,7 @@ export default async function VerifyCertificatePage({
           )}
           <div className="border-t border-border pt-4">
             <p className="text-xs font-black uppercase tracking-widest text-muted-foreground">
-              Código del certificado
+              Código de la constancia
             </p>
             <p className="font-mono text-xs text-muted-foreground">
               ID {certificate.id} · Hash {certificate.hash.slice(0, 16)}
@@ -187,7 +195,7 @@ export default async function VerifyCertificatePage({
       </Card>
 
       <p className="text-xs text-muted-foreground">
-        El hash es una huella SHA-256 sobre datos del certificado en el
+        El hash es una huella SHA-256 sobre datos de la constancia en el
         momento de emisión. Sirve como marca de integridad institucional.
       </p>
     </div>

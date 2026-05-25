@@ -12,9 +12,12 @@
 //     ajuste de cierre del Bloque 9.
 //
 // Bloque 12 sub-bloque 12.7: prop opcional certificate. Cuando se
-// pasa, agrega un bloque al final con boton "Descargar certificado"
+// pasa, agrega un bloque al final con boton "Descargar constancia"
 // + status text (Valido / Revocado el X). El PDF revocado lleva
 // watermark; permitir descarga es honesto (consideracion plan B12).
+// 22.5: copy "certificado" -> "constancia" en UI student. La
+// constancia de finalizacion es uno de 3 tipos del nuevo catalogo
+// de certificados (academica + corporativo viven en /certificates).
 
 import Link from "next/link";
 import { Download } from "lucide-react";
@@ -60,7 +63,7 @@ function CertificateBlock({ certificate }: { certificate: Certificate }) {
       >
         <a href={`/api/certificates/${certificate.id}/pdf`}>
           <Download className="mr-2 h-4 w-4" />
-          Descargar certificado
+          Descargar constancia
         </a>
       </Button>
       <p
