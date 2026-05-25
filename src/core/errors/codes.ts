@@ -104,6 +104,8 @@ export const ErrorCodes = {
 
   // Profile (Bloque 16)
   PROFILE_PASSWORD_INCORRECT: "PROFILE_PASSWORD_INCORRECT",
+  // Bloque 22.6: password reuse detectado por Supabase Auth.
+  PROFILE_PASSWORD_SAME_AS_CURRENT: "PROFILE_PASSWORD_SAME_AS_CURRENT",
 
   // Admin user management (AuthorizationError, NotFoundError, DomainError)
   USER_NOT_FOUND: "USER_NOT_FOUND",

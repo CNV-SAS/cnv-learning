@@ -13,6 +13,7 @@
 
 import Link from "next/link";
 import {
+  Activity,
   Award,
   ClipboardList,
   FileText,
@@ -151,6 +152,12 @@ export default async function AdminPage() {
             <Link href="/admin/audit">
               <ClipboardList className="mr-2 h-4 w-4" />
               Auditoría
+            </Link>
+          </Button>
+          <Button asChild variant="outline">
+            <Link href="/admin/status">
+              <Activity className="mr-2 h-4 w-4" />
+              Estado del sistema
             </Link>
           </Button>
         </div>

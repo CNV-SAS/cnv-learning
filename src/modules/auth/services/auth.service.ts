@@ -7,12 +7,17 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { ratelimit } from "@/lib/ratelimit";
-import { AppError, AuthenticationError } from "@/core/errors/classes";
+import {
+  AppError,
+  AuthenticationError,
+  ValidationError,
+} from "@/core/errors/classes";
 import { ErrorCodes } from "@/core/errors/codes";
 import { ok, err, type Result } from "@/lib/utils/result";
 import { logger } from "@/core/logger/logger";
 import { logAuditEvent } from "@/core/audit/log";
 import { profileRepository } from "@/modules/auth/data/profile.repository";
+import { isSamePasswordError } from "@/modules/auth/utils/password-errors";
 import type { AuthenticatedUser } from "@/modules/auth/types";
 
 function rateLimitError(secondsLeft: number, kind: "login" | "reset"): AppError {
@@ -135,6 +140,18 @@ export const authService = {
     const { error } = await supabase.auth.updateUser({ password: newPassword });
 
     if (error) {
+      // Bloque 22.6: detectar reuse de la misma password ANTES de
+      // mapear a session expirada. Sin esto la UI mostraba "Sesion de
+      // reset expirada" en cada intento de reusar, confundiendo al
+      // user que solo necesitaba elegir otra.
+      if (isSamePasswordError(error)) {
+        return err(
+          new ValidationError(
+            ErrorCodes.PROFILE_PASSWORD_SAME_AS_CURRENT,
+            "No puedes usar tu contraseña actual. Elige una diferente.",
+          ),
+        );
+      }
       logger.error("Password reset failed", { message: error.message });
       return err(
         new AuthenticationError(

@@ -23,6 +23,7 @@ import {
   canChangeOwnPassword,
 } from "@/modules/profile/policies";
 import { auditRepository } from "@/modules/audit/data";
+import { isSamePasswordError } from "@/modules/auth/utils/password-errors";
 import {
   AppError,
   AuthenticationError,
@@ -196,6 +197,16 @@ export const profileService = {
     });
 
     if (updateError) {
+      // Bloque 22.6: reuse de la misma password → mensaje claro en
+      // lugar de "No fue posible cambiar la contraseña" generico.
+      if (isSamePasswordError(updateError)) {
+        return err(
+          new ValidationError(
+            ErrorCodes.PROFILE_PASSWORD_SAME_AS_CURRENT,
+            "No puedes usar tu contraseña actual. Elige una diferente.",
+          ),
+        );
+      }
       logger.error("changePassword updateUser failed", {
         userId: params.actor.id,
         message: updateError.message,

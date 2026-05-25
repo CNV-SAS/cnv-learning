@@ -498,6 +498,53 @@ Si Santiago es el único admin y por accidente otro admin lo degrada a teacher/s
 
 Mitigación operativa: mantener al menos 2 admins activos en producción para evitar usar este fallback. Cuando un segundo admin de confianza se incorpore al equipo, asignarle el rol y compartirle este procedimiento.
 
+## Runbook: limpiar avatars huérfanos en Storage
+
+El bucket `avatars` puede acumular blobs sin referencia cuando un usuario:
+- Reemplaza su avatar (el blob anterior queda en disco; `profiles.avatar_url` apunta solo al nuevo).
+- Elimina su avatar (`avatar_url=null` pero el blob persiste).
+- Es eliminado por admin (cascada en `profiles` pero no en Storage).
+
+Para liberar espacio antes de que el bucket pese, ejecutar el siguiente flujo en `https://supabase.com/dashboard/project/YOUR_PROJECT/sql/new`:
+
+1. **Listar blobs huérfanos (read-only)** para revisar antes de borrar:
+
+   ```sql
+   SELECT
+     so.name AS blob_path,
+     so.id   AS storage_id,
+     so.created_at
+   FROM storage.objects so
+   WHERE so.bucket_id = 'avatars'
+     AND so.name NOT IN (
+       SELECT split_part(p.avatar_url, '/avatars/', 2)
+       FROM public.profiles p
+       WHERE p.avatar_url IS NOT NULL
+         AND p.avatar_url LIKE '%/avatars/%'
+     );
+   ```
+
+   El `split_part` extrae el path relativo dentro del bucket (ej: `userId/avatar.png`). Si la URL completa no contiene `/avatars/`, queda fuera del filtro y el blob se trata como huérfano; revisar manualmente esos casos.
+
+2. **Borrar blobs huérfanos** (solo después de confirmar la lista):
+
+   ```sql
+   DELETE FROM storage.objects
+   WHERE bucket_id = 'avatars'
+     AND name NOT IN (
+       SELECT split_part(p.avatar_url, '/avatars/', 2)
+       FROM public.profiles p
+       WHERE p.avatar_url IS NOT NULL
+         AND p.avatar_url LIKE '%/avatars/%'
+     );
+   ```
+
+3. **Verificar conteo final** desde `/admin/status` (sección Storage por bucket): el conteo de `avatars` debe coincidir con `SELECT count(*) FROM profiles WHERE avatar_url IS NOT NULL`.
+
+Cadencia sugerida: trimestral o cuando el bucket `avatars` pase de 50 MB en `/admin/status`. En MVP con 10 alumnos esto se mantiene irrelevante varios meses; no es urgente.
+
+Aplicar el mismo patrón a `academic-certificates` si en el futuro el flujo de eliminación de certificados no se hace siempre via `academicCertificateService.deleteById` (que ya borra el blob).
+
 ## Runbook: revisar logs de producción
 
 Tres fuentes complementarias según el síntoma:

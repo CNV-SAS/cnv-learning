@@ -31,11 +31,12 @@ function makeUser(role: UserRole): AuthenticatedUser {
 }
 
 describe("getNavigationFor", () => {
-  it("admin ve Dashboard + Admin + Perfil (sin Panel docente)", () => {
+  it("admin ve Dashboard + Admin + Estado + Perfil (sin Panel docente)", () => {
     const items = getNavigationFor(makeUser("admin"));
     expect(items.map((i) => i.href)).toEqual([
       "/dashboard",
       "/admin",
+      "/admin/status",
       "/profile",
     ]);
   });

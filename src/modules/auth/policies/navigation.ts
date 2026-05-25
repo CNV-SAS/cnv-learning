@@ -37,7 +37,8 @@ export type NavIconName =
   | "shield"
   | "inbox"
   | "user"
-  | "award";
+  | "award"
+  | "activity";
 
 export interface NavItem {
   label: string;
@@ -63,6 +64,12 @@ const NAV_ITEMS: readonly NavItem[] = [
     label: "Admin",
     href: "/admin",
     iconName: "shield",
+    allowedRoles: ["admin"],
+  },
+  {
+    label: "Estado",
+    href: "/admin/status",
+    iconName: "activity",
     allowedRoles: ["admin"],
   },
   {
