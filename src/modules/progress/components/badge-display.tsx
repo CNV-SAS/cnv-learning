@@ -15,6 +15,8 @@
 
 import {
   Award,
+  Compass,
+  Crown,
   GraduationCap,
   Network,
   Sparkles,
@@ -24,16 +26,17 @@ import {
 import { cn } from "@/lib/utils";
 import type { Badge, BadgeIconName } from "@/modules/progress/lib";
 
-// Bloque 22.7 fix Bug F4 del smoke: "pro-cnv" mapea a Network
-// (representa red/conexion de profesionales) en lugar de Shield.
-// El SVG custom dorado original quedaba indistinguible visualmente
-// del Trophy de Master; Network + paleta azul-royal lo diferencia.
+// Bloque 22.7 fix Bug F4: "pro-cnv" mapea a Network (red de
+// profesionales) en lugar de Shield. 22.14 agrega Compass para
+// Explorador CNV (5 cursos) y Crown para Maestro CNV (10 cursos).
 const ICON_MAP: Record<BadgeIconName, LucideIcon> = {
   sparkles: Sparkles,
   award: Award,
   trophy: Trophy,
   "graduation-cap": GraduationCap,
   "pro-cnv": Network,
+  compass: Compass,
+  crown: Crown,
 };
 
 type Size = "default" | "sm" | "card";

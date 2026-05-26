@@ -19,6 +19,7 @@ import { redirect } from "next/navigation";
 import { profileRepository } from "@/modules/auth/data/profile.repository";
 import { courseRepository } from "@/modules/courses/data";
 import { progressService } from "@/modules/progress/services/progress.service";
+import { badgesService } from "@/modules/progress/services/badges.service";
 import { certificateRepository } from "@/modules/certificates/data";
 import { courseEventRepository } from "@/modules/calendar/data";
 import { CourseCard } from "@/modules/courses/components/course-card";
@@ -107,12 +108,13 @@ export default async function DashboardPage() {
   // de CourseCards con la InsigniasCard arriba como single row.
   const studentHasSingleCourse = isStudent && courses.length === 1;
 
-  // 22.1 B: earned dates de los ranks para los tooltips. Solo se
-  // calcula para student con curso (la InsigniasCard solo renderiza
-  // en ese caso).
-  const studentRankDates =
+  // 22.14: entries pre-resueltas de las 7 insignias del catalogo
+  // (badgesService evalua ranks + achievements). InsigniasCard
+  // filtra a showInDashboard=true para renderizar las 5 relevantes
+  // al cohorte actual (ranks + Graduado + Pro CNV).
+  const studentBadgeEntries =
     isStudent && courses.length > 0
-      ? await progressService.getRankEarnedDates(user.id, courses[0].id)
+      ? await badgesService.getStudentBadges(user.id, courses[0].id)
       : null;
 
   return (
@@ -178,27 +180,19 @@ export default async function DashboardPage() {
             </CardDescription>
           </CardHeader>
         </Card>
-      ) : studentHasSingleCourse && studentBadge && studentRankDates ? (
+      ) : studentHasSingleCourse && studentBadge && studentBadgeEntries ? (
         <div className="grid gap-6 lg:grid-cols-2">
           <CourseCard
             course={courses[0]}
             summary={summaries[0]}
             certificate={certByCourseId.get(courses[0].id) ?? null}
           />
-          <InsigniasCard
-            progressPercentage={summaries[0]?.progress.percentage ?? 0}
-            earnedDates={studentRankDates}
-          />
+          <InsigniasCard entries={studentBadgeEntries} />
         </div>
       ) : (
         <>
-          {isStudent && studentBadge && studentRankDates && (
-            <InsigniasCard
-              progressPercentage={
-                summaries[0]?.progress.percentage ?? 0
-              }
-              earnedDates={studentRankDates}
-            />
+          {isStudent && studentBadge && studentBadgeEntries && (
+            <InsigniasCard entries={studentBadgeEntries} />
           )}
           <div className="grid gap-6 md:grid-cols-2">
             {courses.map((course, idx) => (

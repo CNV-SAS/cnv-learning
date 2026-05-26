@@ -1,5 +1,5 @@
 // Service del catalogo expandido de insignias (Bloque 22.2).
-// getStudentBadges retorna las 5 del catalogo con earned + earnedAt
+// getStudentBadges retorna las 7 del catalogo con earned + earnedAt
 // para cada una. Reusa progressService.getRankEarnedDates y consulta
 // certificates + corporate_certificates para los achievements.
 //
@@ -14,6 +14,10 @@
 // "Curso primario" en MVP = unico curso del student. En multi-curso
 // futuro = primer curso enrolled (caller decide; este service lo
 // recibe ya resuelto).
+//
+// 22.14: agrega evaluacion de Explorador CNV (>= 5 certs validos)
+// y Maestro CNV (>= 10). Sin earnedAt (no se trackea la fecha del
+// cert que cruzo el threshold; podria reconstruirse en post-MVP).
 
 import {
   certificateRepository,
@@ -42,23 +46,29 @@ export const badgesService = {
     primaryCourseId: string | null,
   ): Promise<StudentBadgeEntry[]> {
     // Datos en paralelo segun lo que aplica.
-    const [rankDates, summary, validCert, validCorporateCert] =
-      await Promise.all([
-        primaryCourseId
-          ? progressService.getRankEarnedDates(userId, primaryCourseId)
-          : Promise.resolve({
-              juniorAt: null,
-              seniorAt: null,
-              masterAt: null,
-            }),
-        primaryCourseId
-          ? progressService.getCourseSummary(userId, primaryCourseId)
-          : Promise.resolve(null),
-        certificateRepository.listForUser(userId).then((certs) =>
-          certs.find((c) => c.status === "valid") ?? null,
-        ),
-        corporateCertificateRepository.findValidByUser(userId),
-      ]);
+    const [
+      rankDates,
+      summary,
+      validCert,
+      validCorporateCert,
+      validCertCount,
+    ] = await Promise.all([
+      primaryCourseId
+        ? progressService.getRankEarnedDates(userId, primaryCourseId)
+        : Promise.resolve({
+            juniorAt: null,
+            seniorAt: null,
+            masterAt: null,
+          }),
+      primaryCourseId
+        ? progressService.getCourseSummary(userId, primaryCourseId)
+        : Promise.resolve(null),
+      certificateRepository.listForUser(userId).then((certs) =>
+        certs.find((c) => c.status === "valid") ?? null,
+      ),
+      corporateCertificateRepository.findValidByUser(userId),
+      certificateRepository.countValidByUser(userId),
+    ]);
 
     const progressPct = summary?.progress.percentage ?? 0;
 
@@ -92,6 +102,20 @@ export const badgesService = {
           badge,
           earned: validCorporateCert !== null,
           earnedAt: validCorporateCert?.issued_at ?? null,
+        };
+      }
+      if (badge.id === "explorer_cnv") {
+        return {
+          badge,
+          earned: validCertCount >= 5,
+          earnedAt: null,
+        };
+      }
+      if (badge.id === "master_cnv") {
+        return {
+          badge,
+          earned: validCertCount >= 10,
+          earnedAt: null,
         };
       }
       // Default fallthrough (no deberia pasar).

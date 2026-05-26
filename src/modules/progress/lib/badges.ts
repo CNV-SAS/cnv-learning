@@ -1,6 +1,8 @@
 // Catalogo de badges del MVP. Funcion pura: percentage -> Badge
 // (rank). Bloque 22.2 extiende el catalogo con 2 achievements
-// (Graduado CNV, Profesional Conectado CNV).
+// (Graduado CNV, Profesional Conectado CNV). Bloque 22.14 agrega
+// 2 mas (Explorador CNV, Maestro CNV) por count de cursos
+// completados (>= 5 y >= 10 respectivamente).
 //
 // Shape plenamente serializable (strings en todos los campos) para
 // cruzar la frontera Server -> Client sin issues.
@@ -11,24 +13,34 @@
 //     calculan al render con percentage del progreso.
 //   - achievement: aditivos, no mutuamente excluyentes. Se
 //     conceden por eventos discretos (constancia emitida,
-//     corporativo emitido).
+//     corporativo emitido, threshold de cursos completados).
 //
-// description: texto largo para tooltip de conseguida.
-// requirement: texto para tooltip de no conseguida.
+// showInDashboard distingue:
+//   - true: aparece en el InsigniasCard compacto del dashboard.
+//     Para el MVP con 1 curso por student son: Junior, Senior,
+//     Master, Graduado CNV y Profesional Conectado CNV.
+//   - false: solo aparece en el ExpandedBadgesCard de /certificates.
+//     Para Explorador CNV (5 cursos) y Maestro CNV (10 cursos),
+//     que son insignias de largo plazo y no aplican al cohorte
+//     actual con 1 curso.
 
 export type BadgeId =
   | "junior"
   | "senior"
   | "master"
   | "graduated"
-  | "professional_cnv";
+  | "professional_cnv"
+  | "explorer_cnv"
+  | "master_cnv";
 
 export type BadgeIconName =
   | "sparkles"
   | "award"
   | "trophy"
   | "graduation-cap"
-  | "pro-cnv";
+  | "pro-cnv"
+  | "compass"
+  | "crown";
 
 export type BadgeKind = "rank" | "achievement";
 
@@ -40,6 +52,7 @@ export interface Badge {
   colorClass: string;
   description: string;
   requirement: string;
+  showInDashboard: boolean;
 }
 
 // Bloque 22.7 fix Bug F + 22.8 + 22.11 rotacion final de paleta para
@@ -64,6 +77,7 @@ const BADGE_JUNIOR: Badge = {
   colorClass: "bg-yellow-100 text-yellow-700 border-yellow-300",
   description: "Insignia inicial al inscribirte al diplomado.",
   requirement: "Solo necesitas inscribirte al curso.",
+  showInDashboard: true,
 };
 
 const BADGE_SENIOR: Badge = {
@@ -74,6 +88,7 @@ const BADGE_SENIOR: Badge = {
   colorClass: "bg-sky-100 text-sky-700 border-sky-200",
   description: "Has avanzado más del 50% del curso.",
   requirement: "Alcanza el 50% del curso.",
+  showInDashboard: true,
 };
 
 const BADGE_MASTER: Badge = {
@@ -81,9 +96,10 @@ const BADGE_MASTER: Badge = {
   kind: "rank",
   label: "Master ATLAS",
   iconName: "trophy",
-  colorClass: "bg-amber-100 text-amber-700",
+  colorClass: "bg-amber-100 text-amber-700 border-amber-300",
   description: "Estás cerca de completar el diplomado.",
   requirement: "Alcanza el 85% del curso.",
+  showInDashboard: true,
 };
 
 const BADGE_GRADUATED: Badge = {
@@ -91,10 +107,11 @@ const BADGE_GRADUATED: Badge = {
   kind: "achievement",
   label: "Graduado CNV",
   iconName: "graduation-cap",
-  colorClass: "bg-emerald-200 text-emerald-800",
+  colorClass: "bg-emerald-200 text-emerald-800 border-emerald-400",
   description:
     "Completaste el curso al 100% y se emitió tu Constancia de Finalización.",
   requirement: "Completa el curso al 100%.",
+  showInDashboard: true,
 };
 
 const BADGE_PROFESSIONAL_CNV: Badge = {
@@ -110,17 +127,48 @@ const BADGE_PROFESSIONAL_CNV: Badge = {
   description:
     "Certificado corporativo CNV: reconocimiento como Profesional Conectado de la red CNV.",
   requirement: "Se otorga manualmente por administración.",
+  showInDashboard: true,
+};
+
+// Bloque 22.14: insignias por count de cursos completados. Solo
+// visibles en /certificates (no dashboard) porque el cohorte MVP
+// tiene 1 curso. Trigger: count de certificates.status='valid'
+// del user >= threshold.
+const BADGE_EXPLORER_CNV: Badge = {
+  id: "explorer_cnv",
+  kind: "achievement",
+  label: "Explorador CNV",
+  iconName: "compass",
+  colorClass: "bg-violet-100 text-violet-700 border-violet-300",
+  description: "Has completado 5 cursos del catálogo CNV.",
+  requirement: "Completa 5 cursos para conseguirla.",
+  showInDashboard: false,
+};
+
+const BADGE_MASTER_CNV: Badge = {
+  id: "master_cnv",
+  kind: "achievement",
+  label: "Maestro CNV",
+  iconName: "crown",
+  colorClass: "bg-rose-100 text-rose-700 border-rose-300",
+  description: "Has completado 10 cursos del catálogo CNV.",
+  requirement: "Completa 10 cursos para conseguirla.",
+  showInDashboard: false,
 };
 
 // Lista completa ordenada: ranks primero (Junior -> Master), luego
-// achievements (Graduado -> Profesional CNV). InsigniasCard itera
-// en este orden.
+// achievements (Graduado -> Pro CNV -> Explorador -> Maestro CNV).
+// El orden importa: InsigniasCard del dashboard filtra a
+// showInDashboard=true y los renderiza en este orden; ExpandedBadgesCard
+// de /certificates muestra los 7.
 export const ALL_BADGES: readonly Badge[] = [
   BADGE_JUNIOR,
   BADGE_SENIOR,
   BADGE_MASTER,
   BADGE_GRADUATED,
   BADGE_PROFESSIONAL_CNV,
+  BADGE_EXPLORER_CNV,
+  BADGE_MASTER_CNV,
 ];
 
 // Rangos (ajustados en Bloque 5 sub-bloque 5.3-badges post smoke).

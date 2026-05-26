@@ -153,6 +153,23 @@ export const certificateRepository = {
     return data ?? [];
   },
 
+  // Bloque 22.14: head count de Constancias de Finalizacion validas
+  // del user. Alimenta el calculo de las insignias Explorador CNV
+  // (>= 5) y Maestro CNV (>= 10) en badgesService.
+  async countValidByUser(userId: string): Promise<number> {
+    const supabase = await createClient();
+    const { count, error } = await supabase
+      .from("certificates")
+      .select("*", { count: "exact", head: true })
+      .eq("user_id", userId)
+      .eq("status", "valid");
+
+    if (error) {
+      throw new InfrastructureError(ErrorCodes.DATABASE_ERROR, error.message);
+    }
+    return count ?? 0;
+  },
+
   // Para la tabla de /admin/certificates: cert + student + course
   // embedded. Admin client justificado: la pagina es admin-only y el
   // embed via server client tendria que respaldarse en RLS de

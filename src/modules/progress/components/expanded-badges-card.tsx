@@ -68,7 +68,7 @@ export function ExpandedBadgesCard({
                   badge={
                     earned
                       ? badge
-                      : { ...badge, colorClass: "bg-muted text-muted-foreground border-transparent" }
+                      : { ...badge, colorClass: "bg-muted text-muted-foreground border-zinc-300" }
                   }
                   size="card"
                 />

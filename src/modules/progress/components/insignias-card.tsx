@@ -1,55 +1,45 @@
-// InsigniasCard (Bloque 21.6 B2, ajustada 22.1 B): tarjeta del
-// dashboard student con las 3 insignias de rango (Junior/Senior/
-// Master). Acumulativas: si el student cruza Senior, Junior
-// tambien queda en color (ya no se gris-out). Solo los rangos
-// superiores no conseguidos quedan en muted.
+// InsigniasCard (Bloque 21.6 B2, ajustada 22.1/22.5/22.14): tarjeta
+// del dashboard student con las insignias relevantes al cohorte
+// actual (3 ranks + Graduado + Profesional Conectado CNV = 5).
 //
-// 22.5: filtra a kind === "rank". El catalogo expandido por 22.2
-// incluye 2 achievements (Graduado CNV, Profesional Conectado CNV)
-// que requieren badgesService para resolverse correctamente; este
-// card del dashboard mantiene el resumen compacto solo de ranks.
-// El detalle completo de las 5 insignias vive en /certificates
-// (ExpandedBadgesCard).
+// 22.14: refactor para recibir directamente las entries del
+// badgesService (pre-resueltas con earned + earnedAt). Antes recibia
+// progressPercentage + earnedDates y solo evaluaba ranks; eso
+// dejaba a los achievements (Graduado, Pro CNV) fuera del card del
+// dashboard. Ahora el caller (dashboard page) llama
+// badgesService.getStudentBadges, filtra por showInDashboard=true y
+// pasa el array directamente.
+//
+// Las insignias por count de cursos (Explorador CNV, Maestro CNV)
+// quedan fuera del filtro (showInDashboard=false) y solo aparecen
+// en /certificates.
 //
 // Tooltip nativo via title attribute:
-//   - Conseguida: "Nombre · Conseguida el DD mes YYYY".
-//   - No conseguida: "Nombre · Alcanza X% para conseguirla".
+//   - Conseguida: "Nombre · Conseguida el DD mes YYYY" (si fecha)
+//     o "Nombre · Conseguida" (si no hay fecha trackeada).
+//   - No conseguida: "Nombre · requirement" (texto del badge).
 //
 // Server Component. Reusa BadgeDisplay variant="card".
 
 import { Trophy } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { BadgeDisplay } from "./badge-display";
-import { ALL_BADGES } from "@/modules/progress/lib";
 import { formatBogotaDate } from "@/lib/utils/format-date";
-import type { RankEarnedDates } from "@/modules/progress/services/progress.service";
+import type { StudentBadgeEntry } from "@/modules/progress/services/badges.service";
+
+// 22.14: border gris visible (no transparente) cuando la insignia
+// no esta conseguida. Mantiene la identidad visual del card como
+// "tarjeta de insignia" aun en estado dimmed.
+const DIMMED_COLOR =
+  "bg-muted text-muted-foreground border-zinc-300";
 
 interface InsigniasCardProps {
-  progressPercentage: number;
-  earnedDates: RankEarnedDates;
+  entries: StudentBadgeEntry[];
 }
 
-const DIMMED_COLOR = "bg-muted text-muted-foreground border-transparent";
+export function InsigniasCard({ entries }: InsigniasCardProps) {
+  const visible = entries.filter((e) => e.badge.showInDashboard);
 
-// Umbral minimo (inclusive) para cada rank id. Mantiene el mapeo
-// inverso al getBadge (badges.ts) en un solo lugar para que la
-// logica de "esta earned?" sea consistente.
-const RANK_THRESHOLD: Record<string, number> = {
-  junior: 0,
-  senior: 50,
-  master: 85,
-};
-
-const RANK_DATE_KEY: Record<string, keyof RankEarnedDates> = {
-  junior: "juniorAt",
-  senior: "seniorAt",
-  master: "masterAt",
-};
-
-export function InsigniasCard({
-  progressPercentage,
-  earnedDates,
-}: InsigniasCardProps) {
   return (
     <Card>
       <CardContent className="space-y-4 py-6">
@@ -60,13 +50,7 @@ export function InsigniasCard({
           </h2>
         </div>
         <div className="flex flex-wrap gap-3">
-          {ALL_BADGES.filter((b) => b.kind === "rank").map((badge) => {
-            const threshold = RANK_THRESHOLD[badge.id] ?? 0;
-            const earned = progressPercentage >= threshold;
-            const earnedAt = earned
-              ? (earnedDates[RANK_DATE_KEY[badge.id]] ?? null)
-              : null;
-
+          {visible.map(({ badge, earned, earnedAt }) => {
             const display = earned
               ? badge
               : { ...badge, colorClass: DIMMED_COLOR };
@@ -75,7 +59,7 @@ export function InsigniasCard({
               ? earnedAt
                 ? `${badge.label} · Conseguida el ${formatBogotaDate(earnedAt)}`
                 : `${badge.label} · Conseguida`
-              : `${badge.label} · Alcanza ${threshold}% para conseguirla`;
+              : `${badge.label} · ${badge.requirement}`;
 
             return (
               <span
