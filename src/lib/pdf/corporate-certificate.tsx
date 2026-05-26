@@ -13,16 +13,27 @@
 //
 // Coordenadas en pt sobre A4 landscape (842 x 595 pt). El PNG de
 // fondo tiene 2000x1414 (aspect 1.414, sqrt(2) - misma ratio A4) y
-// escala uniforme al page. Calibracion visual:
-//   - "otorgado a"          -> ~36% from top => ~214pt
-//   - espacio del nombre     -> centro ~ 256pt => top 230 con
-//                               fontSize 38 deja baseline ~254pt
-//   - linea separadora       -> ~50% from top => ~298pt
-//   - "Medellin, Colombia"   -> ~66% from top => ~393pt
-//   - espacio de la fecha    -> top 405, baseline ~414pt
-//   - footer derecho (QR)    -> bottom=80 para evitar el ornamento
-//                               decorativo de esquina (verde/azul);
-//                               right=50 mantiene el margen.
+// escala uniforme al page. Calibracion visual ajustada en 22.10 tras
+// smoke productivo:
+//   - "otorgado a" (en template)    -> ~36% from top
+//   - espacio del nombre             -> top 270 (subido de 230 en
+//                                       22.4-22.9; antes pisaba el
+//                                       titulo "PROFESIONAL CONECTADO
+//                                       CNV")
+//   - linea separadora (template)    -> ~50% from top
+//   - "Medellin, Colombia" (template)-> ~top 390
+//   - espacio de la fecha            -> top 410 (subido de 405;
+//                                       antes pisaba "Medellin,
+//                                       Colombia")
+//   - footer derecho (QR + verify)   -> bottom=25, right=20. Antes
+//                                       (bottom=80, right=50) chocaba
+//                                       con la firma derecha (Juan
+//                                       Carlos Jimenez). Ahora cae
+//                                       en el area clara de la
+//                                       esquina inferior derecha.
+// El verifyBlock usa flexDirection:row + alignItems:center con la
+// verifyCopy primero (alignItems:flex-end) y el QR al final, por lo
+// que el texto queda automaticamente A LA IZQUIERDA del QR.
 //
 // IMPORTANTE (Bloque 22.7 fix Bug A "PDF en 2 hojas" + 22.9 fix
 // "PDF en blanco"): el patron correcto para PDF con background
@@ -82,7 +93,7 @@ const styles = StyleSheet.create({
   },
   studentName: {
     position: "absolute",
-    top: 230,
+    top: 270,
     left: 0,
     right: 0,
     textAlign: "center",
@@ -92,7 +103,7 @@ const styles = StyleSheet.create({
   },
   issuedDate: {
     position: "absolute",
-    top: 405,
+    top: 410,
     left: 0,
     right: 0,
     textAlign: "center",
@@ -102,8 +113,8 @@ const styles = StyleSheet.create({
   },
   verifyBlock: {
     position: "absolute",
-    bottom: 80,
-    right: 50,
+    bottom: 25,
+    right: 20,
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
