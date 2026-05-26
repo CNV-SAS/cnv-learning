@@ -13,18 +13,20 @@
 //
 // Coordenadas en pt sobre A4 landscape (842 x 595 pt). El PNG de
 // fondo tiene 2000x1414 (aspect 1.414, sqrt(2) - misma ratio A4) y
-// escala uniforme al page. Calibracion final tras smoke + tweaks
-// del 22.11:
+// escala uniforme al page. Calibracion final 22.13:
 //   - "otorgado a" (en template)    -> ~36% from top
 //   - espacio del nombre             -> top 270
 //   - linea separadora (template)    -> ~50% from top
-//   - "Medellin, Colombia" (template)-> ~top 390
-//   - espacio de la fecha            -> top 425 (bajado de 410 en
-//                                       22.11 por "un tris" mas)
-//   - footer derecho (QR + verify)   -> bottom=15 (bajado de 25),
-//                                       right=20. Cae en el area
-//                                       clara de la esquina inferior
-//                                       derecha sin pisar firmas.
+//   - texto reconocimiento (templ.) -> termina ~top 380
+//   - "Medellin, Colombia" (dyn.)    -> top 390 (linea 1, 22.13)
+//   - fecha de emision (dyn.)        -> top 408 (linea 2, baja de
+//                                       425 a 408 para acercarla
+//                                       a la ciudad, 22.13)
+//   - footer derecho (QR + verify)   -> bottom=15, right=20.
+// Pre-22.13 el "Medellin, Colombia" venia hardcoded en el PNG;
+// Santiago lo removio del template y ahora se renderiza dinamicamente
+// como primera linea del bloque "lugar y fecha" en Montserrat italic
+// #102545.
 // El verifyBlock usa flexDirection:row + alignItems:center con la
 // verifyCopy primero (alignItems:flex-end) y el QR al final, por lo
 // que el texto queda automaticamente A LA IZQUIERDA del QR.
@@ -124,9 +126,24 @@ const styles = StyleSheet.create({
     fontFamily: "Helvetica-Oblique",
     color: COLORS.nameBlue,
   },
+  // Bloque 22.13: "Medellin, Colombia" se removio del PNG template;
+  // ahora se renderiza dinamicamente en 2 lineas centradas debajo
+  // del texto descriptivo "En reconocimiento a su formacion..." que
+  // termina ~top 380.
+  issuedCity: {
+    position: "absolute",
+    top: 390,
+    left: 0,
+    right: 0,
+    textAlign: "center",
+    fontSize: 13,
+    fontFamily: "Montserrat",
+    fontStyle: "italic",
+    color: COLORS.dateBlue,
+  },
   issuedDate: {
     position: "absolute",
-    top: 425,
+    top: 408,
     left: 0,
     right: 0,
     textAlign: "center",
@@ -215,6 +232,7 @@ export function CorporateCertificateDocument(
 
         <Text style={styles.studentName}>{props.studentName}</Text>
 
+        <Text style={styles.issuedCity}>Medellín, Colombia</Text>
         <Text style={styles.issuedDate}>{props.issuedAtLabel}</Text>
 
         <View style={styles.verifyBlock}>
