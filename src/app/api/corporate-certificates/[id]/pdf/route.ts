@@ -105,13 +105,35 @@ export async function GET(
         );
       }
 
-      const pdfBuffer = await renderCorporateCertificatePdf({
-        certificateId: certificate.id,
-        studentName: studentProfile.full_name,
-        issuedAtIso: certificate.issued_at,
-        hash: certificate.hash,
-        isRevoked: certificate.status === "revoked",
-      });
+      // 22.12 defensive logging: rodear renderCorporateCertificatePdf
+      // con su propio try/catch para que errores de I/O (template
+      // missing, font no encontrada) salgan en logs con clave clara
+      // en lugar de caer en el catch global como "unexpected throw".
+      // El cliente sigue recibiendo el mismo errorResponse (no leak),
+      // pero ops puede diagnosticar desde Vercel logs.
+      let pdfBuffer: Buffer;
+      try {
+        pdfBuffer = await renderCorporateCertificatePdf({
+          certificateId: certificate.id,
+          studentName: studentProfile.full_name,
+          issuedAtIso: certificate.issued_at,
+          hash: certificate.hash,
+          isRevoked: certificate.status === "revoked",
+        });
+      } catch (e) {
+        const code = (e as NodeJS.ErrnoException)?.code ?? null;
+        logger.error("renderCorporateCertificatePdf failed", {
+          certificateId: certificate.id,
+          errorCode: code,
+          errorMessage: e instanceof Error ? e.message : String(e),
+        });
+        return errorResponse(
+          new InfrastructureError(
+            ErrorCodes.DATABASE_ERROR,
+            "No fue posible generar el PDF. Reintenta o contacta a soporte.",
+          ),
+        );
+      }
 
       const filename = `profesional-conectado-cnv-${certificate.id.slice(0, 8)}.pdf`;
 
