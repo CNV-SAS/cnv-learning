@@ -25,6 +25,11 @@ const nextConfig: NextConfig = {
   outputFileTracingIncludes: {
     "/api/corporate-certificates/[id]/pdf": [
       "./design/templates/corporate-certificate-template.png",
+      // 22.11: Montserrat Italic para la fecha de emision. Font.register
+      // requiere que el .ttf este en el bundle prod (process.cwd() +
+      // ruta relativa). Si Vercel no lo incluye automaticamente, el
+      // render cae a la font default.
+      "./design/fonts/Montserrat-Italic.ttf",
     ],
   },
 };

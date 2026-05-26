@@ -42,23 +42,26 @@ export interface Badge {
   requirement: string;
 }
 
-// Bloque 22.7 fix Bug F del smoke + 22.8 Issue 1: paleta rediseñada
-// por insignia para que cada una sea visualmente distinta, todas con
-// fondo claro + texto oscuro + border medio para consistencia visual:
-//   - Junior   = sky-100/sky-700 (azul claro, "inicio fresco")
-//   - Senior   = blue-100/blue-700 (azul medio, distintivo) - 22.8
-//   - Master   = amber-100/amber-700 (oro, rango maximo)
-//   - Graduado = emerald-200/emerald-800 (verde, achievement de curso)
-//   - Pro CNV  = blue-100 + border azul-700 (azul royal CNV)
-// 22.7 cambio inicial puso Senior en bg-blue-500 text-white (fondo
-// solido), pero rompia la consistencia visual con las demas. 22.8 lo
-// devuelve a fondo claro siguiendo el patron de Junior/Master.
+// Bloque 22.7 fix Bug F + 22.8 + 22.11 rotacion final de paleta para
+// que cada insignia sea visualmente distinta:
+//   - Junior   = yellow-100/yellow-700 (amarillo claro, "inicio") 22.11
+//   - Senior   = sky-100/sky-700 (azul claro, hereda diseño de
+//                Junior pre-22.11) - 22.11
+//   - Master   = amber-100/amber-700 (dorado, rango maximo)
+//   - Graduado = emerald-200/emerald-800 (verde, achievement curso)
+//   - Pro CNV  = blue-100/blue-700 + border-blue-700 (azul medio
+//                heredado de Senior pre-22.11, manteniendo el border
+//                oscuro distintivo del "glow") - 22.11
+// La rotacion del 22.11 asigna amarillo a Junior, sube a Senior al
+// sky-claro de Junior anterior, y mueve los azules del Pro CNV al
+// tono medio de Senior anterior (manteniendo el border-blue-700 que
+// distingue al Pro como el "glow").
 const BADGE_JUNIOR: Badge = {
   id: "junior",
   kind: "rank",
   label: "Junior Bioimpedancia",
   iconName: "sparkles",
-  colorClass: "bg-sky-100 text-sky-700 border-sky-200",
+  colorClass: "bg-yellow-100 text-yellow-700 border-yellow-300",
   description: "Insignia inicial al inscribirte al diplomado.",
   requirement: "Solo necesitas inscribirte al curso.",
 };
@@ -68,7 +71,7 @@ const BADGE_SENIOR: Badge = {
   kind: "rank",
   label: "Senior Medicina Bioeléctrica",
   iconName: "award",
-  colorClass: "bg-blue-100 text-blue-700 border-blue-200",
+  colorClass: "bg-sky-100 text-sky-700 border-sky-200",
   description: "Has avanzado más del 50% del curso.",
   requirement: "Alcanza el 50% del curso.",
 };
@@ -99,10 +102,11 @@ const BADGE_PROFESSIONAL_CNV: Badge = {
   kind: "achievement",
   label: "Profesional Conectado CNV",
   iconName: "pro-cnv",
-  // 22.7 fix Bug F4: paleta azul royal (#2563eb = blue-600) en lugar
-  // del dorado/cafe original. Representa "red de profesionales CNV"
-  // mejor que el oro (que se confundia con Master ATLAS).
-  colorClass: "bg-blue-100 text-blue-900 border-blue-700",
+  // 22.11: hereda el azul medio que tenia Senior pre-22.11 (bg-blue-
+  // 100/text-blue-700) pero mantiene el border-blue-700 oscuro que
+  // funciona como "glow" distintivo entre las insignias. Icono Network
+  // (red de profesionales) se queda igual desde 22.7.
+  colorClass: "bg-blue-100 text-blue-700 border-blue-700",
   description:
     "Certificado corporativo CNV: reconocimiento como Profesional Conectado de la red CNV.",
   requirement: "Se otorga manualmente por administración.",

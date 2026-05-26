@@ -13,24 +13,18 @@
 //
 // Coordenadas en pt sobre A4 landscape (842 x 595 pt). El PNG de
 // fondo tiene 2000x1414 (aspect 1.414, sqrt(2) - misma ratio A4) y
-// escala uniforme al page. Calibracion visual ajustada en 22.10 tras
-// smoke productivo:
+// escala uniforme al page. Calibracion final tras smoke + tweaks
+// del 22.11:
 //   - "otorgado a" (en template)    -> ~36% from top
-//   - espacio del nombre             -> top 270 (subido de 230 en
-//                                       22.4-22.9; antes pisaba el
-//                                       titulo "PROFESIONAL CONECTADO
-//                                       CNV")
+//   - espacio del nombre             -> top 270
 //   - linea separadora (template)    -> ~50% from top
 //   - "Medellin, Colombia" (template)-> ~top 390
-//   - espacio de la fecha            -> top 410 (subido de 405;
-//                                       antes pisaba "Medellin,
-//                                       Colombia")
-//   - footer derecho (QR + verify)   -> bottom=25, right=20. Antes
-//                                       (bottom=80, right=50) chocaba
-//                                       con la firma derecha (Juan
-//                                       Carlos Jimenez). Ahora cae
-//                                       en el area clara de la
-//                                       esquina inferior derecha.
+//   - espacio de la fecha            -> top 425 (bajado de 410 en
+//                                       22.11 por "un tris" mas)
+//   - footer derecho (QR + verify)   -> bottom=15 (bajado de 25),
+//                                       right=20. Cae en el area
+//                                       clara de la esquina inferior
+//                                       derecha sin pisar firmas.
 // El verifyBlock usa flexDirection:row + alignItems:center con la
 // verifyCopy primero (alignItems:flex-end) y el QR al final, por lo
 // que el texto queda automaticamente A LA IZQUIERDA del QR.
@@ -59,11 +53,19 @@
 // Si isRevoked=true, overlay diagonal "REVOCADO" en rojo semi-
 // transparente, mismo patron que CertificateDocument (B12).
 //
-// Helvetica-Oblique es built-in en react-pdf (sin font registration
-// requerida). Color del nombre: #1a237e (azul institucional).
+// Fonts:
+//   - Nombre del profesional: Helvetica-Oblique (built-in en react-
+//     pdf, sin registration). Color #1a237e (azul institucional).
+//   - Fecha de emision: Montserrat Italic (Bloque 22.11, font custom
+//     registrada via Font.register desde design/fonts/). Color
+//     #102545 (azul institucional oscuro). El archivo .ttf vive en
+//     design/fonts/Montserrat-Italic.ttf y se incluye en el bundle
+//     prod via outputFileTracingIncludes (next.config.ts).
 
+import path from "node:path";
 import {
   Document,
+  Font,
   Image,
   Page,
   StyleSheet,
@@ -71,10 +73,31 @@ import {
   View,
 } from "@react-pdf/renderer";
 
+// Font.register debe correr en module-load (NO dentro del componente),
+// porque el render llama fetchAssets que busca la font registrada.
+// El path absoluto via process.cwd() requiere que el .ttf este en el
+// bundle prod (ver next.config.ts outputFileTracingIncludes).
+Font.register({
+  family: "Montserrat",
+  fonts: [
+    {
+      src: path.join(
+        process.cwd(),
+        "design",
+        "fonts",
+        "Montserrat-Italic.ttf",
+      ),
+      fontStyle: "italic",
+      fontWeight: 400,
+    },
+  ],
+});
+
 const COLORS = {
   text: "#0f172a",
   muted: "#64748b",
   nameBlue: "#1a237e",
+  dateBlue: "#102545",
   white: "#ffffff",
   revokedRed: "#dc2626",
 };
@@ -103,17 +126,18 @@ const styles = StyleSheet.create({
   },
   issuedDate: {
     position: "absolute",
-    top: 410,
+    top: 425,
     left: 0,
     right: 0,
     textAlign: "center",
     fontSize: 13,
-    fontFamily: "Helvetica-Oblique",
-    color: COLORS.text,
+    fontFamily: "Montserrat",
+    fontStyle: "italic",
+    color: COLORS.dateBlue,
   },
   verifyBlock: {
     position: "absolute",
-    bottom: 25,
+    bottom: 15,
     right: 20,
     flexDirection: "row",
     alignItems: "center",
