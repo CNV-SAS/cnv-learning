@@ -60,14 +60,14 @@ export async function renderCorporateCertificatePdf(
     readFile(TEMPLATE_PATH),
   ]);
 
-  // Bloque 22.8 fix Issue 2 del smoke: convertir el Buffer a data URL
-  // string explicito. La forma documentada de @react-pdf/renderer 4.x
-  // para Image src es string (URL/data URL/path) o
-  // { data, format }. Pasar Buffer crudo "funcionaba" en dev pero
-  // en prod resultaba en PDF en blanco (Image silently fail). El
-  // round-trip base64 cuesta ~280KB en memoria por request; aceptable
-  // para una operacion on-demand sobre un PNG de 210KB.
-  const backgroundImageSrc = `data:image/png;base64,${templateBuffer.toString("base64")}`;
+  // Bloque 22.9: Buffer crudo. react-pdf 4.x (resolveBufferImage)
+  // detecta el formato del image via magic bytes y lo procesa
+  // directo. El "PDF en blanco" del 22.8 NO era por el formato del
+  // src (Buffer y data URL ambos funcionan); era por wrap={false}
+  // en el Page que desactivaba el fetchAssets del runtime. El fix
+  // del 22.9 quita wrap=false en corporate-certificate.tsx; el
+  // Buffer puede pasarse tal cual sin overhead base64.
+  const backgroundImageSrc = templateBuffer;
 
   const issuedAtLabel = format(
     new Date(params.issuedAtIso),

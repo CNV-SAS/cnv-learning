@@ -24,15 +24,22 @@
 //                               decorativo de esquina (verde/azul);
 //                               right=50 mantiene el margen.
 //
-// IMPORTANTE (Bloque 22.7 fix Bug A del smoke): react-pdf paginaba a
-// 2 hojas cuando TODOS los children del Page eran absolute y el
-// Image tenia width/height en porcentaje. El fix tiene 3 partes:
-//   1. <Page wrap={false}> para impedir overflow auto.
-//   2. Image con top/left/right/bottom = 0 (NO width/height %).
-//      Los porcentajes en react-pdf se resuelven contra el parent y
+// IMPORTANTE (Bloque 22.7 fix Bug A "PDF en 2 hojas" + 22.9 fix
+// "PDF en blanco"): el patron correcto para PDF con background
+// image + overlays absolute requiere 2 cosas:
+//   1. Image con top/left/right/bottom = 0 (NO width/height %). Los
+//      porcentajes en react-pdf se resuelven contra el parent y
 //      cuando el parent es flex sin children flow, calcula 0.
-//   3. backgroundImage va PRIMERO en el JSX para que quede debajo
+//   2. backgroundImage va PRIMERO en el JSX para que quede debajo
 //      del resto en el stacking order del PDF.
+//
+// NO usar <Page wrap={false}>: aunque parece prevenir paginacion,
+// desactiva la fase fetchAssets del runtime (@react-pdf/layout
+// fetchImage corre solo en el paginate pass). Resultado: el <Image>
+// queda sin resolverse y el PDF sale en blanco. El 22.7 puso
+// wrap=false por error; con los demas cambios del 22.7 (absolute
+// corners en lugar de width/height %), el PDF queda en 1 hoja sin
+// necesidad de wrap=false.
 //
 // Si en el render visual de produccion alguna coordenada queda mal
 // alineada, ajustar aqui (calibracion exacta requiere ver el PDF
@@ -148,10 +155,10 @@ interface CorporateCertificateDocumentProps {
   hashShort: string;
   verifyUrl: string;
   qrDataUrl: string;
-  // 22.8: ahora siempre data URL string. Antes aceptaba Buffer pero
-  // el render fallaba silenciosamente en prod (ver render-corporate-
-  // certificate.tsx para detalles).
-  backgroundImageSrc: string;
+  // 22.9: vuelve a Buffer crudo. react-pdf 4.x procesa Buffer via
+  // resolveBufferImage detectando formato por magic bytes; no
+  // requiere wrapper { data, format } ni base64 round-trip.
+  backgroundImageSrc: Buffer;
   isRevoked: boolean;
 }
 
@@ -164,15 +171,10 @@ export function CorporateCertificateDocument(
       author="Connected Nutrition Ventures SAS"
       subject={`Certificado Profesional Conectado CNV de ${props.studentName}`}
     >
-      <Page
-        size="A4"
-        orientation="landscape"
-        wrap={false}
-        style={styles.page}
-      >
+      <Page size="A4" orientation="landscape" style={styles.page}>
         {/* eslint-disable-next-line jsx-a11y/alt-text -- react-pdf Image no soporta alt */}
         <Image
-          src={props.backgroundImageSrc}
+          src={props.backgroundImageSrc as unknown as string}
           style={styles.backgroundImage}
         />
 
