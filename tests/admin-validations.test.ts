@@ -4,6 +4,7 @@ import { describe, it, expect } from "vitest";
 import {
   createUserSchema,
   updateRoleSchema,
+  updateUserNameSchema,
   deleteUserSchema,
   suspendUserSchema,
   unsuspendUserSchema,
@@ -99,6 +100,64 @@ describe("updateRoleSchema", () => {
       role: "teacher",
     });
     expect(result.success).toBe(false);
+  });
+});
+
+describe("updateUserNameSchema (Bloque 22.15)", () => {
+  it("acepta UUID + nombre valido", () => {
+    const result = updateUserNameSchema.safeParse({
+      userId: VALID_UUID,
+      fullName: "Juan Pérez García",
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("rechaza UUID malformado", () => {
+    const result = updateUserNameSchema.safeParse({
+      userId: "not-a-uuid",
+      fullName: "Juan Pérez",
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("rechaza nombre < 3 chars", () => {
+    const result = updateUserNameSchema.safeParse({
+      userId: VALID_UUID,
+      fullName: "ab",
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("rechaza nombre > 40 chars (cap del PDF)", () => {
+    const result = updateUserNameSchema.safeParse({
+      userId: VALID_UUID,
+      fullName: "x".repeat(41),
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("acepta el nombre de prueba documentado (38 chars)", () => {
+    const result = updateUserNameSchema.safeParse({
+      userId: VALID_UUID,
+      fullName: "Santiago Del Carmen Restrepo Arroyaves",
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("rechaza nombre solo digitos (regex \\p{L})", () => {
+    const result = updateUserNameSchema.safeParse({
+      userId: VALID_UUID,
+      fullName: "123456",
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("acepta nombre con digitos si tiene letra", () => {
+    const result = updateUserNameSchema.safeParse({
+      userId: VALID_UUID,
+      fullName: "Juan Pablo II",
+    });
+    expect(result.success).toBe(true);
   });
 });
 

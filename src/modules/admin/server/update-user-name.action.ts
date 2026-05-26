@@ -1,12 +1,13 @@
 "use server";
 
-// Server action: actualizar los 6 campos editables del propio
-// perfil. Patron thin: parse + auth + service + revalidatePath.
+// Server action: admin actualiza el nombre completo de un usuario
+// (Bloque 22.15). Patron thin. Policy + audit + idempotencia viven
+// en adminUserService.updateName.
 
 import { revalidatePath } from "next/cache";
 import { profileRepository } from "@/modules/auth/data/profile.repository";
-import { profileService } from "@/modules/profile/services";
-import { updateProfileSchema } from "@/modules/profile/validations";
+import { adminUserService } from "@/modules/admin/services";
+import { updateUserNameSchema } from "@/modules/admin/validations";
 import { ok, err, type Result } from "@/lib/utils/result";
 import {
   type ActionError,
@@ -19,14 +20,14 @@ import { ErrorCodes } from "@/core/errors/codes";
 import { logger } from "@/core/logger/logger";
 import { withContext } from "@/core/logger/context";
 
-export async function updateProfileAction(
+export async function updateUserNameAction(
   input: unknown,
 ): Promise<Result<void, ActionError>> {
   const requestId = crypto.randomUUID();
 
   try {
     return await withContext({ requestId }, async () => {
-      const parsed = updateProfileSchema.safeParse(input);
+      const parsed = updateUserNameSchema.safeParse(input);
       if (!parsed.success) {
         return err(
           validationErrorToActionError(parsed.error, "Datos inválidos"),
@@ -45,21 +46,24 @@ export async function updateProfileAction(
         );
       }
 
-      const result = await profileService.updateProfile({
+      const result = await adminUserService.updateName({
         actor: user,
-        bio: parsed.data.bio,
-        professionalLicense: parsed.data.professionalLicense,
-        institution: parsed.data.institution,
-        specialization: parsed.data.specialization,
+        targetUserId: parsed.data.userId,
+        newFullName: parsed.data.fullName,
       });
       if (!result.ok) return err(toActionError(result.error));
 
-      revalidatePath("/profile");
+      revalidatePath("/admin/users");
+      revalidatePath(`/admin/users/${parsed.data.userId}`);
+      // El nombre tambien aparece en certificados emitidos a este
+      // user; revalidar /admin/certificates por si la tabla muestra
+      // studentName via embed join.
+      revalidatePath("/admin/certificates");
 
       return ok(undefined);
     });
   } catch (e) {
-    logger.error("updateProfileAction unexpected throw", {
+    logger.error("updateUserNameAction unexpected throw", {
       error: e instanceof Error ? e.message : String(e),
     });
     return err(unexpectedActionError());

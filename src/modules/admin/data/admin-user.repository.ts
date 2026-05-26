@@ -87,6 +87,25 @@ export const adminUserRepository = {
     }
   },
 
+  // Bloque 22.15: actualiza el nombre completo. Admin-only (la
+  // policy canManageUsers del service valido al actor). Sin guards
+  // anti-self ni anti-lockout (cambiar el propio nombre como admin
+  // es seguro; no afecta acceso). El audit_log lo emite el service.
+  async updateProfileName(
+    userId: string,
+    fullName: string,
+  ): Promise<void> {
+    const supabase = createAdminClient();
+    const { error } = await supabase
+      .from("profiles")
+      .update({ full_name: fullName })
+      .eq("id", userId);
+
+    if (error) {
+      throw new InfrastructureError(ErrorCodes.DATABASE_ERROR, error.message);
+    }
+  },
+
   // Update defensivo del profile tras createAuthUser. El trigger
   // handle_new_user (migracion 0002) lee raw_user_meta_data->>'role'
   // y 'full_name' al insertar, pero forzar el set aqui evita drift

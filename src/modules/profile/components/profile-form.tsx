@@ -1,8 +1,12 @@
 "use client";
 
-// ProfileForm: form para editar los 5 campos de texto del perfil
-// (full_name, bio, professional_license, institution, specialization).
-// El avatar se gestiona en AvatarUpload separado.
+// ProfileForm: form para editar campos del propio perfil.
+//
+// 22.15: full_name dejo de ser editable por el user (motivo:
+// fraude potencial post-emision de certs corporativos). Ahora se
+// muestra como texto plano con una nota dirigiendo al admin.
+// Quedan 4 campos editables: bio, professional_license, institution,
+// specialization. El avatar se gestiona en AvatarUpload separado.
 //
 // Controlled state + toast feedback (patron de admin dialogs); sin
 // react-hook-form aqui para mantener el componente simple. Field
@@ -23,7 +27,6 @@ interface ProfileFormProps {
 }
 
 export function ProfileForm({ profile }: ProfileFormProps) {
-  const [fullName, setFullName] = useState(profile.full_name);
   const [bio, setBio] = useState(profile.bio ?? "");
   const [professionalLicense, setProfessionalLicense] = useState(
     profile.professional_license ?? "",
@@ -38,7 +41,6 @@ export function ProfileForm({ profile }: ProfileFormProps) {
     e.preventDefault();
     startTransition(async () => {
       const result = await updateProfileAction({
-        fullName: fullName.trim(),
         bio: bio.trim() || undefined,
         professionalLicense: professionalLicense.trim() || undefined,
         institution: institution.trim() || undefined,
@@ -62,13 +64,23 @@ export function ProfileForm({ profile }: ProfileFormProps) {
           <Label htmlFor="profile-fullname">Nombre completo</Label>
           <Input
             id="profile-fullname"
-            value={fullName}
-            onChange={(e) => setFullName(e.target.value)}
-            required
-            minLength={3}
-            maxLength={200}
-            disabled={isPending}
+            value={profile.full_name}
+            readOnly
+            disabled
+            aria-readonly
           />
+          <p className="text-xs text-muted-foreground">
+            El nombre no puede modificarse desde la app porque aparece
+            en los certificados emitidos. Si necesitas cambiarlo,
+            contacta con un administrador en{" "}
+            <a
+              href="mailto:soporte@cnvsystem.com"
+              className="underline hover:text-foreground"
+            >
+              soporte@cnvsystem.com
+            </a>
+            .
+          </p>
         </div>
         <div className="space-y-2">
           <Label htmlFor="profile-bio">Biografía (opcional)</Label>

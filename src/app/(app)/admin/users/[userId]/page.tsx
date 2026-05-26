@@ -36,6 +36,7 @@ import { SuspendUserDialog } from "@/modules/admin/components/suspend-user-dialo
 import { UnsuspendUserButton } from "@/modules/admin/components/unsuspend-user-button";
 import { SendPasswordResetButton } from "@/modules/admin/components/send-password-reset-button";
 import { DeleteUserDialog } from "@/modules/admin/components/delete-user-dialog";
+import { UpdateUserNameForm } from "@/modules/admin/components/update-user-name-form";
 import { UploadAcademicDialog } from "@/modules/certificates/components/upload-academic-dialog";
 import { DeleteAcademicButton } from "@/modules/certificates/components/delete-academic-button";
 import { IssueCorporateButton } from "@/modules/certificates/components/issue-corporate-button";
@@ -138,6 +139,24 @@ export default async function AdminUserDetailPage({
           </CardContent>
         </Card>
       )}
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Datos del usuario</CardTitle>
+          <CardDescription>
+            El nombre completo aparece en los certificados emitidos.
+            El usuario no puede modificarlo desde su perfil; solo un
+            administrador. Cada cambio queda registrado en el log de
+            auditoría con el nombre anterior y el nuevo.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <UpdateUserNameForm
+            userId={target.id}
+            currentFullName={target.full_name}
+          />
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>

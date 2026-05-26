@@ -124,7 +124,10 @@ const styles = StyleSheet.create({
     textAlign: "center",
     fontSize: 38,
     fontFamily: "Helvetica-Oblique",
-    color: COLORS.nameBlue,
+    // 22.15: color negro puro (era #1a237e); letterSpacing 1
+    // equivalente al spacing 20 de Canva (~1.013 px en navegador).
+    color: "#000000",
+    letterSpacing: 1,
   },
   // Bloque 22.13: "Medellin, Colombia" se removio del PNG template;
   // ahora se renderiza dinamicamente en 2 lineas centradas debajo
@@ -154,8 +157,12 @@ const styles = StyleSheet.create({
   },
   verifyBlock: {
     position: "absolute",
-    bottom: 15,
-    right: 20,
+    // 22.15: bottom=10, right=8. El bloque cae lo mas cerca posible
+    // de la esquina inferior derecha sin pisar el borde. Iteraciones
+    // anteriores (15/20, 18/18) dejaban margen excesivo respecto al
+    // template visual.
+    bottom: 10,
+    right: 8,
     flexDirection: "row",
     alignItems: "center",
     gap: 10,

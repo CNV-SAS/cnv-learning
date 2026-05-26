@@ -1,11 +1,21 @@
 // Validacion del input para updateProfileAction (Bloque 16).
 //
-// 6 campos editables (decision A del plan):
-//   - full_name: required, 3-200 chars.
+// 4 campos editables por el user (decision 22.15: full_name solo
+// admin):
 //   - bio: nullable, max 1000 chars (texto plano, sin markdown).
 //   - professional_license: nullable, max 100.
 //   - institution: nullable, max 200.
 //   - specialization: nullable, max 200.
+//
+// full_name se removio del schema en 22.15 porque permitir al user
+// cambiar su nombre tras emitir un certificado corporativo era
+// vector de fraude (el PDF del Profesional Conectado CNV se
+// renderiza on-demand con full_name actual; el hash se calcula con
+// user_id + timestamp + template_version, sin incluir el nombre,
+// asi que cambiarlo post-emision no rompe el hash pero si cambia
+// lo que ve el verificador). Ahora solo admin puede modificarlo
+// via updateUserNameAction (admin user service).
+//
 // avatar_url se actualiza via updateAvatarAction separada
 // (componente cliente sube primero a Storage, luego confirma URL).
 //
@@ -26,14 +36,6 @@ function optionalText(maxLength: number, label: string) {
 }
 
 export const updateProfileSchema = z.object({
-  // Mismo criterio que createUserSchema (S1.2): al menos una letra
-  // Unicode, evita aceptar "123456" como nombre humano.
-  fullName: z
-    .string()
-    .trim()
-    .min(3, "El nombre debe tener al menos 3 caracteres")
-    .max(200, "El nombre no puede superar 200 caracteres")
-    .regex(/\p{L}/u, "El nombre debe contener al menos una letra"),
   bio: optionalText(1000, "La biografía"),
   professionalLicense: optionalText(100, "El número de licencia"),
   institution: optionalText(200, "La institución"),

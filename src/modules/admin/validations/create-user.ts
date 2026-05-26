@@ -20,7 +20,12 @@ export const createUserSchema = z.object({
     .string()
     .trim()
     .min(3, "El nombre debe tener al menos 3 caracteres")
-    .max(200, "El nombre no puede superar 200 caracteres")
+    // 22.15: max 40 chars para que el nombre quepa en el PDF del
+    // Profesional Conectado CNV (cap visual del template).
+    .max(
+      40,
+      "El nombre es demasiado largo para el certificado. Máximo 40 caracteres.",
+    )
     .regex(/\p{L}/u, "El nombre debe contener al menos una letra"),
   role: z.enum(["student", "teacher", "admin"]),
 });

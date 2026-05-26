@@ -7,6 +7,10 @@ export {
   type UpdateRoleInput,
 } from "./update-role";
 export {
+  updateUserNameSchema,
+  type UpdateUserNameInput,
+} from "./update-user-name";
+export {
   deleteUserSchema,
   type DeleteUserInput,
 } from "./delete-user";

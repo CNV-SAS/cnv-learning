@@ -10,7 +10,6 @@ import {
 describe("updateProfileSchema", () => {
   it("acepta input completo valido", () => {
     const result = updateProfileSchema.safeParse({
-      fullName: "Juan Pérez García",
       bio: "Profesional con 10 años de experiencia.",
       professionalLicense: "TM-12345",
       institution: "Universidad Nacional",
@@ -19,10 +18,11 @@ describe("updateProfileSchema", () => {
     expect(result.success).toBe(true);
   });
 
-  it("acepta solo fullName (resto optional)", () => {
-    const result = updateProfileSchema.safeParse({
-      fullName: "Juan",
-    });
+  // 22.15: full_name se removio del schema; ahora cualquier intento
+  // de pasarlo se ignora silenciosamente. La edicion del nombre
+  // pasa por updateUserNameSchema (admin-only).
+  it("acepta input vacio (todos los campos opcionales)", () => {
+    const result = updateProfileSchema.safeParse({});
     expect(result.success).toBe(true);
     if (result.success) {
       expect(result.data.bio).toBeUndefined();
@@ -30,9 +30,20 @@ describe("updateProfileSchema", () => {
     }
   });
 
+  it("ignora fullName si lo pasan (no editable por user post-22.15)", () => {
+    const result = updateProfileSchema.safeParse({
+      fullName: "Intento de cambio",
+      bio: "valido",
+    });
+    expect(result.success).toBe(true);
+    // El campo no se incluye en data parseada.
+    if (result.success) {
+      expect((result.data as { fullName?: string }).fullName).toBeUndefined();
+    }
+  });
+
   it("normaliza optionals vacios a undefined", () => {
     const result = updateProfileSchema.safeParse({
-      fullName: "Juan",
       bio: "   ",
       institution: "",
     });
@@ -43,35 +54,8 @@ describe("updateProfileSchema", () => {
     }
   });
 
-  it("rechaza fullName < 3 chars", () => {
-    const result = updateProfileSchema.safeParse({ fullName: "ab" });
-    expect(result.success).toBe(false);
-  });
-
-  it("rechaza fullName > 200 chars", () => {
-    const result = updateProfileSchema.safeParse({
-      fullName: "x".repeat(201),
-    });
-    expect(result.success).toBe(false);
-  });
-
-  it("rechaza fullName solo digitos (S1.2)", () => {
-    const result = updateProfileSchema.safeParse({
-      fullName: "123456",
-    });
-    expect(result.success).toBe(false);
-  });
-
-  it("acepta fullName con digitos si tiene letra (S1.2)", () => {
-    const result = updateProfileSchema.safeParse({
-      fullName: "Juan Pablo II",
-    });
-    expect(result.success).toBe(true);
-  });
-
   it("rechaza bio > 1000 chars", () => {
     const result = updateProfileSchema.safeParse({
-      fullName: "Juan",
       bio: "x".repeat(1001),
     });
     expect(result.success).toBe(false);

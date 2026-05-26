@@ -58,6 +58,12 @@ interface UpdateRoleParams {
   newRole: UserRole;
 }
 
+interface UpdateNameParams {
+  actor: AuthenticatedUser;
+  targetUserId: string;
+  newFullName: string;
+}
+
 interface SuspendUserParams {
   actor: AuthenticatedUser;
   targetUserId: string;
@@ -248,6 +254,64 @@ export const adminUserService = {
         targetFullName: target.full_name,
         previousRole,
         newRole: params.newRole,
+      },
+    });
+
+    return ok(undefined);
+  },
+
+  // Bloque 22.15: admin actualiza el nombre completo de un user.
+  //
+  // Caveat de certificates (documentado en el header del schema
+  // update-profile.ts): el hash del Profesional Conectado CNV se
+  // calcula con user_id + timestamp + template_version (no incluye
+  // full_name). Cambiar el nombre tras emitir el cert:
+  //   - NO invalida el hash (hash se mantiene verificable).
+  //   - SI cambia lo que ve el verificador en el PDF y en la pagina
+  //     publica /verify-corporate/[id] (ambos leen full_name actual).
+  // Por eso esta operacion es admin-only: el admin asume la
+  // responsabilidad institucional de cualquier cambio post-emision
+  // y queda registrado en audit_logs como user.name_updated con
+  // {previousName, newName}.
+  async updateName(
+    params: UpdateNameParams,
+  ): Promise<Result<void, AppError>> {
+    if (!canManageUsers(params.actor)) {
+      return err(
+        authzError(
+          ErrorCodes.AUTHZ_CANNOT_MANAGE_USERS,
+          "Solo un administrador puede modificar el nombre.",
+        ),
+      );
+    }
+
+    const target = await adminUserRepository.findProfileById(
+      params.targetUserId,
+    );
+    if (!target) return err(notFoundUser());
+
+    const previousName = target.full_name;
+    if (previousName === params.newFullName) {
+      // Idempotencia: no-op si el nombre ya esta seteado. NO auditamos.
+      return ok(undefined);
+    }
+
+    await adminUserRepository.updateProfileName(
+      params.targetUserId,
+      params.newFullName,
+    );
+
+    await auditRepository.record({
+      event: "user.name_updated",
+      resourceType: "user",
+      resourceId: params.targetUserId,
+      actorId: params.actor.id,
+      actorEmail: params.actor.email,
+      metadata: {
+        targetEmail: target.email,
+        targetRole: target.role,
+        previousName,
+        newName: params.newFullName,
       },
     });
 

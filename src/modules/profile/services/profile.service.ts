@@ -37,9 +37,10 @@ import { logger } from "@/core/logger/logger";
 import type { AuthenticatedUser } from "@/modules/auth/types";
 import type { Profile } from "@/modules/auth/types";
 
+// 22.15: full_name removido. Cambios al nombre solo via
+// adminUserService.updateName (admin-only).
 interface UpdateProfileParams {
   actor: AuthenticatedUser;
-  fullName: string;
   bio?: string;
   professionalLicense?: string;
   institution?: string;
@@ -92,7 +93,6 @@ export const profileService = {
     const updated = await profileRepository.updateOwnProfile(
       params.actor.id,
       {
-        full_name: params.fullName,
         bio: params.bio ?? null,
         professional_license: params.professionalLicense ?? null,
         institution: params.institution ?? null,
