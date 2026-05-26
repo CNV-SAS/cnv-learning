@@ -42,12 +42,21 @@ export interface Badge {
   requirement: string;
 }
 
+// Bloque 22.7 fix Bug F del smoke: paleta rediseñada por insignia
+// para que cada una sea visualmente distinta:
+//   - Junior   = sky-100 (azul claro, "inicio fresco")
+//   - Senior   = blue-500 (azul vibrante, distintivo)
+//   - Master   = amber-100 (oro, rango maximo)
+//   - Graduado = emerald-200 (verde, achievement de curso)
+//   - Pro CNV  = blue-100 + border azul-700 (azul royal CNV)
+// Antes Junior tenia bg-muted (gris), lo cual lo hacia indistinguible
+// del estado "no conseguida" aun cuando estaba earned.
 const BADGE_JUNIOR: Badge = {
   id: "junior",
   kind: "rank",
   label: "Junior Bioimpedancia",
   iconName: "sparkles",
-  colorClass: "bg-muted text-muted-foreground",
+  colorClass: "bg-sky-100 text-sky-700 border-sky-200",
   description: "Insignia inicial al inscribirte al diplomado.",
   requirement: "Solo necesitas inscribirte al curso.",
 };
@@ -57,7 +66,7 @@ const BADGE_SENIOR: Badge = {
   kind: "rank",
   label: "Senior Medicina Bioeléctrica",
   iconName: "award",
-  colorClass: "bg-emerald-100 text-emerald-700",
+  colorClass: "bg-blue-500 text-white border-blue-700",
   description: "Has avanzado más del 50% del curso.",
   requirement: "Alcanza el 50% del curso.",
 };
@@ -88,9 +97,10 @@ const BADGE_PROFESSIONAL_CNV: Badge = {
   kind: "achievement",
   label: "Profesional Conectado CNV",
   iconName: "pro-cnv",
-  // Color provisional; el SVG custom del 22.5 maneja su propio styling
-  // (escudo dorado #C9A84C con borde emerald-700).
-  colorClass: "bg-amber-50 text-amber-900 border-emerald-700",
+  // 22.7 fix Bug F4: paleta azul royal (#2563eb = blue-600) en lugar
+  // del dorado/cafe original. Representa "red de profesionales CNV"
+  // mejor que el oro (que se confundia con Master ATLAS).
+  colorClass: "bg-blue-100 text-blue-900 border-blue-700",
   description:
     "Certificado corporativo CNV: reconocimiento como Profesional Conectado de la red CNV.",
   requirement: "Se otorga manualmente por administración.",

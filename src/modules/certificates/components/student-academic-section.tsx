@@ -6,8 +6,7 @@
 // y eliminacion la hace admin desde /admin/users/[id] (Bloque 22.3).
 
 import { FileText, Download } from "lucide-react";
-import { format } from "date-fns";
-import { es } from "date-fns/locale";
+import { formatBogotaDate } from "@/lib/utils/format-date";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -61,10 +60,7 @@ export function StudentAcademicSection({
                     <span className="font-medium">{cert.courseTitle}</span>
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    Emitida el{" "}
-                    {format(new Date(cert.uploadedAt), "d MMM y", {
-                      locale: es,
-                    })}
+                    Emitida el {formatBogotaDate(cert.uploadedAt)}
                   </p>
                   {cert.notes && (
                     <p className="text-xs text-muted-foreground">

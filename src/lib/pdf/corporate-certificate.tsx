@@ -24,6 +24,16 @@
 //                               decorativo de esquina (verde/azul);
 //                               right=50 mantiene el margen.
 //
+// IMPORTANTE (Bloque 22.7 fix Bug A del smoke): react-pdf paginaba a
+// 2 hojas cuando TODOS los children del Page eran absolute y el
+// Image tenia width/height en porcentaje. El fix tiene 3 partes:
+//   1. <Page wrap={false}> para impedir overflow auto.
+//   2. Image con top/left/right/bottom = 0 (NO width/height %).
+//      Los porcentajes en react-pdf se resuelven contra el parent y
+//      cuando el parent es flex sin children flow, calcula 0.
+//   3. backgroundImage va PRIMERO en el JSX para que quede debajo
+//      del resto en el stacking order del PDF.
+//
 // Si en el render visual de produccion alguna coordenada queda mal
 // alineada, ajustar aqui (calibracion exacta requiere ver el PDF
 // generado, no esta verificacion estatica).
@@ -53,17 +63,15 @@ const COLORS = {
 
 const styles = StyleSheet.create({
   page: {
-    flexDirection: "column",
     backgroundColor: COLORS.white,
     color: COLORS.text,
-    position: "relative",
   },
   backgroundImage: {
     position: "absolute",
     top: 0,
     left: 0,
-    width: "100%",
-    height: "100%",
+    right: 0,
+    bottom: 0,
   },
   studentName: {
     position: "absolute",
@@ -153,7 +161,12 @@ export function CorporateCertificateDocument(
       author="Connected Nutrition Ventures SAS"
       subject={`Certificado Profesional Conectado CNV de ${props.studentName}`}
     >
-      <Page size="A4" orientation="landscape" style={styles.page}>
+      <Page
+        size="A4"
+        orientation="landscape"
+        wrap={false}
+        style={styles.page}
+      >
         {/* eslint-disable-next-line jsx-a11y/alt-text -- react-pdf Image no soporta alt */}
         <Image
           src={props.backgroundImageSrc as unknown as string}

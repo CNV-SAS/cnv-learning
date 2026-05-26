@@ -122,7 +122,9 @@ export async function GET(
         isRevoked: certificate.status === "revoked",
       });
 
-      const filename = `certificado-${courseRow.slug}-${certificate.id.slice(0, 8)}.pdf`;
+      // 22.7 rename: filename usa "constancia-" para alinear con la
+      // nomenclatura del catalogo expandido (Constancia de Finalizacion).
+      const filename = `constancia-${courseRow.slug}-${certificate.id.slice(0, 8)}.pdf`;
 
       return new NextResponse(new Uint8Array(pdfBuffer), {
         status: 200,

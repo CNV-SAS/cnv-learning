@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
+import { formatBogotaDate } from "@/lib/utils/format-date";
 import { profileRepository } from "@/modules/auth/data/profile.repository";
 import { canAccessAdmin } from "@/modules/auth/policies";
 import {
@@ -375,10 +376,7 @@ function AcademicCertificatesCard({
                     <span className="font-medium">{cert.courseTitle}</span>
                   </div>
                   <div className="text-xs text-muted-foreground">
-                    Subido el{" "}
-                    {format(new Date(cert.uploadedAt), "d MMM y", {
-                      locale: es,
-                    })}
+                    Subido el {formatBogotaDate(cert.uploadedAt)}
                   </div>
                   {cert.notes && (
                     <p className="text-xs text-muted-foreground">

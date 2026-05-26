@@ -36,7 +36,11 @@ export function Sidebar({ items, role }: SidebarProps) {
         aria-label="Navegación principal"
       >
         {items.map((item) => (
-          <SidebarItem key={item.href} item={item} />
+          <SidebarItem
+            key={item.href}
+            item={item}
+            allHrefs={items.map((i) => i.href)}
+          />
         ))}
       </nav>
     </div>

@@ -184,9 +184,9 @@ interface CertificateDocumentProps {
 export function CertificateDocument(props: CertificateDocumentProps) {
   return (
     <Document
-      title={`Certificado ${props.certificateIdShort}`}
+      title={`Constancia ${props.certificateIdShort}`}
       author="CNV Learning"
-      subject={`Certificado de finalizacion de ${props.courseName}`}
+      subject={`Constancia de Finalizacion de ${props.courseName}`}
     >
       <Page size="A4" orientation="landscape" style={styles.page}>
         <View style={styles.borderFrame} />
@@ -198,7 +198,7 @@ export function CertificateDocument(props: CertificateDocumentProps) {
 
         <View style={styles.bodyCenter}>
           <Text style={styles.certificateLabel}>
-            CERTIFICADO DE FINALIZACION
+            CONSTANCIA DE FINALIZACION
           </Text>
           <Text style={styles.title}>Reconocimiento académico</Text>
 

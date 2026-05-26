@@ -5,8 +5,14 @@
 // uppercase font-black tracking-widest, item activo con fondo emerald
 // solido y texto blanco.
 //
-// Active state: match exacto o prefix (pathname.startsWith(href + "/"))
-// para soportar rutas anidadas (ej /admin matchea /admin/users).
+// Active state (Bloque 22.7 fix Bug C del smoke): "best match wins".
+// Antes la regla era pathname.startsWith(href + "/"), lo cual hacia
+// que /admin/status activara TAMBIEN el item /admin (ambos prefix).
+// Ahora el SidebarItem recibe la lista completa de hrefs y se
+// declara activo solo si su href es el match mas largo. /admin/status
+// gana sobre /admin cuando estas en /admin/status; /admin sigue
+// activo en /admin/users (porque no hay /admin/users en sidebar y
+// /admin es el unico que matchea).
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -16,12 +22,26 @@ import { NavIcon } from "./nav-icon";
 
 interface SidebarItemProps {
   item: NavItem;
+  allHrefs: readonly string[];
 }
 
-export function SidebarItem({ item }: SidebarItemProps) {
+function findBestMatch(
+  pathname: string,
+  hrefs: readonly string[],
+): string | null {
+  let best: string | null = null;
+  for (const href of hrefs) {
+    const matches = pathname === href || pathname.startsWith(href + "/");
+    if (!matches) continue;
+    if (!best || href.length > best.length) best = href;
+  }
+  return best;
+}
+
+export function SidebarItem({ item, allHrefs }: SidebarItemProps) {
   const pathname = usePathname();
-  const isActive =
-    pathname === item.href || pathname.startsWith(item.href + "/");
+  const bestMatch = findBestMatch(pathname, allHrefs);
+  const isActive = bestMatch === item.href;
 
   return (
     <Link

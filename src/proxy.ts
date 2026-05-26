@@ -28,6 +28,11 @@ const PUBLIC_PATHS = [
   "/reset-password",
   "/auth/confirm",
   "/verify",
+  // Bloque 22.7 fix Bug B del smoke: /verify-corporate/[id] es pagina
+  // publica (Profesional Conectado CNV). Antes caia en el bucket
+  // protegido porque /verify-corporate NO matchea startsWith("/verify"
+  // + "/"); requiere su propio entry.
+  "/verify-corporate",
   "/privacy",
   "/terms",
   "/support",

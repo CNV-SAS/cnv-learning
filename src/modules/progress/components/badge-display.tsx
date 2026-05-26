@@ -16,7 +16,7 @@
 import {
   Award,
   GraduationCap,
-  Shield,
+  Network,
   Sparkles,
   Trophy,
   type LucideIcon,
@@ -24,16 +24,16 @@ import {
 import { cn } from "@/lib/utils";
 import type { Badge, BadgeIconName } from "@/modules/progress/lib";
 
-// Bloque 22.2 expande el catalogo: graduation-cap y pro-cnv.
-// pro-cnv usa Shield como placeholder; el SVG custom dorado se
-// integra en 22.5 con un componente dedicado (ProCnvInsignia) que
-// reemplaza el render path para esta variante.
+// Bloque 22.7 fix Bug F4 del smoke: "pro-cnv" mapea a Network
+// (representa red/conexion de profesionales) en lugar de Shield.
+// El SVG custom dorado original quedaba indistinguible visualmente
+// del Trophy de Master; Network + paleta azul-royal lo diferencia.
 const ICON_MAP: Record<BadgeIconName, LucideIcon> = {
   sparkles: Sparkles,
   award: Award,
   trophy: Trophy,
   "graduation-cap": GraduationCap,
-  "pro-cnv": Shield,
+  "pro-cnv": Network,
 };
 
 type Size = "default" | "sm" | "card";
@@ -52,10 +52,13 @@ export function BadgeDisplay({
   const Icon = ICON_MAP[badge.iconName];
 
   if (size === "card") {
+    // Bloque 22.7 fix Bug F2: ancho fijo w-28 (112px) y padding p-3
+    // para que labels largos ("Bioimpedancia", "Medicina Bioelectrica")
+    // no toquen los bordes. Altura h-28 mantiene aspecto cuadrado.
     return (
       <div
         className={cn(
-          "flex h-24 w-24 flex-col items-center justify-center gap-1 rounded-2xl border-2 p-2 text-center",
+          "flex h-28 w-28 flex-col items-center justify-center gap-1.5 rounded-2xl border-2 p-3 text-center",
           badge.colorClass,
           className,
         )}
