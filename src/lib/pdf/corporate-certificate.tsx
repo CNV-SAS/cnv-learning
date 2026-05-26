@@ -148,7 +148,10 @@ interface CorporateCertificateDocumentProps {
   hashShort: string;
   verifyUrl: string;
   qrDataUrl: string;
-  backgroundImageSrc: string | Buffer;
+  // 22.8: ahora siempre data URL string. Antes aceptaba Buffer pero
+  // el render fallaba silenciosamente en prod (ver render-corporate-
+  // certificate.tsx para detalles).
+  backgroundImageSrc: string;
   isRevoked: boolean;
 }
 
@@ -169,7 +172,7 @@ export function CorporateCertificateDocument(
       >
         {/* eslint-disable-next-line jsx-a11y/alt-text -- react-pdf Image no soporta alt */}
         <Image
-          src={props.backgroundImageSrc as unknown as string}
+          src={props.backgroundImageSrc}
           style={styles.backgroundImage}
         />
 

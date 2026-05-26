@@ -42,15 +42,17 @@ export interface Badge {
   requirement: string;
 }
 
-// Bloque 22.7 fix Bug F del smoke: paleta rediseñada por insignia
-// para que cada una sea visualmente distinta:
-//   - Junior   = sky-100 (azul claro, "inicio fresco")
-//   - Senior   = blue-500 (azul vibrante, distintivo)
-//   - Master   = amber-100 (oro, rango maximo)
-//   - Graduado = emerald-200 (verde, achievement de curso)
+// Bloque 22.7 fix Bug F del smoke + 22.8 Issue 1: paleta rediseñada
+// por insignia para que cada una sea visualmente distinta, todas con
+// fondo claro + texto oscuro + border medio para consistencia visual:
+//   - Junior   = sky-100/sky-700 (azul claro, "inicio fresco")
+//   - Senior   = blue-100/blue-700 (azul medio, distintivo) - 22.8
+//   - Master   = amber-100/amber-700 (oro, rango maximo)
+//   - Graduado = emerald-200/emerald-800 (verde, achievement de curso)
 //   - Pro CNV  = blue-100 + border azul-700 (azul royal CNV)
-// Antes Junior tenia bg-muted (gris), lo cual lo hacia indistinguible
-// del estado "no conseguida" aun cuando estaba earned.
+// 22.7 cambio inicial puso Senior en bg-blue-500 text-white (fondo
+// solido), pero rompia la consistencia visual con las demas. 22.8 lo
+// devuelve a fondo claro siguiendo el patron de Junior/Master.
 const BADGE_JUNIOR: Badge = {
   id: "junior",
   kind: "rank",
@@ -66,7 +68,7 @@ const BADGE_SENIOR: Badge = {
   kind: "rank",
   label: "Senior Medicina Bioeléctrica",
   iconName: "award",
-  colorClass: "bg-blue-500 text-white border-blue-700",
+  colorClass: "bg-blue-100 text-blue-700 border-blue-200",
   description: "Has avanzado más del 50% del curso.",
   requirement: "Alcanza el 50% del curso.",
 };

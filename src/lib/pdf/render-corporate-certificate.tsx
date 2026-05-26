@@ -60,10 +60,14 @@ export async function renderCorporateCertificatePdf(
     readFile(TEMPLATE_PATH),
   ]);
 
-  // react-pdf acepta Buffer directamente para Image src (lo serializa
-  // como data URL internamente). Pasamos el buffer sin convertir para
-  // ahorrar el round-trip base64.
-  const backgroundImageSrc = templateBuffer;
+  // Bloque 22.8 fix Issue 2 del smoke: convertir el Buffer a data URL
+  // string explicito. La forma documentada de @react-pdf/renderer 4.x
+  // para Image src es string (URL/data URL/path) o
+  // { data, format }. Pasar Buffer crudo "funcionaba" en dev pero
+  // en prod resultaba en PDF en blanco (Image silently fail). El
+  // round-trip base64 cuesta ~280KB en memoria por request; aceptable
+  // para una operacion on-demand sobre un PNG de 210KB.
+  const backgroundImageSrc = `data:image/png;base64,${templateBuffer.toString("base64")}`;
 
   const issuedAtLabel = format(
     new Date(params.issuedAtIso),
