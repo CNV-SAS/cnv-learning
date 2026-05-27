@@ -5,7 +5,9 @@
 //   1. updateProfile: 6 campos editables. Sin audit (no critico,
 //      regla 8 reserva audit para eventos criticos).
 //   2. updateAvatar: persiste URL devuelta por el componente cliente
-//      tras subir blob a Supabase Storage. Sin audit.
+//      tras subir blob a Supabase Storage + best-effort delete del
+//      blob anterior si el user reemplaza foto sin pasar por
+//      "Quitar foto" (23.3 fix). Sin audit.
 //   3. removeAvatar: avatar_url=null + best-effort delete del blob
 //      previo en Storage. Fault-tolerant (si Storage falla, la
 //      columna queda en null igual; consideracion I del plan).
@@ -110,10 +112,43 @@ export const profileService = {
       return err(authzCannotEdit());
     }
 
+    // 23.3 fix: lookup del avatar anterior ANTES del update para
+    // borrar el blob huerfano cuando el user reemplaza la foto sin
+    // pasar por "Quitar foto" primero. Mismo patron fault-tolerant
+    // que removeAvatar.
+    const current = await profileRepository.findById(params.actor.id);
+    const previousPath = extractAvatarPath(current?.avatar_url ?? null);
+
     const updated = await profileRepository.updateOwnProfile(
       params.actor.id,
       { avatar_url: params.avatarUrl },
     );
+
+    // Best-effort delete del blob anterior solo si era distinto al
+    // nuevo (defensive: protege contra borrar el blob recien subido
+    // si por algun motivo el cliente reenvia la misma URL).
+    const newPath = extractAvatarPath(params.avatarUrl);
+    if (previousPath && previousPath !== newPath) {
+      try {
+        const supabase = createAdminClient();
+        const { error } = await supabase.storage
+          .from("avatars")
+          .remove([previousPath]);
+        if (error) {
+          logger.warn("updateAvatar: storage delete fallo (no bloquea)", {
+            userId: params.actor.id,
+            path: previousPath,
+            error: error.message,
+          });
+        }
+      } catch (e) {
+        logger.warn("updateAvatar: storage delete excepcion (no bloquea)", {
+          userId: params.actor.id,
+          path: previousPath,
+          error: e instanceof Error ? e.message : String(e),
+        });
+      }
+    }
 
     return ok(updated);
   },
