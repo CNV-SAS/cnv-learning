@@ -15,6 +15,7 @@ import Link from "next/link";
 import {
   Activity,
   Award,
+  BookOpen,
   ClipboardList,
   FileText,
   Globe,
@@ -128,6 +129,12 @@ export default async function AdminPage() {
             <Link href="/admin/users">
               <Users className="mr-2 h-4 w-4" />
               Usuarios
+            </Link>
+          </Button>
+          <Button asChild variant="outline">
+            <Link href="/admin/courses">
+              <BookOpen className="mr-2 h-4 w-4" />
+              Cursos
             </Link>
           </Button>
           <Button asChild variant="outline">
