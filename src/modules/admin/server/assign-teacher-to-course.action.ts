@@ -54,6 +54,9 @@ export async function assignTeacherToCourseAction(
 
       revalidatePath(`/admin/users/${parsed.data.teacherUserId}/enrollments`);
       revalidatePath(`/admin/users/${parsed.data.teacherUserId}`);
+      // 23.1.e: /admin/courses/[id]/teachers consume la lista de
+      // asignaciones del curso.
+      revalidatePath(`/admin/courses/${parsed.data.courseId}/teachers`);
 
       return ok(undefined);
     });

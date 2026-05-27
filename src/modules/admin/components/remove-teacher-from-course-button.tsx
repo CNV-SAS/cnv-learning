@@ -7,6 +7,7 @@
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
 import { Ban } from "lucide-react";
+import { useRouter } from "next/navigation";
 import {
   Dialog,
   DialogContent,
@@ -30,6 +31,7 @@ export function RemoveTeacherFromCourseButton({
   courseId,
   courseTitle,
 }: RemoveTeacherFromCourseButtonProps) {
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
 
@@ -45,6 +47,7 @@ export function RemoveTeacherFromCourseButton({
       }
       toast.success("Asignación docente removida.");
       setOpen(false);
+      router.refresh();
     });
   }
 

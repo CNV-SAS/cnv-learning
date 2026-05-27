@@ -16,6 +16,7 @@ import { ErrorCodes } from "@/core/errors/codes";
 import type { Database } from "@/types/database.generated";
 import type { Enrollment } from "@/modules/enrollments/types";
 import type { Course } from "@/modules/courses/types";
+import type { Profile } from "@/modules/auth/types";
 
 type EnrollmentInsert = Database["public"]["Tables"]["enrollments"]["Insert"];
 
@@ -32,6 +33,17 @@ export interface TeacherCourseAssignment {
   courseId: string;
   assignedAt: string;
   course: Course;
+}
+
+// Bloque 23.1.e. Row de course_teachers + profile joineado del teacher
+// + flag can_manage_course. Usado por /admin/courses/[id]/teachers
+// para mostrar lista de docentes con sus permisos.
+export interface TeacherAssignedToCourse {
+  teacherId: string;
+  courseId: string;
+  assignedAt: string;
+  canManageCourse: boolean;
+  profile: Profile;
 }
 
 export const adminEnrollmentRepository = {
@@ -245,6 +257,83 @@ export const adminEnrollmentRepository = {
     if (error) {
       throw new InfrastructureError(ErrorCodes.DATABASE_ERROR, error.message);
     }
+  },
+
+  // Bloque 23.1.e. Lista los teachers asignados a un curso con su
+  // profile y flag can_manage_course. Ordenado por full_name del
+  // teacher para que la tabla del admin sea predecible.
+  async listTeachersAssignedToCourse(
+    courseId: string,
+  ): Promise<TeacherAssignedToCourse[]> {
+    const supabase = createAdminClient();
+    const { data, error } = await supabase
+      .from("course_teachers")
+      .select(
+        "teacher_id, course_id, assigned_at, can_manage_course, teacher:profiles!course_teachers_teacher_id_fkey(*)",
+      )
+      .eq("course_id", courseId);
+
+    if (error) {
+      throw new InfrastructureError(ErrorCodes.DATABASE_ERROR, error.message);
+    }
+
+    const result: TeacherAssignedToCourse[] = [];
+    for (const row of data ?? []) {
+      if (!row.teacher) continue;
+      result.push({
+        teacherId: row.teacher_id,
+        courseId: row.course_id,
+        assignedAt: row.assigned_at,
+        canManageCourse: row.can_manage_course,
+        profile: row.teacher,
+      });
+    }
+    result.sort((a, b) =>
+      a.profile.full_name.localeCompare(b.profile.full_name, "es"),
+    );
+    return result;
+  },
+
+  // Bloque 23.1.e. Lista los profiles con role='teacher' que NO estan
+  // asignados al curso. Usado por el dropdown del dialog "Asignar
+  // docente". Order by full_name. MVP scale: <50 teachers en la
+  // cohorte, query simple sin paginacion.
+  async listTeachersNotAssignedToCourse(
+    courseId: string,
+  ): Promise<Profile[]> {
+    const supabase = createAdminClient();
+    const { data: assigned, error: assignedError } = await supabase
+      .from("course_teachers")
+      .select("teacher_id")
+      .eq("course_id", courseId);
+    if (assignedError) {
+      throw new InfrastructureError(
+        ErrorCodes.DATABASE_ERROR,
+        assignedError.message,
+      );
+    }
+
+    const assignedIds = (assigned ?? []).map((r) => r.teacher_id);
+
+    let query = supabase
+      .from("profiles")
+      .select("*")
+      .eq("role", "teacher")
+      .order("full_name", { ascending: true });
+
+    if (assignedIds.length > 0) {
+      query = query.not(
+        "id",
+        "in",
+        `(${assignedIds.map((id) => `"${id}"`).join(",")})`,
+      );
+    }
+
+    const { data, error } = await query;
+    if (error) {
+      throw new InfrastructureError(ErrorCodes.DATABASE_ERROR, error.message);
+    }
+    return data ?? [];
   },
 
   // Bloque 23.1.c. Lee el flag can_manage_course de una asignacion.
