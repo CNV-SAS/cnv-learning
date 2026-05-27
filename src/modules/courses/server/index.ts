@@ -13,3 +13,7 @@ export { deleteAssignmentAction } from "./delete-assignment.action";
 export { createCourseResourceAction } from "./create-resource.action";
 export { updateCourseResourceAction } from "./update-resource.action";
 export { deleteCourseResourceAction } from "./delete-resource.action";
+export { createQuizQuestionAction } from "./create-quiz-question.action";
+export { updateQuizQuestionAction } from "./update-quiz-question.action";
+export { deleteQuizQuestionAction } from "./delete-quiz-question.action";
+export { reorderQuizQuestionAction } from "./reorder-quiz-question.action";

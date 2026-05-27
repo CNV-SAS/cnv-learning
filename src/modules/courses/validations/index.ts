@@ -63,3 +63,24 @@ export {
   deleteCourseResourceSchema,
   type DeleteCourseResourceInput,
 } from "./delete-resource";
+export {
+  quizOptionInputSchema,
+  hasExactlyOneCorrect,
+  type QuizOptionInput,
+} from "./quiz-option-input";
+export {
+  createQuizQuestionSchema,
+  type CreateQuizQuestionInput,
+} from "./create-quiz-question";
+export {
+  updateQuizQuestionSchema,
+  type UpdateQuizQuestionInput,
+} from "./update-quiz-question";
+export {
+  deleteQuizQuestionSchema,
+  type DeleteQuizQuestionInput,
+} from "./delete-quiz-question";
+export {
+  reorderQuizQuestionSchema,
+  type ReorderQuizQuestionInput,
+} from "./reorder-quiz-question";

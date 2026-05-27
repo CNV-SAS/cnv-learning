@@ -1137,6 +1137,7 @@ export type Database = {
           points: number
           position: number
           prompt: string
+          updated_at: string
         }
         Insert: {
           assignment_id: string
@@ -1145,6 +1146,7 @@ export type Database = {
           points?: number
           position: number
           prompt: string
+          updated_at?: string
         }
         Update: {
           assignment_id?: string
@@ -1153,6 +1155,7 @@ export type Database = {
           points?: number
           position?: number
           prompt?: string
+          updated_at?: string
         }
         Relationships: [
           {
@@ -1236,6 +1239,10 @@ export type Database = {
       }
       swap_module_positions: {
         Args: { p_course_id: string; p_pos_a: number; p_pos_b: number }
+        Returns: undefined
+      }
+      swap_quiz_question_positions: {
+        Args: { p_assignment_id: string; p_pos_a: number; p_pos_b: number }
         Returns: undefined
       }
     }
