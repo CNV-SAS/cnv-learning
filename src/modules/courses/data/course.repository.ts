@@ -12,6 +12,21 @@ import { InfrastructureError } from "@/core/errors/classes";
 import { ErrorCodes } from "@/core/errors/codes";
 import type { Course } from "../types";
 
+export interface CreateCourseRow {
+  title: string;
+  slug: string;
+  description: string | null;
+  cover_url: string | null;
+}
+
+export interface UpdateCourseRow {
+  title: string;
+  slug: string;
+  description: string | null;
+  cover_url: string | null;
+  is_published: boolean;
+}
+
 export const courseRepository = {
   async findById(id: string): Promise<Course | null> {
     const supabase = await createClient();
@@ -90,6 +105,102 @@ export const courseRepository = {
       throw new InfrastructureError(ErrorCodes.DATABASE_ERROR, error.message);
     }
     return (count ?? 0) > 0;
+  },
+
+  // Lee el flag can_manage_course de course_teachers para el caller
+  // sobre un curso. Si no hay row (teacher no asignado) o el flag es
+  // false, retorna false. RLS "Users view own teaching assignments"
+  // permite que el teacher consulte su propia row.
+  //
+  // Usado por canEditCourseMeta context resolver (Bloque 23.1).
+  async getCourseTeacherFlag(
+    userId: string,
+    courseId: string,
+  ): Promise<boolean> {
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from("course_teachers")
+      .select("can_manage_course")
+      .eq("teacher_id", userId)
+      .eq("course_id", courseId)
+      .maybeSingle();
+
+    if (error) {
+      throw new InfrastructureError(ErrorCodes.DATABASE_ERROR, error.message);
+    }
+    return data?.can_manage_course === true;
+  },
+
+  // Verifica si un slug ya esta tomado por otro curso. excludeId
+  // opcional para flows de update donde el slug puede igualar al del
+  // propio curso. Retorna true si ya existe (otro curso lo tiene).
+  //
+  // Usado por courseMetaService antes del INSERT/UPDATE para devolver
+  // un error de dominio claro (COURSE_SLUG_TAKEN) en lugar del 23505
+  // generico de la unique constraint a nivel SQL.
+  async slugExists(slug: string, excludeId?: string): Promise<boolean> {
+    const supabase = await createClient();
+    let query = supabase
+      .from("courses")
+      .select("id", { count: "exact", head: true })
+      .eq("slug", slug);
+    if (excludeId) {
+      query = query.neq("id", excludeId);
+    }
+    const { count, error } = await query;
+    if (error) {
+      throw new InfrastructureError(ErrorCodes.DATABASE_ERROR, error.message);
+    }
+    return (count ?? 0) > 0;
+  },
+
+  // Crear curso (admin-only por RLS "Admins manage courses").
+  // is_published arranca en false (decision plan B23, el curso se
+  // publica via updateCourse cuando este listo).
+  //
+  // El service hace el pre-check de slug + audit antes de llamar.
+  async create(input: CreateCourseRow): Promise<Course> {
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from("courses")
+      .insert({
+        title: input.title,
+        slug: input.slug,
+        description: input.description,
+        cover_url: input.cover_url,
+        is_published: false,
+      })
+      .select("*")
+      .single();
+
+    if (error) {
+      throw new InfrastructureError(ErrorCodes.DATABASE_ERROR, error.message);
+    }
+    return data;
+  },
+
+  // Update de metadatos. RLS cubre:
+  //   - admin: "Admins manage courses".
+  //   - teacher con flag: "Teachers manage course meta with flag".
+  async update(id: string, input: UpdateCourseRow): Promise<Course> {
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from("courses")
+      .update({
+        title: input.title,
+        slug: input.slug,
+        description: input.description,
+        cover_url: input.cover_url,
+        is_published: input.is_published,
+      })
+      .eq("id", id)
+      .select("*")
+      .single();
+
+    if (error) {
+      throw new InfrastructureError(ErrorCodes.DATABASE_ERROR, error.message);
+    }
+    return data;
   },
 
   // Cursos accesibles para el caller. RLS hace el filtrado real:

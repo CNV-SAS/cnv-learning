@@ -18,3 +18,8 @@ export {
   canEditCourseResources,
   type CourseResourceEditContext,
 } from "./can-edit-course-resources";
+export { canCreateCourse } from "./can-create-course";
+export {
+  canEditCourseMeta,
+  type CourseMetaEditContext,
+} from "./can-edit-course-meta";

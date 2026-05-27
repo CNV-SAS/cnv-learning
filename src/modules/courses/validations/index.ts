@@ -1,4 +1,13 @@
 export {
+  createCourseSchema,
+  COURSE_SLUG_FORMAT,
+  type CreateCourseInput,
+} from "./create-course";
+export {
+  updateCourseSchema,
+  type UpdateCourseInput,
+} from "./update-course";
+export {
   createModuleSchema,
   type CreateModuleInput,
 } from "./create-module";

@@ -12,8 +12,88 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "14.5"
   }
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
   public: {
     Tables: {
+      academic_certificates: {
+        Row: {
+          course_id: string
+          created_at: string
+          id: string
+          notes: string | null
+          storage_path: string
+          uploaded_at: string
+          uploaded_by: string | null
+          user_id: string
+        }
+        Insert: {
+          course_id: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          storage_path: string
+          uploaded_at?: string
+          uploaded_by?: string | null
+          user_id: string
+        }
+        Update: {
+          course_id?: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          storage_path?: string
+          uploaded_at?: string
+          uploaded_by?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "academic_certificates_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "academic_certificates_uploaded_by_fkey"
+            columns: ["uploaded_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "academic_certificates_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ai_grading_suggestions: {
         Row: {
           cost_tokens: number | null
@@ -73,61 +153,6 @@ export type Database = {
             columns: ["submission_id"]
             isOneToOne: false
             referencedRelation: "submissions"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      academic_certificates: {
-        Row: {
-          course_id: string
-          created_at: string
-          id: string
-          notes: string | null
-          storage_path: string
-          uploaded_at: string
-          uploaded_by: string | null
-          user_id: string
-        }
-        Insert: {
-          course_id: string
-          created_at?: string
-          id?: string
-          notes?: string | null
-          storage_path: string
-          uploaded_at?: string
-          uploaded_by?: string | null
-          user_id: string
-        }
-        Update: {
-          course_id?: string
-          created_at?: string
-          id?: string
-          notes?: string | null
-          storage_path?: string
-          uploaded_at?: string
-          uploaded_by?: string | null
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "academic_certificates_course_id_fkey"
-            columns: ["course_id"]
-            isOneToOne: false
-            referencedRelation: "courses"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "academic_certificates_uploaded_by_fkey"
-            columns: ["uploaded_by"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "academic_certificates_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -520,16 +545,19 @@ export type Database = {
       course_teachers: {
         Row: {
           assigned_at: string
+          can_manage_course: boolean
           course_id: string
           teacher_id: string
         }
         Insert: {
           assigned_at?: string
+          can_manage_course?: boolean
           course_id: string
           teacher_id: string
         }
         Update: {
           assigned_at?: string
+          can_manage_course?: boolean
           course_id?: string
           teacher_id?: string
         }
@@ -1195,6 +1223,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      can_manage_course: { Args: { p_course_id: string }; Returns: boolean }
       current_user_role: {
         Args: never
         Returns: Database["public"]["Enums"]["user_role"]
@@ -1349,6 +1378,9 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {
       assignment_type: ["file_upload", "quiz_multiple_choice", "essay"],

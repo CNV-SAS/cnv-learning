@@ -1,0 +1,210 @@
+// Service: orquesta create/update de metadatos del curso (Bloque
+// 23.1). Mismo patron que courseContentEditorService: actions thin
+// delegan aqui para policy + audit + idempotencia.
+//
+// 2 operaciones:
+//   1. createCourse: admin-only (canCreateCourse) + check slug
+//      unique + insert + audit course.created.
+//   2. updateCourse: admin OR teacher con flag (canEditCourseMeta)
+//      + check slug unique excluyendo el courseId + update + audit
+//      course.meta_updated con snapshot de changes.
+//
+// Las RLS de courses (admin manage + teacher manage with flag,
+// migraciones 0017 + 0032) cubren defense-in-depth en el SQL
+// boundary.
+
+import { courseRepository } from "@/modules/courses/data";
+import { canCreateCourse, canEditCourseMeta } from "@/modules/courses/policies";
+import { auditRepository } from "@/modules/audit/data";
+import {
+  AppError,
+  AuthorizationError,
+  DomainError,
+  NotFoundError,
+} from "@/core/errors/classes";
+import { ErrorCodes } from "@/core/errors/codes";
+import { ok, err, type Result } from "@/lib/utils/result";
+import type { AuthenticatedUser } from "@/modules/auth/types";
+import type { Course } from "@/modules/courses/types";
+
+interface CreateCourseParams {
+  actor: AuthenticatedUser;
+  title: string;
+  slug: string;
+  description: string | null;
+  coverUrl: string | null;
+}
+
+interface UpdateCourseParams {
+  actor: AuthenticatedUser;
+  courseId: string;
+  title: string;
+  slug: string;
+  description: string | null;
+  coverUrl: string | null;
+  isPublished: boolean;
+}
+
+export const courseMetaService = {
+  async createCourse(
+    params: CreateCourseParams,
+  ): Promise<Result<{ courseId: string }, AppError>> {
+    if (!canCreateCourse(params.actor)) {
+      return err(
+        new AuthorizationError(
+          ErrorCodes.AUTHZ_CANNOT_CREATE_COURSE,
+          "Solo un administrador puede crear cursos.",
+        ),
+      );
+    }
+
+    // Pre-check de slug para devolver error de dominio claro en lugar
+    // del unique-violation generico de Postgres.
+    const taken = await courseRepository.slugExists(params.slug);
+    if (taken) {
+      return err(
+        new DomainError(
+          ErrorCodes.COURSE_SLUG_TAKEN,
+          "Ya existe un curso con ese slug. Elige otro.",
+        ),
+      );
+    }
+
+    const course = await courseRepository.create({
+      title: params.title,
+      slug: params.slug,
+      description: params.description,
+      cover_url: params.coverUrl,
+    });
+
+    await auditRepository.record({
+      event: "course.created",
+      resourceType: "course",
+      resourceId: course.id,
+      actorId: params.actor.id,
+      actorEmail: params.actor.email,
+      metadata: {
+        title: course.title,
+        slug: course.slug,
+        isPublished: course.is_published,
+      },
+    });
+
+    return ok({ courseId: course.id });
+  },
+
+  async updateCourse(
+    params: UpdateCourseParams,
+  ): Promise<Result<Course, AppError>> {
+    const course = await courseRepository.findById(params.courseId);
+    if (!course) {
+      return err(
+        new NotFoundError(
+          ErrorCodes.COURSE_NOT_FOUND,
+          "Curso no encontrado.",
+        ),
+      );
+    }
+
+    // Resolver el context de canEditCourseMeta. Para admin saltamos
+    // las queries a course_teachers porque la policy admin = true
+    // independientemente del flag.
+    const [isTeacherOfCourse, canManageCourse] =
+      params.actor.role === "teacher"
+        ? await Promise.all([
+            courseRepository.isTeacherOfCourse(
+              params.actor.id,
+              params.courseId,
+            ),
+            courseRepository.getCourseTeacherFlag(
+              params.actor.id,
+              params.courseId,
+            ),
+          ])
+        : [false, false];
+
+    const allowed = canEditCourseMeta(params.actor, {
+      courseExists: true,
+      isTeacherOfCourse,
+      canManageCourse,
+    });
+    if (!allowed) {
+      return err(
+        new AuthorizationError(
+          ErrorCodes.AUTHZ_CANNOT_EDIT_COURSE_META,
+          "No puedes editar este curso.",
+        ),
+      );
+    }
+
+    // Slug unique check excluyendo el propio courseId (un curso puede
+    // mantener su slug en updates de otros campos).
+    if (params.slug !== course.slug) {
+      const taken = await courseRepository.slugExists(
+        params.slug,
+        params.courseId,
+      );
+      if (taken) {
+        return err(
+          new DomainError(
+            ErrorCodes.COURSE_SLUG_TAKEN,
+            "Ya existe un curso con ese slug. Elige otro.",
+          ),
+        );
+      }
+    }
+
+    const updated = await courseRepository.update(params.courseId, {
+      title: params.title,
+      slug: params.slug,
+      description: params.description,
+      cover_url: params.coverUrl,
+      is_published: params.isPublished,
+    });
+
+    // Snapshot de cambios para audit. Solo registramos los campos que
+    // efectivamente cambiaron para que la metadata no sea ruidosa.
+    const changes: Record<string, { previous: unknown; next: unknown }> = {};
+    if (course.title !== updated.title) {
+      changes.title = { previous: course.title, next: updated.title };
+    }
+    if (course.slug !== updated.slug) {
+      changes.slug = { previous: course.slug, next: updated.slug };
+    }
+    if (course.description !== updated.description) {
+      changes.description = {
+        previous: course.description,
+        next: updated.description,
+      };
+    }
+    if (course.cover_url !== updated.cover_url) {
+      changes.cover_url = {
+        previous: course.cover_url,
+        next: updated.cover_url,
+      };
+    }
+    if (course.is_published !== updated.is_published) {
+      changes.is_published = {
+        previous: course.is_published,
+        next: updated.is_published,
+      };
+    }
+
+    // Si no cambio nada, no auditamos (idempotencia).
+    if (Object.keys(changes).length > 0) {
+      await auditRepository.record({
+        event: "course.meta_updated",
+        resourceType: "course",
+        resourceId: updated.id,
+        actorId: params.actor.id,
+        actorEmail: params.actor.email,
+        metadata: {
+          actorRole: params.actor.role,
+          changes,
+        },
+      });
+    }
+
+    return ok(updated);
+  },
+};
