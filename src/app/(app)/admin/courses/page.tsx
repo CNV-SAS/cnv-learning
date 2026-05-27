@@ -23,7 +23,7 @@ import { profileRepository } from "@/modules/auth/data/profile.repository";
 import { canAccessAdmin } from "@/modules/auth/policies";
 import { courseRepository } from "@/modules/courses/data";
 import { CreateCourseDialog } from "@/modules/admin/components/create-course-dialog";
-import { EditCourseDialog } from "@/modules/admin/components/edit-course-dialog";
+import { EditCourseDialog } from "@/modules/courses/components/edit-course-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";

@@ -1,13 +1,17 @@
 "use client";
 
-// Dialog para editar un curso existente desde /admin/courses (Bloque
-// 23.1.d). Mismos campos que CreateCourseDialog + toggle isPublished
-// editable. No regenera slug automatico al editar titulo (los slugs
-// son URLs estables; cambiarlo por descuido rompe links externos).
+// Dialog para editar un curso existente. Usado por admin desde
+// /admin/courses (Bloque 23.1.d) y por teacher con can_manage_course
+// desde /teacher/courses/[id]/edit (Bloque 23.1.f). Mismo componente
+// para ambos: updateCourseAction valida la policy canEditCourseMeta
+// server-side, asi que el dialog no necesita saber el rol del actor.
 //
-// El dialog tambien lo puede usar el teacher con can_manage_course
-// desde 23.1.f reutilizando esta misma UI (props no incluyen flag
-// de role; updateCourseAction valida policy server-side).
+// Mismos campos que CreateCourseDialog + toggle isPublished editable.
+// No regenera slug automatico al editar titulo (los slugs son URLs
+// estables; cambiarlo por descuido rompe links externos).
+//
+// Movido en 23.1.f desde modules/admin/components/ a
+// modules/courses/components/ porque ya no es admin-exclusive.
 
 import { useState, useTransition, type FormEvent } from "react";
 import { toast } from "sonner";

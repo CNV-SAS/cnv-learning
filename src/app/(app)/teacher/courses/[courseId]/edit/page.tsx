@@ -12,11 +12,15 @@ import {
 } from "lucide-react";
 import { profileRepository } from "@/modules/auth/data/profile.repository";
 import { courseRepository } from "@/modules/courses/data";
-import { canEditCourseContent } from "@/modules/courses/policies";
+import {
+  canEditCourseContent,
+  canEditCourseMeta,
+} from "@/modules/courses/policies";
 import { courseContentEditorService } from "@/modules/courses/services/course-content-editor.service";
 import { ModuleFormDialog } from "@/modules/courses/components/editor/module-form-dialog";
 import { DeleteModuleDialog } from "@/modules/courses/components/editor/delete-module-dialog";
 import { ReorderButtons } from "@/modules/courses/components/editor/reorder-buttons";
+import { EditCourseDialog } from "@/modules/courses/components/edit-course-dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { requireUuidParam } from "@/lib/utils/params";
@@ -31,10 +35,16 @@ export default async function EditCoursePage({ params }: EditCoursePageProps) {
   const user = await profileRepository.getCurrentUser();
   if (!user) redirect("/login");
 
-  const [course, isTeacherOfCourse] = await Promise.all([
+  // 23.1.f: resolvemos tambien canManageCourse para mostrar el boton
+  // "Editar curso" solo si el teacher tiene el flag (admin siempre lo
+  // ve). Las 3 queries paralelas no agregan latencia perceptible.
+  const [course, isTeacherOfCourse, canManageCourseFlag] = await Promise.all([
     courseRepository.findById(courseId),
     user.role === "teacher"
       ? courseRepository.isTeacherOfCourse(user.id, courseId)
+      : Promise.resolve(false),
+    user.role === "teacher"
+      ? courseRepository.getCourseTeacherFlag(user.id, courseId)
       : Promise.resolve(false),
   ]);
 
@@ -47,6 +57,12 @@ export default async function EditCoursePage({ params }: EditCoursePageProps) {
   ) {
     notFound();
   }
+
+  const canEditMeta = canEditCourseMeta(user, {
+    courseExists: true,
+    isTeacherOfCourse,
+    canManageCourse: canManageCourseFlag,
+  });
 
   const modulesWithImpact =
     await courseContentEditorService.listModulesWithImpact(courseId);
@@ -86,6 +102,11 @@ export default async function EditCoursePage({ params }: EditCoursePageProps) {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          {/* 23.1.f: boton solo visible si admin o teacher con flag.
+              canEditMeta encapsula la policy; el server-side de
+              updateCourseAction repite la verificacion (defense-in-
+              depth). */}
+          {canEditMeta && <EditCourseDialog course={course} />}
           <Button asChild variant="outline">
             <Link href={`/teacher/courses/${courseId}/edit/resources`}>
               <FolderOpen className="mr-2 h-4 w-4" />
