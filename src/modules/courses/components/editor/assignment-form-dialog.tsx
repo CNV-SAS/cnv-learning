@@ -13,7 +13,7 @@
 
 import { useState, useTransition, type FormEvent } from "react";
 import { toast } from "sonner";
-import { Plus, Pencil, Info } from "lucide-react";
+import { Plus, Pencil } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -146,8 +146,6 @@ export function AssignmentFormDialog(props: Props) {
     });
   }
 
-  const isQuiz = type === "quiz_multiple_choice";
-
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
@@ -275,17 +273,6 @@ export function AssignmentFormDialog(props: Props) {
               Obligatoria (pesa en el progreso del curso)
             </Label>
           </div>
-
-          {isQuiz && (
-            <div className="flex items-start gap-2 rounded-md border border-border bg-muted/40 p-3 text-xs text-muted-foreground">
-              <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-              <p>
-                El editor de preguntas y opciones del quiz estará
-                disponible en v1.2. Por ahora se crea la cabecera;
-                las preguntas se cargan vía SQL.
-              </p>
-            </div>
-          )}
 
           <DialogFooter>
             <Button

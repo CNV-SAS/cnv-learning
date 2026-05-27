@@ -16,6 +16,7 @@ import {
   FileVideo,
   GraduationCap,
   Layers,
+  ListChecks,
   Users,
 } from "lucide-react";
 import { profileRepository } from "@/modules/auth/data/profile.repository";
@@ -307,6 +308,16 @@ export default async function ModuleEditPage({ params }: ModuleEditPageProps) {
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
+                      {entry.assignment.type === "quiz_multiple_choice" && (
+                        <Button asChild variant="outline" size="sm">
+                          <Link
+                            href={`/teacher/courses/${courseId}/edit/modules/${moduleId}/assignments/${entry.assignment.id}/quiz`}
+                          >
+                            <ListChecks className="mr-2 h-3.5 w-3.5" />
+                            Editar preguntas
+                          </Link>
+                        </Button>
+                      )}
                       <AssignmentFormDialog
                         mode="edit"
                         moduleId={moduleId}
