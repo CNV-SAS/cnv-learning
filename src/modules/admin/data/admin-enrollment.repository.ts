@@ -246,4 +246,47 @@ export const adminEnrollmentRepository = {
       throw new InfrastructureError(ErrorCodes.DATABASE_ERROR, error.message);
     }
   },
+
+  // Bloque 23.1.c. Lee el flag can_manage_course de una asignacion.
+  // Retorna null si la asignacion no existe (callers chequean para
+  // devolver "asignacion no encontrada" en lugar de UPDATE silencioso
+  // sobre 0 rows).
+  async getTeacherCoursePermissions(input: {
+    teacherId: string;
+    courseId: string;
+  }): Promise<{ canManageCourse: boolean } | null> {
+    const supabase = createAdminClient();
+    const { data, error } = await supabase
+      .from("course_teachers")
+      .select("can_manage_course")
+      .eq("teacher_id", input.teacherId)
+      .eq("course_id", input.courseId)
+      .maybeSingle();
+
+    if (error) {
+      throw new InfrastructureError(ErrorCodes.DATABASE_ERROR, error.message);
+    }
+    if (!data) return null;
+    return { canManageCourse: data.can_manage_course };
+  },
+
+  // Bloque 23.1.c. Setea el flag can_manage_course en una asignacion
+  // existente. Pre-condicion: la row debe existir (el service la
+  // verifica).
+  async updateTeacherCoursePermissions(input: {
+    teacherId: string;
+    courseId: string;
+    canManageCourse: boolean;
+  }): Promise<void> {
+    const supabase = createAdminClient();
+    const { error } = await supabase
+      .from("course_teachers")
+      .update({ can_manage_course: input.canManageCourse })
+      .eq("teacher_id", input.teacherId)
+      .eq("course_id", input.courseId);
+
+    if (error) {
+      throw new InfrastructureError(ErrorCodes.DATABASE_ERROR, error.message);
+    }
+  },
 };

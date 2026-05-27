@@ -35,6 +35,8 @@ export {
 export {
   assignTeacherToCourseSchema,
   removeTeacherFromCourseSchema,
+  updateTeacherCoursePermissionsSchema,
   type AssignTeacherToCourseInput,
   type RemoveTeacherFromCourseInput,
+  type UpdateTeacherCoursePermissionsInput,
 } from "./teacher-course-assignment";

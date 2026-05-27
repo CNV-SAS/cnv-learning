@@ -59,6 +59,13 @@ interface RemoveTeacherFromCourseParams {
   courseId: string;
 }
 
+interface UpdateTeacherCanManageCourseParams {
+  actor: AuthenticatedUser;
+  teacherUserId: string;
+  courseId: string;
+  canManageCourse: boolean;
+}
+
 function authzCannotManage(): AuthorizationError {
   return new AuthorizationError(
     ErrorCodes.AUTHZ_CANNOT_MANAGE_USERS,
@@ -327,6 +334,89 @@ export const adminEnrollmentService = {
         teacherFullName: targetUser.full_name,
         courseId: params.courseId,
         courseTitle: course.title,
+      },
+    });
+
+    return ok(undefined);
+  },
+
+  // Bloque 23.1.c. Setea el flag can_manage_course del teacher
+  // sobre un curso especifico. Pre-condicion: el teacher debe estar
+  // asignado al curso (no se hace via esta operacion el assign + flag
+  // en un solo paso; el admin primero asigna, luego flip el flag).
+  //
+  // Audit course_teacher.permissions_updated con previous/next flag.
+  // Idempotente: si el flag ya estaba en el valor target, no-op + no
+  // audit (mismo patron que updateRole / updateName).
+  async updateTeacherCanManageCourse(
+    params: UpdateTeacherCanManageCourseParams,
+  ): Promise<Result<void, AppError>> {
+    if (!canManageUsers(params.actor)) {
+      return err(authzCannotManage());
+    }
+
+    const targetUser = await adminUserRepository.findProfileById(
+      params.teacherUserId,
+    );
+    if (!targetUser) {
+      return err(
+        new NotFoundError(
+          ErrorCodes.USER_NOT_FOUND,
+          "Usuario no encontrado.",
+        ),
+      );
+    }
+
+    const course = await courseRepository.findById(params.courseId);
+    if (!course) {
+      return err(
+        new NotFoundError(
+          ErrorCodes.COURSE_NOT_FOUND,
+          "Curso no encontrado.",
+        ),
+      );
+    }
+
+    const current = await adminEnrollmentRepository.getTeacherCoursePermissions(
+      {
+        teacherId: params.teacherUserId,
+        courseId: params.courseId,
+      },
+    );
+    if (!current) {
+      return err(
+        new DomainError(
+          ErrorCodes.VALIDATION_FAILED,
+          "El docente no está asignado a este curso.",
+        ),
+      );
+    }
+
+    if (current.canManageCourse === params.canManageCourse) {
+      // Idempotencia: ya esta seteado, no-op + no audit.
+      return ok(undefined);
+    }
+
+    await adminEnrollmentRepository.updateTeacherCoursePermissions({
+      teacherId: params.teacherUserId,
+      courseId: params.courseId,
+      canManageCourse: params.canManageCourse,
+    });
+
+    await auditRepository.record({
+      event: "course_teacher.permissions_updated",
+      resourceType: "course_teacher",
+      resourceId: `${params.courseId}:${params.teacherUserId}`,
+      actorId: params.actor.id,
+      actorEmail: params.actor.email,
+      metadata: {
+        teacherUserId: params.teacherUserId,
+        teacherEmail: targetUser.email,
+        teacherFullName: targetUser.full_name,
+        courseId: params.courseId,
+        courseTitle: course.title,
+        previousCanManageCourse: current.canManageCourse,
+        newCanManageCourse: params.canManageCourse,
       },
     });
 
