@@ -42,16 +42,27 @@ export const courseRepository = {
     return data;
   },
 
-  // Cursos en los que el user tiene enrollment activo. Join via
-  // enrollments para resolver el match. En MVP el student tiene 1
-  // curso pero el shape retornado preserva multi-curso para v2.
+  // Cursos en los que el user tiene enrollment activo Y el curso
+  // esta publicado (Bloque 23 smoke fix). Join via enrollments para
+  // resolver el match. En MVP el student tiene 1 curso pero el shape
+  // retornado preserva multi-curso para v2.
+  //
+  // !inner + eq("courses.is_published", true) filtra los cursos en
+  // borrador (decision Bloque 23 smoke): si un curso se despublica
+  // mientras un student tiene enrollment activo, el student no lo ve
+  // hasta que se vuelva a publicar. Las constancias y certificados
+  // asociados a cursos despublicados se ocultan en consecuencia
+  // (callers dashboard, /certificates, /profile usan este metodo);
+  // aceptable para MVP donde el cohorte tiene 1 curso que arranca
+  // publicado y se mantiene asi durante el ciclo.
   async listForUser(userId: string): Promise<Course[]> {
     const supabase = await createClient();
     const { data, error } = await supabase
       .from("enrollments")
-      .select("course:courses(*)")
+      .select("course:courses!inner(*)")
       .eq("user_id", userId)
-      .eq("is_active", true);
+      .eq("is_active", true)
+      .eq("courses.is_published", true);
 
     if (error) {
       throw new InfrastructureError(ErrorCodes.DATABASE_ERROR, error.message);

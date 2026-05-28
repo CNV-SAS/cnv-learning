@@ -132,10 +132,10 @@ export default async function AdminCoursesPage() {
                         </Link>
                       </Button>
                       <Button asChild variant="ghost" size="sm">
-                        <Link href={`/courses/${course.slug}`}>
+                        <Link href={`/learn/${course.id}`}>
                           <ExternalLink className="h-3.5 w-3.5" />
                           <span className="sr-only">
-                            Abrir vista pública
+                            Abrir vista del curso
                           </span>
                         </Link>
                       </Button>
