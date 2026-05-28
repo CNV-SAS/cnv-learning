@@ -14,7 +14,11 @@
 // boundary.
 
 import { courseRepository } from "@/modules/courses/data";
-import { canCreateCourse, canEditCourseMeta } from "@/modules/courses/policies";
+import {
+  canCreateCourse,
+  canDeleteCourse,
+  canEditCourseMeta,
+} from "@/modules/courses/policies";
 import { auditRepository } from "@/modules/audit/data";
 import {
   AppError,
@@ -43,6 +47,12 @@ interface UpdateCourseParams {
   description: string | null;
   coverUrl: string | null;
   isPublished: boolean;
+}
+
+interface DeleteCourseParams {
+  actor: AuthenticatedUser;
+  courseId: string;
+  confirmTitle: string;
 }
 
 export const courseMetaService = {
@@ -206,5 +216,83 @@ export const courseMetaService = {
     }
 
     return ok(updated);
+  },
+
+  // Hard delete del curso (Bloque 23 smoke #2). Solo admin.
+  //
+  // Flow:
+  //   1. canDeleteCourse policy (admin only).
+  //   2. Lookup pre-delete: 404 si no existe.
+  //   3. Confirmacion textual: confirmTitle (trimmed) === course.title.
+  //   4. Count enrollments activos para audit + transparencia.
+  //   5. Audit ANTES del delete con snapshot completo del course +
+  //      conteo de enrollments (los detalles textuales se pierden con
+  //      el CASCADE, audit log es la unica traza recuperable).
+  //   6. courseRepository.delete() -> CASCADE limpia modules, lessons,
+  //      attachments, assignments, quiz_questions, quiz_options,
+  //      submissions, gradings, ai_grading_suggestions, enrollments,
+  //      forums, forum_threads, forum_replies, announcements,
+  //      certificates, academic_certificates, course_events,
+  //      course_resources, course_teachers.
+  //
+  // Caveat: ai_grading_suggestions y gradings tienen FK NO ACTION
+  // entre si (gradings.ai_suggestion_id). El CASCADE de submissions
+  // resuelve el orden topologico automaticamente. Si smoke detecta
+  // error, agregar delete topologico explicito antes del repository
+  // call.
+  async deleteCourse(
+    params: DeleteCourseParams,
+  ): Promise<Result<void, AppError>> {
+    if (!canDeleteCourse(params.actor)) {
+      return err(
+        new AuthorizationError(
+          ErrorCodes.AUTHZ_CANNOT_DELETE_COURSE,
+          "Solo un administrador puede eliminar cursos.",
+        ),
+      );
+    }
+
+    const course = await courseRepository.findById(params.courseId);
+    if (!course) {
+      return err(
+        new NotFoundError(
+          ErrorCodes.COURSE_NOT_FOUND,
+          "Curso no encontrado.",
+        ),
+      );
+    }
+
+    if (params.confirmTitle.trim() !== course.title) {
+      return err(
+        new DomainError(
+          ErrorCodes.COURSE_DELETE_CONFIRMATION_MISMATCH,
+          "El título de confirmación no coincide con el del curso.",
+        ),
+      );
+    }
+
+    const activeEnrollmentCount =
+      await courseRepository.countActiveEnrollments(params.courseId);
+
+    await auditRepository.record({
+      event: "course.deleted",
+      resourceType: "course",
+      resourceId: course.id,
+      actorId: params.actor.id,
+      actorEmail: params.actor.email,
+      metadata: {
+        title: course.title,
+        slug: course.slug,
+        description: course.description,
+        coverUrl: course.cover_url,
+        isPublished: course.is_published,
+        startsAt: course.starts_at,
+        endsAt: course.ends_at,
+        activeEnrollmentCount,
+      },
+    });
+
+    await courseRepository.delete(params.courseId);
+    return ok(undefined);
   },
 };

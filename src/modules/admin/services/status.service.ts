@@ -1,29 +1,37 @@
-// Status service (Bloque 22.6): expone health-checks operativos del
-// sistema para /admin/status. Solo el admin puede verlo (la pagina
-// verifica canAccessAdmin).
+// Status service (Bloque 22.6, refactor 23 smoke fix #2): expone
+// health-checks operativos del sistema para /admin/status. Solo el
+// admin puede verlo (la pagina verifica canAccessAdmin).
 //
-// Cubre 4 fuentes:
-//   1. pingDatabase: head count contra profiles. OK = BD respondiendo.
-//   2. listStorageBuckets: por bucket retorna count + bytes totales
-//      via storage.list() con limit 1000 (suficiente para MVP; si
-//      algun bucket pasa de 1000 objetos, queda indicador truncated).
-//   3. getDeployInfo: lee VERCEL_* env vars que Vercel inyecta en
-//      runtime con metadata del commit deploy.
-//   4. getSentryInfo: parsea SENTRY_DSN para extraer project URL.
+// Mezcla de metricas reales y verificaciones estaticas. Para evitar
+// confusion sobre que tan "vivo" es cada chip del status panel,
+// documentamos explicitamente la naturaleza de cada uno:
+//
+//   1. pingDatabase: REAL. Head count contra profiles + latency.
+//      Si la BD no responde, falla aqui inmediatamente.
+//
+//   2. listStorageBuckets: REAL (post-Bloque 23 smoke fix #2). Llama
+//      al RPC public.get_storage_stats (migracion 0035) que agrega
+//      count + bytes leyendo storage.objects directamente. Reemplaza
+//      el intento anterior con storage.list("") que solo veia nivel
+//      raiz y reportaba 0 MB en buckets con {userId}/ o {courseId}/
+//      subfolders.
+//
+//   3. getDeployInfo: REAL. Lee VERCEL_* env vars que Vercel inyecta
+//      en runtime con metadata del commit. Local dev devuelve
+//      available=false.
+//
+//   4. getSentryInfo: ESTATICO. Solo verifica que SENTRY_DSN existe
+//      como env var y parsea el host/projectId. NO hace request al
+//      endpoint de Sentry para verificar conectividad real. Si Sentry
+//      esta caido o el DSN apunta a un proyecto invalido, este check
+//      sigue diciendo "Configurado". El admin tiene que abrir el
+//      projectUrl manualmente para validar la integracion real.
 //
 // Toda la data se calcula on-demand server-side (force-dynamic en
 // la pagina). Cero cache: el admin necesita freshness.
 
 import { createAdminClient } from "@/lib/supabase/admin";
 import { logger } from "@/core/logger/logger";
-
-// Shape de un row de storage.objects que necesitamos (Bloque 23 smoke
-// fix AJUSTE 1). Los types autogenerados de Database solo incluyen
-// schema public; declaramos localmente lo minimo para la query.
-interface StorageObjectRow {
-  bucket_id: string | null;
-  metadata: { size?: number } | null;
-}
 
 export interface DatabasePing {
   ok: boolean;
@@ -77,17 +85,13 @@ export const statusService = {
     }
   },
 
-  // Bloque 23 smoke fix AJUSTE 1: query directa contra
-  // storage.objects en lugar de Storage API .list() por bucket.
-  // .list("") solo lista nivel raiz, y los buckets que usan path
-  // {userId}/ (avatars, academic-certificates, submissions) o
-  // {courseId}/ (course-resources) quedaban reportando 0 MB porque
-  // su nivel raiz esta vacio. La query agrega count + sum(metadata
-  // .size) por bucket_id directamente.
-  //
-  // Para acceder al schema 'storage' usamos `.schema('storage' as
-  // never)` que silencia TS (el Database autogen solo incluye
-  // schema public). Service role bypassa RLS de storage.objects.
+  // Bloque 23 smoke fix #2: lee count + bytes por bucket via RPC
+  // public.get_storage_stats (migracion 0035). El RPC agrega en SQL
+  // sobre storage.objects, evitando los issues de .list("") (solo
+  // nivel raiz) y .schema("storage") (PostgREST no whitelist-ea
+  // schemas externos por default). El cliente admin tiene
+  // permission grant via authenticated (la pagina ya tiene
+  // canAccessAdmin gate).
   async listStorageBuckets(): Promise<BucketStat[]> {
     const supabase = createAdminClient();
     const { data: buckets, error } = await supabase.storage.listBuckets();
@@ -98,22 +102,13 @@ export const statusService = {
       return [];
     }
 
-    const { data: rows, error: queryError } = await (
-      supabase.schema("storage" as never) as unknown as {
-        from: (table: string) => {
-          select: (cols: string) => Promise<{
-            data: StorageObjectRow[] | null;
-            error: { message: string } | null;
-          }>;
-        };
-      }
-    )
-      .from("objects")
-      .select("bucket_id, metadata");
+    const { data: stats, error: rpcError } = await supabase.rpc(
+      "get_storage_stats",
+    );
 
-    if (queryError || !rows) {
-      logger.warn("status: storage.objects query failed", {
-        error: queryError?.message ?? "unknown",
+    if (rpcError || !stats) {
+      logger.warn("status: get_storage_stats RPC failed", {
+        error: rpcError?.message ?? "unknown",
       });
       // Fallback: lista los buckets con 0 bytes y error message; al
       // menos el admin ve que existen los buckets aunque la suma fallo.
@@ -123,25 +118,20 @@ export const statusService = {
           objectCount: 0,
           totalBytes: 0,
           truncated: false,
-          errorMessage: queryError?.message ?? "query failed",
+          errorMessage: rpcError?.message ?? "RPC failed",
         }))
         .sort((a, b) => a.name.localeCompare(b.name));
     }
 
-    // Aggregate por bucket_id en JS. Para MVP con <100 archivos el
-    // overhead es trivial; si supera 10k habria que mover el group by
-    // a una funcion SQL via RPC.
-    const statsByBucket = new Map<string, { count: number; bytes: number }>();
-    for (const row of rows) {
-      if (!row.bucket_id) continue;
-      const current = statsByBucket.get(row.bucket_id) ?? {
-        count: 0,
-        bytes: 0,
-      };
-      current.count += 1;
-      current.bytes += row.metadata?.size ?? 0;
-      statsByBucket.set(row.bucket_id, current);
-    }
+    // Map rapido por bucket_id para join contra el listBuckets (que
+    // incluye buckets vacios; el RPC no devuelve fila si bucket sin
+    // archivos).
+    const statsByBucket = new Map(
+      stats.map((s) => [
+        s.bucket_id,
+        { count: Number(s.file_count), bytes: Number(s.total_bytes) },
+      ]),
+    );
 
     return buckets
       .map((bucket) => {
@@ -183,6 +173,14 @@ export const statusService = {
     };
   },
 
+  // ESTATICO. Solo confirma que existe SENTRY_DSN como env var y
+  // parsea el host/projectId del DSN para construir el link al
+  // dashboard. NO hace HTTP request al endpoint Sentry para validar
+  // que el DSN es funcional ni que el proyecto existe ahi. Si Sentry
+  // esta caido o el DSN apunta a un proyecto borrado, este check
+  // sigue diciendo "Configurado". El admin tiene que abrir el
+  // projectUrl manualmente para validar la integracion real.
+  //
   // Parseo del DSN: https://{key}@{host}/{projectId}. Construimos
   // project URL https://{host}/projects/{projectId} (rough; el host
   // exacto es sentry.io o subdominio org-especifico, depende del

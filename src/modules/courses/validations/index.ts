@@ -8,6 +8,10 @@ export {
   type UpdateCourseInput,
 } from "./update-course";
 export {
+  deleteCourseSchema,
+  type DeleteCourseInput,
+} from "./delete-course";
+export {
   createModuleSchema,
   type CreateModuleInput,
 } from "./create-module";

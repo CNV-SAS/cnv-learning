@@ -1231,6 +1231,14 @@ export type Database = {
         Args: never
         Returns: Database["public"]["Enums"]["user_role"]
       }
+      get_storage_stats: {
+        Args: never
+        Returns: {
+          bucket_id: string
+          file_count: number
+          total_bytes: number
+        }[]
+      }
       is_course_teacher: { Args: { p_course_id: string }; Returns: boolean }
       is_enrolled: { Args: { p_course_id: string }; Returns: boolean }
       swap_lesson_positions: {

@@ -271,3 +271,33 @@ Status: pending
 - Asignar docente principal.
 - Smoke E2E manual final (SMOKE_CHECKLIST.md).
 - Lanzamiento con comunicación a los 10 alumnos.
+
+## Backlog post-Bloque 23 (detectado en smoke E2E #2)
+
+Items NO bloqueantes del lanzamiento; cubren extensibilidad multi-cohorte / multi-programa del sistema de insignias. Implementar cuando exista demanda real (al onboarding del 2do cohorte o cuando Gildardo proponga el siguiente programa formal).
+
+### Insignias configurables por curso
+
+Actualmente las insignias de rango (Junior Bioimpedancia / Senior Medicina Bioeléctrica / Master ATLAS) están hardcoded para el cohorte del Diplomado de Medicina Bioeléctrica y Sistema ANI BIS-E. El catalogo `badges.ts` y la lógica de evaluación `badgesService.getStudentBadges` asumen que esos 3 ranks aplican a CUALQUIER student enrolled a CUALQUIER curso.
+
+Para multi-cohorte / multi-programa, el admin debe poder asignar qué insignias aplican a cada curso desde el panel admin. Implica:
+
+- Tabla `course_badge_config` (course_id, badge_id, threshold) o estructura JSON en `courses.badge_config`.
+- Refactor de `badgesService.getStudentBadges` para leer el config del curso primario.
+- UI admin para asignar/quitar insignias de un curso desde `/admin/courses/[id]/badges` (sub-página dedicada).
+
+### Checkbox "¿Es un programa profesional certificado?" al crear curso
+
+Toggle nuevo en `CreateCourseDialog` (e implícitamente en `EditCourseDialog`) que active las insignias de rango (Junior/Senior/Master) automáticamente para ese curso. Sin el toggle, el curso solo otorga Constancia de Finalización al 100% (sin rangos progresivos). Útil para distinguir programas formales de cursos cortos o talleres.
+
+Backend: columna `courses.is_professional_program boolean default false`. `badgesService` filtra ranks si el curso no es professional.
+
+UI: toggle dentro de la sección "Publicación" del dialog (junto a `is_published`).
+
+### Sistema de gestión de insignias desde admin UI
+
+CRUD completo de insignias en `/admin/badges` (o `/admin/programs/badges`) que permita al admin crear nuevas insignias, editar copy (label / description / requirement), cambiar ícono (paleta de iconos lucide predefinidos) y color (paleta tailwind predefinida) sin tocar código.
+
+Implica migrar `badges.ts` de constantes hardcoded a tabla `badges` en BD con seed de las 7 actuales. `badgesService` y componentes de UI (`BadgeDisplay`, `InsigniasCard`, `ExpandedBadgesCard`) leen del repo en lugar de import directo.
+
+Caveat de migración: cambiar el ID de una insignia o su color rompe la consistencia visual de los certificados ya emitidos. La UI debe advertir al admin sobre el impacto de editar una insignia ya en producción.

@@ -19,6 +19,7 @@ export {
   type CourseResourceEditContext,
 } from "./can-edit-course-resources";
 export { canCreateCourse } from "./can-create-course";
+export { canDeleteCourse } from "./can-delete-course";
 export {
   canEditCourseMeta,
   type CourseMetaEditContext,

@@ -23,6 +23,7 @@ import { profileRepository } from "@/modules/auth/data/profile.repository";
 import { canAccessAdmin } from "@/modules/auth/policies";
 import { courseRepository } from "@/modules/courses/data";
 import { CreateCourseDialog } from "@/modules/admin/components/create-course-dialog";
+import { DeleteCourseDialog } from "@/modules/admin/components/delete-course-dialog";
 import { EditCourseDialog } from "@/modules/courses/components/edit-course-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -36,6 +37,16 @@ export default async function AdminCoursesPage() {
   if (!canAccessAdmin(user)) notFound();
 
   const courses = await courseRepository.listAllAccessible();
+
+  // 23 smoke #2: pre-fetch counts de enrollments activos por curso
+  // para pasar al DeleteCourseDialog (warning + conteo si > 0).
+  // Paralelizado; <50 cursos en MVP, overhead trivial.
+  const enrollmentCounts = await Promise.all(
+    courses.map((c) => courseRepository.countActiveEnrollments(c.id)),
+  );
+  const enrollmentCountByCourseId = new Map(
+    courses.map((c, idx) => [c.id, enrollmentCounts[idx]]),
+  );
 
   return (
     <div className="mx-auto max-w-5xl space-y-6">
@@ -139,6 +150,12 @@ export default async function AdminCoursesPage() {
                           </span>
                         </Link>
                       </Button>
+                      <DeleteCourseDialog
+                        course={course}
+                        activeEnrollmentCount={
+                          enrollmentCountByCourseId.get(course.id) ?? 0
+                        }
+                      />
                     </div>
                   </td>
                 </tr>

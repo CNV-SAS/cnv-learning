@@ -190,6 +190,40 @@ export const courseRepository = {
     return data;
   },
 
+  // Cuenta enrollments activos de un curso. Usado por
+  // courseMetaService.deleteCourse para auditar y por la UI del
+  // dialog de confirmacion (warning si > 0).
+  async countActiveEnrollments(courseId: string): Promise<number> {
+    const supabase = await createClient();
+    const { count, error } = await supabase
+      .from("enrollments")
+      .select("*", { count: "exact", head: true })
+      .eq("course_id", courseId)
+      .eq("is_active", true);
+
+    if (error) {
+      throw new InfrastructureError(ErrorCodes.DATABASE_ERROR, error.message);
+    }
+    return count ?? 0;
+  },
+
+  // Hard delete del curso. ON DELETE CASCADE del schema arrastra
+  // course_teachers, modules (y via modules: lessons,
+  // lesson_attachments, assignments, quiz_questions, quiz_options,
+  // submissions, gradings, ai_grading_suggestions), forums (y via
+  // forums: forum_threads, forum_replies), enrollments, announcements,
+  // certificates, academic_certificates, course_events,
+  // course_resources. Decision plan B23 smoke #2: hard delete con
+  // confirmacion textual + audit pre-delete; soft delete deferred a
+  // post-MVP si surge requerimiento.
+  async delete(id: string): Promise<void> {
+    const supabase = await createClient();
+    const { error } = await supabase.from("courses").delete().eq("id", id);
+    if (error) {
+      throw new InfrastructureError(ErrorCodes.DATABASE_ERROR, error.message);
+    }
+  },
+
   // Update de metadatos. RLS cubre:
   //   - admin: "Admins manage courses".
   //   - teacher con flag: "Teachers manage course meta with flag".
