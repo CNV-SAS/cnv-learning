@@ -169,8 +169,12 @@ export const quizService = {
         ? Math.round((result.score / result.maxScore) * assignment.max_score)
         : 0;
 
-    // 1) Upsert submission (idempotente).
-    const submission = await submissionRepository.upsert({
+    // 1) Insert nuevo intento (Bloque post-23 ISSUE 3). El service
+    // de quiz aun usa el patron "1 intento maximo" del MVP: el check
+    // existing && status='submitted' arriba (linea ~145) rechaza
+    // reenvios. Si en el futuro se habilita max_attempts > 1 en quiz,
+    // ese guard se reemplaza por canResubmit del lib assignment-status.
+    const submission = await submissionRepository.insertNewAttempt({
       assignment_id: assignmentId,
       user_id: user.id,
       status: "submitted",

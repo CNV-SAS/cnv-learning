@@ -146,7 +146,7 @@ export const submissionService = {
       await submissionStorageRepository.deleteFile(existing.storage_path);
     }
 
-    const submission = await submissionRepository.upsert({
+    const submission = await submissionRepository.insertNewAttempt({
       assignment_id: assignmentId,
       user_id: user.id,
       status: "submitted",
@@ -200,7 +200,7 @@ export const submissionService = {
       );
     }
 
-    const submission = await submissionRepository.upsert({
+    const submission = await submissionRepository.insertNewAttempt({
       assignment_id: assignmentId,
       user_id: user.id,
       status: "submitted",

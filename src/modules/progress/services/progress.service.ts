@@ -26,6 +26,7 @@
 
 import { moduleRepository } from "@/modules/courses/data/module.repository";
 import { lessonRepository } from "@/modules/courses/data/lesson.repository";
+import { courseRepository } from "@/modules/courses/data/course.repository";
 import { assignmentRepository } from "@/modules/assignments/data/assignment.repository";
 import { submissionRepository } from "@/modules/assignments/data/submission.repository";
 import type { Lesson, Module } from "@/modules/courses/types";
@@ -66,15 +67,25 @@ export interface RankEarnedDates {
 // Resuelve modulos + lecciones + assignments del curso + completed
 // del user en una sola pasada. Usado por getCourseSummary,
 // getModulesWithProgress y getRankEarnedDates para evitar duplicar
-// fetches. 5 queries paralelas para un user en un curso.
+// fetches.
+//
+// Bloque post-23 ISSUE 3: ahora una tarea obligatoria solo cuenta
+// para el progreso si esta APROBADA (latest attempt graded con
+// final_grade >= threshold). El threshold depende de
+// course.passing_grade, asi que el context incluye un fetch del
+// course para obtener ese campo.
 async function loadCourseProgressContext(userId: string, courseId: string) {
-  const modules = await moduleRepository.listByCourse(courseId);
+  const [course, modules] = await Promise.all([
+    courseRepository.findById(courseId),
+    moduleRepository.listByCourse(courseId),
+  ]);
+  const passingGradePercent = Number(course?.passing_grade ?? 70);
 
   const [
     lessonsByModule,
     assignmentsByModule,
     completedLessonIds,
-    submittedAssignmentIds,
+    passedAssignmentIds,
   ] = await Promise.all([
     Promise.all(modules.map((m) => lessonRepository.listByModule(m.id))),
     Promise.all(
@@ -84,17 +95,20 @@ async function loadCourseProgressContext(userId: string, courseId: string) {
       userId,
       courseId,
     ),
-    submissionRepository.listSubmittedOrGradedAssignmentIdsForUserAndCourse(
+    submissionRepository.listPassedRequiredAssignmentIdsForUserAndCourse(
       userId,
       courseId,
+      passingGradePercent,
     ),
   ]);
 
-  const completedLessonSet = new Set(completedLessonIds);
-  const submittedAssignmentSet = new Set(submittedAssignmentIds);
+  const completedLessonSet = new Set<string>(completedLessonIds);
+  const passedAssignmentSet = new Set<string>(passedAssignmentIds);
 
   // Por modulo: items (lecciones + tareas obligatorias) + breakdown
-  // de cuantos completo el user.
+  // de cuantos completo el user. "Completado" para una tarea
+  // obligatoria significa APROBADA (passedAssignmentSet), no solo
+  // entregada.
   const perModule = modules.map((module, idx) => {
     const lessons = lessonsByModule[idx];
     const assignments = assignmentsByModule[idx];
@@ -106,7 +120,7 @@ async function loadCourseProgressContext(userId: string, courseId: string) {
       completedLessonSet.has(l.id),
     ).length;
     const completedRequiredAssignments = requiredAssignments.filter((a) =>
-      submittedAssignmentSet.has(a.id),
+      passedAssignmentSet.has(a.id),
     ).length;
 
     return {
@@ -124,6 +138,7 @@ async function loadCourseProgressContext(userId: string, courseId: string) {
     perModule,
     allLessons: lessonsByModule.flat(),
     completedLessonSet,
+    passingGradePercent,
   };
 }
 
@@ -269,11 +284,15 @@ export const progressService = {
       totalRequiredAssignments: row.requiredAssignments.length,
     }));
 
-    const [lessonProgressRows, submissionRows] = await Promise.all([
+    const [lessonProgressRows, assignmentRows] = await Promise.all([
       lessonProgressRepository.listForUserAndCourse(userId, courseId),
-      submissionRepository.listSubmittedOrGradedTimelineForUserAndCourse(
+      // Bloque post-23 ISSUE 3: timeline ahora usa graded_at del
+      // latest attempt aprobado (decision Q7). Entregas no aprobadas
+      // o sin calificar no contribuyen al timeline de ranks.
+      submissionRepository.listPassedRequiredTimelineForUserAndCourse(
         userId,
         courseId,
+        ctx.passingGradePercent,
       ),
     ]);
 
@@ -287,13 +306,13 @@ export const progressService = {
         moduleIdx,
       });
     }
-    for (const row of submissionRows) {
+    for (const row of assignmentRows) {
       const moduleIdx = requiredAssignmentIdToModuleIdx.get(row.assignment_id);
-      // Si el submission es de una tarea NO obligatoria, no esta en
-      // el index y skipeamos (no contribuye al progreso).
+      // Si el assignment ya no es obligatorio (toggle cambiado por
+      // teacher tras aprobacion), no esta en el index. Skip.
       if (moduleIdx === undefined) continue;
       events.push({
-        timestamp: row.submitted_at,
+        timestamp: row.graded_at,
         kind: "assignment",
         moduleIdx,
       });
