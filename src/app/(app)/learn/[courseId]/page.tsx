@@ -91,6 +91,18 @@ export default async function CoursePage({ params }: CoursePageProps) {
 
   return (
     <div className="mx-auto max-w-4xl space-y-8">
+      {/* Bloque post-23 ISSUE 1: banner cover_url full-width 16:9. Si
+          null, sin banner (no metemos placeholder en este nivel para
+          mantener el header clean). */}
+      {course.cover_url && (
+        // eslint-disable-next-line @next/next/no-img-element -- ISSUE 1 fix
+        <img
+          src={course.cover_url}
+          alt=""
+          className="aspect-[16/9] w-full rounded-2xl object-cover"
+          loading="lazy"
+        />
+      )}
       <div className="space-y-3">
         <div className="flex flex-wrap items-start gap-4">
           <h1 className="font-display text-3xl font-black tracking-tight">

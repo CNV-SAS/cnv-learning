@@ -79,12 +79,18 @@ export function InsigniasCard({ entries }: InsigniasCardProps) {
           </p>
         ) : (
           <>
+            {/* Bloque post-23 ISSUE 2: grid responsive 2/3/4 cols
+                acomoda mejor las insignias cuando hay 4 (el flex-wrap
+                anterior dejaba 3+1 desbalanceado). Mobile 2x2, sm
+                3 por fila, md+ 4 por fila. justify-items-center
+                centra la card dentro de su celda cuando la celda es
+                mas ancha que la badge (w-28 fixed). */}
             {ranks.length > 0 && (
               <div className="space-y-2">
                 <p className="text-xs text-muted-foreground">
                   Diplomado de Medicina Bioeléctrica y ANI BIS-E
                 </p>
-                <div className="flex flex-wrap gap-3">
+                <div className="grid grid-cols-2 justify-items-center gap-3 sm:grid-cols-3 md:grid-cols-4">
                   {ranks.map((entry) => (
                     <BadgeRow key={entry.badge.id} entry={entry} />
                   ))}
@@ -95,7 +101,7 @@ export function InsigniasCard({ entries }: InsigniasCardProps) {
               <div className="space-y-2">
                 {/* Logros CNV no llevan subtitulo: son transversales
                     al ecosistema y no requieren aclarar scope. */}
-                <div className="flex flex-wrap gap-3">
+                <div className="grid grid-cols-2 justify-items-center gap-3 sm:grid-cols-3 md:grid-cols-4">
                   {achievements.map((entry) => (
                     <BadgeRow key={entry.badge.id} entry={entry} />
                   ))}

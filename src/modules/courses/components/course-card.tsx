@@ -44,6 +44,31 @@ interface CourseCardProps {
   certificate?: Certificate | null;
 }
 
+// Bloque post-23 ISSUE 1: cover_url se renderiza arriba del header.
+// Si null, placeholder con gradient emerald (alineado con BRAND.md).
+// Usamos <img> HTML simple en lugar de Next Image para evitar la
+// whitelist de remotePatterns en next.config.ts (covers vienen de
+// URLs externas variadas).
+function CoverImage({ course }: { course: Course }) {
+  if (course.cover_url) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element -- ISSUE 1 fix
+      <img
+        src={course.cover_url}
+        alt=""
+        className="aspect-[16/9] w-full rounded-t-xl object-cover"
+        loading="lazy"
+      />
+    );
+  }
+  return (
+    <div
+      className="aspect-[16/9] w-full rounded-t-xl bg-gradient-to-br from-emerald-500 to-emerald-700"
+      aria-hidden
+    />
+  );
+}
+
 function CertificateBlock({ certificate }: { certificate: Certificate }) {
   const isRevoked = certificate.status === "revoked";
   const issuedAtLabel = format(
@@ -87,7 +112,8 @@ export function CourseCard({
 }: CourseCardProps) {
   if (summary === null) {
     return (
-      <Card className="flex flex-col">
+      <Card className="flex flex-col overflow-hidden">
+        <CoverImage course={course} />
         <CardHeader className="flex-1">
           <CardTitle>{course.title}</CardTitle>
           {course.description && (
@@ -110,7 +136,8 @@ export function CourseCard({
   const isStarted = progress.percentage > 0;
 
   return (
-    <Card className="flex flex-col">
+    <Card className="flex flex-col overflow-hidden">
+      <CoverImage course={course} />
       <CardHeader className="flex-1">
         <div className="flex items-start justify-between gap-3">
           <CardTitle>{course.title}</CardTitle>
