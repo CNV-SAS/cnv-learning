@@ -36,9 +36,9 @@ export function StudentAcademicSection({
       <CardHeader>
         <CardTitle className="text-base">Certificación Académica</CardTitle>
         <CardDescription>
-          Certificados emitidos por la universidad mexicana asociada al
-          diplomado. CNV Learning los hospeda y los pone a tu disposición
-          para descarga.
+          Certificación emitida por la institución académica avaladora
+          del programa. CNV Learning la hospeda y la pone a tu
+          disposición para descarga.
         </CardDescription>
       </CardHeader>
       <CardContent>

@@ -17,7 +17,13 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { logger } from "@/core/logger/logger";
 
-const STORAGE_LIST_LIMIT = 1000;
+// Shape de un row de storage.objects que necesitamos (Bloque 23 smoke
+// fix AJUSTE 1). Los types autogenerados de Database solo incluyen
+// schema public; declaramos localmente lo minimo para la query.
+interface StorageObjectRow {
+  bucket_id: string | null;
+  metadata: { size?: number } | null;
+}
 
 export interface DatabasePing {
   ok: boolean;
@@ -71,11 +77,17 @@ export const statusService = {
     }
   },
 
-  // Recursivo solo a 1 nivel (top + 1 sub-carpeta) seria mas
-  // exhaustivo; en MVP basta con el listado plano que cubre archivos
-  // directos del bucket. Los buckets que usan {userId}/ subfolder
-  // (avatars, academic-certificates) requeririan recursion para
-  // contar correctamente; lo marcamos en una nota futura.
+  // Bloque 23 smoke fix AJUSTE 1: query directa contra
+  // storage.objects en lugar de Storage API .list() por bucket.
+  // .list("") solo lista nivel raiz, y los buckets que usan path
+  // {userId}/ (avatars, academic-certificates, submissions) o
+  // {courseId}/ (course-resources) quedaban reportando 0 MB porque
+  // su nivel raiz esta vacio. La query agrega count + sum(metadata
+  // .size) por bucket_id directamente.
+  //
+  // Para acceder al schema 'storage' usamos `.schema('storage' as
+  // never)` que silencia TS (el Database autogen solo incluye
+  // schema public). Service role bypassa RLS de storage.objects.
   async listStorageBuckets(): Promise<BucketStat[]> {
     const supabase = createAdminClient();
     const { data: buckets, error } = await supabase.storage.listBuckets();
@@ -86,34 +98,63 @@ export const statusService = {
       return [];
     }
 
-    const stats: BucketStat[] = [];
-    for (const bucket of buckets) {
-      const { data: objects, error: listError } = await supabase.storage
-        .from(bucket.name)
-        .list("", { limit: STORAGE_LIST_LIMIT });
-      if (listError || !objects) {
-        stats.push({
-          name: bucket.name,
+    const { data: rows, error: queryError } = await (
+      supabase.schema("storage" as never) as unknown as {
+        from: (table: string) => {
+          select: (cols: string) => Promise<{
+            data: StorageObjectRow[] | null;
+            error: { message: string } | null;
+          }>;
+        };
+      }
+    )
+      .from("objects")
+      .select("bucket_id, metadata");
+
+    if (queryError || !rows) {
+      logger.warn("status: storage.objects query failed", {
+        error: queryError?.message ?? "unknown",
+      });
+      // Fallback: lista los buckets con 0 bytes y error message; al
+      // menos el admin ve que existen los buckets aunque la suma fallo.
+      return buckets
+        .map((b) => ({
+          name: b.name,
           objectCount: 0,
           totalBytes: 0,
           truncated: false,
-          errorMessage: listError?.message ?? "list failed",
-        });
-        continue;
-      }
-      const totalBytes = objects.reduce(
-        (sum, o) => sum + (o.metadata?.size ?? 0),
-        0,
-      );
-      stats.push({
-        name: bucket.name,
-        objectCount: objects.length,
-        totalBytes,
-        truncated: objects.length === STORAGE_LIST_LIMIT,
-        errorMessage: null,
-      });
+          errorMessage: queryError?.message ?? "query failed",
+        }))
+        .sort((a, b) => a.name.localeCompare(b.name));
     }
-    return stats.sort((a, b) => a.name.localeCompare(b.name));
+
+    // Aggregate por bucket_id en JS. Para MVP con <100 archivos el
+    // overhead es trivial; si supera 10k habria que mover el group by
+    // a una funcion SQL via RPC.
+    const statsByBucket = new Map<string, { count: number; bytes: number }>();
+    for (const row of rows) {
+      if (!row.bucket_id) continue;
+      const current = statsByBucket.get(row.bucket_id) ?? {
+        count: 0,
+        bytes: 0,
+      };
+      current.count += 1;
+      current.bytes += row.metadata?.size ?? 0;
+      statsByBucket.set(row.bucket_id, current);
+    }
+
+    return buckets
+      .map((bucket) => {
+        const stat = statsByBucket.get(bucket.name) ?? { count: 0, bytes: 0 };
+        return {
+          name: bucket.name,
+          objectCount: stat.count,
+          totalBytes: stat.bytes,
+          truncated: false,
+          errorMessage: null,
+        };
+      })
+      .sort((a, b) => a.name.localeCompare(b.name));
   },
 
   getDeployInfo(): DeployInfo {

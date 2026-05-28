@@ -126,7 +126,11 @@ const BADGE_PROFESSIONAL_CNV: Badge = {
   colorClass: "bg-blue-100 text-blue-700 border-blue-700",
   description:
     "Certificado corporativo CNV: reconocimiento como Profesional Conectado de la red CNV.",
-  requirement: "Se otorga manualmente por administración.",
+  // 23 smoke fix AJUSTE 5: copy mas claro sobre el camino para
+  // obtenerla. El anterior "Se otorga manualmente por administracion"
+  // sonaba opaco y arbitrario.
+  requirement:
+    "Se otorga una vez que cumples los requisitos profesionales y operativos para integrarte al ecosistema CNV.",
   showInDashboard: true,
 };
 
@@ -157,18 +161,23 @@ const BADGE_MASTER_CNV: Badge = {
 };
 
 // Lista completa ordenada: ranks primero (Junior -> Master), luego
-// achievements (Graduado -> Pro CNV -> Explorador -> Maestro CNV).
+// achievements (Graduado -> Explorador -> Maestro CNV -> Pro CNV).
+// El orden de achievements va de menor a mayor escalabilidad
+// (1 curso -> 5 -> 10 -> requisitos operativos institucionales).
+// Reordenado en Bloque 23 smoke fix AJUSTE 6 para que Pro CNV
+// quede al final como el reconocimiento maximo.
+//
 // El orden importa: InsigniasCard del dashboard filtra a
 // showInDashboard=true y los renderiza en este orden; ExpandedBadgesCard
-// de /certificates muestra los 7.
+// de /certificates muestra los 7 en 2 grupos (ranks vs achievements).
 export const ALL_BADGES: readonly Badge[] = [
   BADGE_JUNIOR,
   BADGE_SENIOR,
   BADGE_MASTER,
   BADGE_GRADUATED,
-  BADGE_PROFESSIONAL_CNV,
   BADGE_EXPLORER_CNV,
   BADGE_MASTER_CNV,
+  BADGE_PROFESSIONAL_CNV,
 ];
 
 // Rangos (ajustados en Bloque 5 sub-bloque 5.3-badges post smoke).

@@ -48,8 +48,9 @@ export function StudentCompletionSection({
         </CardTitle>
         <CardDescription>
           Constancias emitidas por CNV Learning al completar un curso
-          al 100%. Cada una incluye un código QR y un hash SHA-256 para
-          verificación pública.
+          al 100%. Puedes verificar la autenticidad de cada constancia
+          en tiempo real desde cualquier dispositivo: cada una cuenta
+          con cifrado digital para garantizar su validez.
         </CardDescription>
       </CardHeader>
       <CardContent>

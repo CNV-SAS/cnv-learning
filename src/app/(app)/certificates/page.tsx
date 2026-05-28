@@ -114,8 +114,16 @@ export default async function CertificatesPage() {
         </div>
       </div>
 
-      <StudentCompletionSection certificates={completionViews} />
-      <StudentAcademicSection certificates={academicViews} />
+      {/* 23 smoke fix AJUSTE 4: Constancias y Academica son POR
+          CURSO. Si el student aun no esta enrollado en ningun curso
+          (courses.length === 0), no mostrar esas secciones. Pro CNV
+          es independiente del curso y siempre se muestra. */}
+      {courses.length > 0 && (
+        <>
+          <StudentCompletionSection certificates={completionViews} />
+          <StudentAcademicSection certificates={academicViews} />
+        </>
+      )}
       <StudentCorporateSection certificates={corporateViews} />
       <ExpandedBadgesCard
         entries={badgeEntries}

@@ -124,27 +124,35 @@ export default async function DashboardPage() {
           variant="green"
           title={`¡Bienvenido, ${getDisplayName(user)}!`}
           subtitle={
-            studentBadge
-              ? `Rango actual: ${studentBadge.label}`
-              : "Te damos la bienvenida a CNV Learning."
+            // 23 smoke fix CORRECCION 8.A: subtitle muestra el curso
+            // actual (no el rango, ya visible en InsigniasCard +
+            // CourseCard). Sin cursos: mensaje motivacional.
+            courses.length > 0 && courses[0]
+              ? courses[0].title
+              : "Comienza tu camino de aprendizaje."
           }
           rightSlot={
-            <>
-              {studentBadge && (
-                <StatTile
-                  variant="chip"
-                  label="Insignia"
-                  value={studentBadge.label.split(" ")[0]}
-                />
-              )}
-              {studentNextEventChip && (
-                <StatTile
-                  variant="chip"
-                  label={studentNextEventChip.label}
-                  value={studentNextEventChip.value}
-                />
-              )}
-            </>
+            // 23 smoke fix CORRECCION 8.B: chip de progreso oculto si
+            // 0% ("Progreso / 0%" en el saludo es desmotivador).
+            // Si no hay cursos enrolled, no se renderiza ningun chip.
+            courses.length > 0 ? (
+              <>
+                {summaries[0] && summaries[0].progress.percentage > 0 && (
+                  <StatTile
+                    variant="chip"
+                    label="Progreso"
+                    value={`${summaries[0].progress.percentage}%`}
+                  />
+                )}
+                {studentNextEventChip && (
+                  <StatTile
+                    variant="chip"
+                    label={studentNextEventChip.label}
+                    value={studentNextEventChip.value}
+                  />
+                )}
+              </>
+            ) : null
           }
         />
       ) : isAdmin ? (

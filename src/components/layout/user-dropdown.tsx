@@ -83,8 +83,19 @@ export function UserDropdown({
       <DropdownMenuContent align="end" className="w-56">
         <DropdownMenuLabel className="font-normal">
           <div className="flex flex-col gap-0.5">
-            <span className="text-sm font-semibold">{displayName}</span>
-            <span className="text-xs text-muted-foreground">{email}</span>
+            <span className="truncate text-sm font-semibold" title={displayName}>
+              {displayName}
+            </span>
+            {/* 23 smoke fix AJUSTE 2: emails largos (ej.
+                cnvcorporate+teacher@gmail.com) tocaban el borde del
+                dropdown sin padding. truncate + title hover preservan
+                el email completo accesible. */}
+            <span
+              className="truncate text-xs text-muted-foreground"
+              title={email}
+            >
+              {email}
+            </span>
           </div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
