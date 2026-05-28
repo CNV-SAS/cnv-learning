@@ -6,12 +6,10 @@
 //     client-side de size (warning previo a action server).
 //   - essay: Textarea con min 1 char.
 //
-// Construye FormData manualmente y llama submitAssignmentAction.
-// router.refresh() tras OK para que el page server-side re-fetch
-// y muestre el estado entregado.
-//
-// El form se deshabilita si disabled=true (deadline pasada o
-// submission ya existe; el page hace el pre-check).
+// Bloque post-23 ISSUE 3 sub-7: ahora acepta mode (first|retry) +
+// attemptsRemaining + currentAttemptNumber para renderizar el copy
+// adecuado segun el contexto (primer intento vs reintento). El page
+// padre calcula esto desde computeAssignmentStatus y canResubmit.
 
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
@@ -30,12 +28,23 @@ interface SubmitFormProps {
   assignmentId: string;
   type: "file_upload" | "essay";
   disabled?: boolean;
+  // "first": primer intento. "retry": reenvio tras failed_can_retry.
+  mode?: "first" | "retry";
+  // null = ilimitados. Numero = cuantos quedan despues de este envio
+  // (no incluye el actual). Usado para mostrar "Te quedan X intentos".
+  attemptsRemaining?: number | null;
+  // Numero del intento que el alumno esta a punto de enviar
+  // (submittedAttempts + 1). Usado para mostrar "Intento N".
+  currentAttemptNumber?: number;
 }
 
 export function SubmitForm({
   assignmentId,
   type,
   disabled = false,
+  mode = "first",
+  attemptsRemaining = null,
+  currentAttemptNumber,
 }: SubmitFormProps) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
@@ -79,7 +88,7 @@ export function SubmitForm({
         toast.error(result.error.message);
         return;
       }
-      toast.success("Tarea entregada");
+      toast.success(mode === "retry" ? "Reenvio registrado" : "Tarea entregada");
       router.refresh();
     } catch {
       toast.error("Error inesperado. Intenta de nuevo.");
@@ -88,8 +97,30 @@ export function SubmitForm({
     }
   }
 
+  const submitLabel = loading
+    ? mode === "retry"
+      ? "Reenviando..."
+      : "Enviando..."
+    : mode === "retry"
+      ? "Reenviar tarea"
+      : "Entregar tarea";
+
+  const headerLine =
+    currentAttemptNumber !== undefined
+      ? attemptsRemaining === null
+        ? `Intento ${currentAttemptNumber} (intentos ilimitados).`
+        : `Intento ${currentAttemptNumber}. Después de este te ${
+            attemptsRemaining === 1 ? "quedará" : "quedarán"
+          } ${attemptsRemaining} intento${attemptsRemaining === 1 ? "" : "s"}.`
+      : null;
+
   return (
     <form onSubmit={onSubmit} className="space-y-4">
+      {headerLine && (
+        <p className="text-xs font-medium text-muted-foreground">
+          {headerLine}
+        </p>
+      )}
       {type === "file_upload" ? (
         <div className="space-y-2">
           <Label htmlFor="submission-file">Archivo</Label>
@@ -123,7 +154,7 @@ export function SubmitForm({
         disabled={disabled || loading}
         className="w-full"
       >
-        {loading ? "Enviando..." : "Entregar tarea"}
+        {submitLabel}
       </Button>
     </form>
   );

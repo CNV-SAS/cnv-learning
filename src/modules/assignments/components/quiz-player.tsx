@@ -1,19 +1,21 @@
 "use client";
 
 // QuizPlayer: Client Component que fetcha el quiz al mount, muestra
-// preguntas con RadioGroup, valida que todas tengan respuesta antes
-// de submit, y dispara POST /submit. Tras success: router.refresh()
-// para que el page server-side rehidrate con GradeDisplay.
+// una pantalla de inicio con el conteo de intentos restantes (sub-7),
+// y solo expone las preguntas cuando el alumno confirma "Empezar".
 //
-// Estados terminales:
-//   - SUBMISSION_ALREADY_SUBMITTED al fetch del play: mensaje inline
-//     con link al libro de notas.
-//   - Otro error al fetch: mensaje genérico.
-//   - Error al submit: toast, button se reactive para retry.
-//   - Success: toast + router.refresh().
+// Tras success: router.refresh() para que el page server-side
+// rehidrate con GradeDisplay + status actualizado.
+//
+// Estados terminales pre-quiz:
+//   - SUBMISSION_ALREADY_PASSED / SUBMISSION_PENDING_GRADE /
+//     SUBMISSION_MAX_ATTEMPTS_REACHED / SUBMISSION_ALREADY_SUBMITTED:
+//     mensaje inline con link al libro de notas.
+//   - Otro error al fetch: mensaje generico.
+//   - Error al submit: toast, button se reactiva para retry.
 //
 // AbortController para cleanup en mount/unmount + ante double-click
-// del submit (cancela el request previo si todavia esta en flight).
+// del submit.
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
@@ -76,9 +78,16 @@ type SubmitResponse =
 interface QuizPlayerProps {
   courseId: string;
   assignmentId: string;
+  // null = intentos ilimitados. Numero = cuantos quedan (incluyendo
+  // el que esta por empezar). Se muestra en la pantalla de intro.
+  attemptsRemaining?: number | null;
 }
 
-export function QuizPlayer({ courseId, assignmentId }: QuizPlayerProps) {
+export function QuizPlayer({
+  courseId,
+  assignmentId,
+  attemptsRemaining = null,
+}: QuizPlayerProps) {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<{
@@ -86,12 +95,11 @@ export function QuizPlayer({ courseId, assignmentId }: QuizPlayerProps) {
     message: string;
   } | null>(null);
   const [data, setData] = useState<QuizPlayerData | null>(null);
+  const [started, setStarted] = useState(false);
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
   const submitAbortRef = useRef<AbortController | null>(null);
 
-  // Fetch del play. AbortController para cleanup si el componente
-  // se desmonta antes de que la request resuelva.
   useEffect(() => {
     const controller = new AbortController();
 
@@ -121,8 +129,6 @@ export function QuizPlayer({ courseId, assignmentId }: QuizPlayerProps) {
     return () => controller.abort();
   }, [assignmentId]);
 
-  // Cleanup del submit AbortController si el componente se desmonta
-  // mientras la request esta en flight.
   useEffect(() => {
     return () => {
       submitAbortRef.current?.abort();
@@ -190,9 +196,7 @@ export function QuizPlayer({ courseId, assignmentId }: QuizPlayerProps) {
     // Bloque post-23 ISSUE 3 sub-5: tres codes nuevos cubren los
     // estados "no puedes tomar el quiz ahora":
     //   - SUBMISSION_ALREADY_PASSED: aprobado.
-    //   - SUBMISSION_PENDING_GRADE: entrega anterior pendiente de
-    //     calificacion (raro en quiz, auto-graded; aplicaria si quiz
-    //     se reintenta con UI pendiente).
+    //   - SUBMISSION_PENDING_GRADE: entrega anterior pendiente.
     //   - SUBMISSION_MAX_ATTEMPTS_REACHED: sin intentos restantes.
     // SUBMISSION_ALREADY_SUBMITTED se mantiene como catch-all para
     // backward-compat (cohorte de prueba con flow anterior).
@@ -238,6 +242,35 @@ export function QuizPlayer({ courseId, assignmentId }: QuizPlayerProps) {
 
   if (!data) {
     return null;
+  }
+
+  // Pantalla de intro: muestra titulo + descripcion + intentos
+  // restantes ANTES de empezar (sub-7). El alumno confirma con
+  // "Empezar" y solo entonces ve las preguntas.
+  if (!started) {
+    const attemptsLine =
+      attemptsRemaining === null
+        ? "Tienes intentos ilimitados para este quiz."
+        : `Te ${attemptsRemaining === 1 ? "queda" : "quedan"} ${attemptsRemaining} intento${attemptsRemaining === 1 ? "" : "s"} para este quiz.`;
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">
+            ¿Listo para empezar?
+          </CardTitle>
+          <CardDescription>
+            {attemptsLine} Una vez envíes el quiz, la nota cuenta como
+            un intento. {data.questions.length} pregunta
+            {data.questions.length === 1 ? "" : "s"} en total.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Button onClick={() => setStarted(true)} className="w-full">
+            Empezar quiz
+          </Button>
+        </CardContent>
+      </Card>
+    );
   }
 
   const optionsByQuestion = new Map<string, QuizOptionDTO[]>();
