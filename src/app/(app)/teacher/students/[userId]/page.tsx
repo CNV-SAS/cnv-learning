@@ -30,6 +30,7 @@ import { courseRepository } from "@/modules/courses/data";
 import { enrollmentRepository } from "@/modules/enrollments/data";
 import { canAccessTeacherStudentDetail } from "@/modules/teacher-panel/policies";
 import { progressService } from "@/modules/progress/services/progress.service";
+import { buildProgressLabel } from "@/modules/progress/lib";
 import {
   assignmentRepository,
   submissionRepository,
@@ -161,8 +162,9 @@ export default async function TeacherStudentDetailPage({
             <BadgeDisplay badge={summary.badge} size="sm" />
           </div>
           <CardDescription>
-            {summary.progress.completedCount} de{" "}
-            {summary.progress.totalCount} lecciones completadas
+            {/* Bloque post-23: muestra desglose lecciones + tareas
+                obligatorias pendientes (decision Q2 analisis). */}
+            {buildProgressLabel(summary.progress)} completadas
           </CardDescription>
         </CardHeader>
         <CardContent>

@@ -51,7 +51,7 @@ export default async function VerifyCertificatePage({
       <div className="mx-auto max-w-2xl space-y-6">
         <div className="space-y-2">
           <h1 className="font-display text-3xl font-black tracking-tight">
-            Verificación de Constancia de Finalización
+            Verificación de Constancia
           </h1>
           <p className="text-sm text-muted-foreground">
             Resultado de la consulta contra los registros de CNV Learning.
@@ -68,7 +68,7 @@ export default async function VerifyCertificatePage({
                 Constancia no encontrada
               </p>
               <p className="text-sm text-amber-900/80">
-                No se encontró una Constancia de Finalización con el
+                No se encontró una Constancia con el
                 código solicitado. Verifica el enlace o consulta con el
                 emisor.
               </p>
@@ -80,6 +80,11 @@ export default async function VerifyCertificatePage({
   }
 
   const isRevoked = certificate.status === "revoked";
+  const isUpdate = certificate.kind === "update";
+  // Bloque post-23: copy contextual segun kind (completion vs update).
+  const certificateLabel = isUpdate
+    ? "Constancia de Actualización"
+    : "Constancia de Finalización";
   const issuedAtLabel = format(
     new Date(certificate.issued_at),
     "d 'de' MMMM 'de' yyyy",
@@ -95,7 +100,7 @@ export default async function VerifyCertificatePage({
     <div className="mx-auto max-w-2xl space-y-6">
       <div className="space-y-2">
         <h1 className="font-display text-3xl font-black tracking-tight">
-          Verificación de Constancia de Finalización
+          Verificación de {certificateLabel}
         </h1>
         <p className="text-sm text-muted-foreground">
           Resultado de la consulta contra los registros de CNV Learning.
@@ -111,11 +116,11 @@ export default async function VerifyCertificatePage({
             />
             <div className="space-y-1">
               <p className="font-display text-lg font-bold text-rose-900">
-                Constancia revocada
+                {certificateLabel} revocada
               </p>
               <p className="text-sm text-rose-900/80">
-                Esta Constancia de Finalización fue revocada y ya no
-                es válida.
+                Esta {certificateLabel.toLowerCase()} fue revocada y ya
+                no es válida.
               </p>
             </div>
           </CardContent>
@@ -129,7 +134,7 @@ export default async function VerifyCertificatePage({
             />
             <div className="space-y-1">
               <p className="font-display text-lg font-bold text-emerald-900">
-                Constancia válida
+                {certificateLabel} válida
               </p>
               <p className="text-sm text-emerald-900/80">
                 Emitida por CNV Learning. Coincide con los registros.

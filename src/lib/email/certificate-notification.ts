@@ -23,6 +23,8 @@ interface SendIssuedParams {
   studentName: string;
   courseTitle: string;
   certificateId: string;
+  // Bloque post-23: distingue completion vs update para subject + copy.
+  certificateKind: "completion" | "update";
 }
 
 interface SendRevokedParams {
@@ -43,6 +45,7 @@ export async function sendCertificateIssuedEmail(
     courseTitle: params.courseTitle,
     pdfUrl: `${base}/api/certificates/${params.certificateId}/pdf`,
     verifyUrl: `${base}/verify/${params.certificateId}`,
+    certificateKind: params.certificateKind,
   });
 
   await sendEmail({

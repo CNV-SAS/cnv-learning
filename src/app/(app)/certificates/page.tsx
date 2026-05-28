@@ -70,6 +70,7 @@ export default async function CertificatesPage() {
       issuedAt: cert.issued_at,
       revokedAt: cert.revoked_at,
       revokedReason: cert.revoked_reason,
+      kind: cert.kind,
     }),
   );
 

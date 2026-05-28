@@ -29,6 +29,10 @@ interface IssuedParams {
   courseTitle: string;
   pdfUrl: string;
   verifyUrl: string;
+  // Bloque post-23: distingue "Constancia de Finalizacion" (primera
+  // emision) de "Constancia de Actualizacion" (re-emision tras
+  // agregarse contenido nuevo). Cambia subject + copy del email.
+  certificateKind: "completion" | "update";
 }
 
 interface RevokedParams {
@@ -63,7 +67,16 @@ export function certificateNotificationTemplate(
 }
 
 function buildIssued(params: IssuedParams): CertificateNotificationEmail {
-  const subject = `Tu Constancia de Finalización de ${params.courseTitle} está lista`;
+  // Bloque post-23: copy diferenciado por kind.
+  const isUpdate = params.certificateKind === "update";
+  const certificateLabel = isUpdate
+    ? "Constancia de Actualización"
+    : "Constancia de Finalización";
+  const sectionLabel = isUpdate ? "CONTENIDO ACTUALIZADO" : "CURSO COMPLETADO";
+  const intro = isUpdate
+    ? `completaste el contenido nuevo agregado al curso y recibiste tu Constancia de Actualización`
+    : `completaste el curso y recibiste tu Constancia de Finalización`;
+  const subject = `Tu ${certificateLabel} de ${params.courseTitle} está lista`;
 
   const html = `<!DOCTYPE html>
 <html lang="es">
@@ -76,12 +89,12 @@ function buildIssued(params: IssuedParams): CertificateNotificationEmail {
     <div style="font-size: 20px; font-weight: 900; letter-spacing: -0.025em; margin-bottom: 32px;">
       <span style="color: #047857;">CNV</span> <span style="color: #0f172a;">Learning</span>
     </div>
-    <h1 style="font-size: 24px; font-weight: 700; margin: 0 0 16px 0; color: #0f172a;">Tu Constancia de Finalización está lista</h1>
+    <h1 style="font-size: 24px; font-weight: 700; margin: 0 0 16px 0; color: #0f172a;">Tu ${certificateLabel} está lista</h1>
     <p style="font-size: 14px; margin: 0 0 24px 0; color: #64748b;">
-      Hola ${escapeHtml(params.studentName)}, completaste el curso y recibiste tu Constancia de Finalización.
+      Hola ${escapeHtml(params.studentName)}, ${intro}.
     </p>
     <div style="background-color: #ecfdf5; border: 1px solid #6ee7b7; border-radius: 12px; padding: 24px; margin-bottom: 24px;">
-      <p style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: #047857; margin: 0 0 8px 0;">CURSO COMPLETADO</p>
+      <p style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: #047857; margin: 0 0 8px 0;">${sectionLabel}</p>
       <p style="font-size: 18px; font-weight: 600; margin: 0; color: #0f172a;">${escapeHtml(params.courseTitle)}</p>
     </div>
     <p style="margin: 0 0 16px 0;">
@@ -97,10 +110,14 @@ function buildIssued(params: IssuedParams): CertificateNotificationEmail {
 </body>
 </html>`;
 
+  const textIntro = isUpdate
+    ? `Completaste el contenido nuevo agregado al curso "${params.courseTitle}" y recibiste tu Constancia de Actualización.`
+    : `Completaste el curso "${params.courseTitle}" y recibiste tu Constancia de Finalización.`;
+
   const text = [
     `Hola ${params.studentName},`,
     ``,
-    `Completaste el curso "${params.courseTitle}" y recibiste tu Constancia de Finalización.`,
+    textIntro,
     ``,
     `Descargar el PDF: ${params.pdfUrl}`,
     `Verificación pública: ${params.verifyUrl}`,

@@ -163,6 +163,61 @@ export const submissionRepository = {
     return (data ?? []) as unknown as Submission[];
   },
 
+  // Bloque post-23 (progreso ponderado): para el calculo del nuevo
+  // progreso necesitamos saber que assignments OBLIGATORIOS del curso
+  // tiene el user con submission en status submitted o graded. Lista
+  // los assignment_ids del user en el curso filtrados por status.
+  //
+  // Una sola query con JOIN via assignments + modules.course_id. RLS
+  // de submissions permite al student leer sus propias rows, asi que
+  // el server client funciona sin admin bypass.
+  async listSubmittedOrGradedAssignmentIdsForUserAndCourse(
+    userId: string,
+    courseId: string,
+  ): Promise<string[]> {
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from("submissions")
+      .select("assignment_id, assignments!inner(modules!inner(course_id))")
+      .eq("user_id", userId)
+      .eq("assignments.modules.course_id", courseId)
+      .in("status", ["submitted", "graded"]);
+
+    if (error) {
+      throw new InfrastructureError(ErrorCodes.DATABASE_ERROR, error.message);
+    }
+    return (data ?? []).map((row) => row.assignment_id);
+  },
+
+  // Bloque post-23 (rank earned dates): timeline de submissions del
+  // user en el curso con su submitted_at, para reconstruir el
+  // historial de progreso ponderado. Filtra submitted o graded
+  // porque draft no cuenta para el progreso.
+  async listSubmittedOrGradedTimelineForUserAndCourse(
+    userId: string,
+    courseId: string,
+  ): Promise<Array<{ assignment_id: string; submitted_at: string }>> {
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from("submissions")
+      .select(
+        "assignment_id, submitted_at, assignments!inner(modules!inner(course_id))",
+      )
+      .eq("user_id", userId)
+      .eq("assignments.modules.course_id", courseId)
+      .in("status", ["submitted", "graded"])
+      .not("submitted_at", "is", null)
+      .order("submitted_at", { ascending: true });
+
+    if (error) {
+      throw new InfrastructureError(ErrorCodes.DATABASE_ERROR, error.message);
+    }
+    return (data ?? []).map((row) => ({
+      assignment_id: row.assignment_id,
+      submitted_at: row.submitted_at as string,
+    }));
+  },
+
   async upsert(
     input: Pick<
       SubmissionInsert,

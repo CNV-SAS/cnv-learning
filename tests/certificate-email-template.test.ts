@@ -11,6 +11,12 @@ const baseIssued = {
   courseTitle: "Diplomado de Medicina Bioeléctrica",
   pdfUrl: "https://lms.cnvsystem.com/api/certificates/abc/pdf",
   verifyUrl: "https://lms.cnvsystem.com/verify/abc",
+  certificateKind: "completion" as const,
+};
+
+const baseIssuedUpdate = {
+  ...baseIssued,
+  certificateKind: "update" as const,
 };
 
 const baseRevoked = {

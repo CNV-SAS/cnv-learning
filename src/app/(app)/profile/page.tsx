@@ -19,6 +19,7 @@ import { es } from "date-fns/locale";
 import { profileRepository } from "@/modules/auth/data/profile.repository";
 import { courseRepository } from "@/modules/courses/data";
 import { progressService } from "@/modules/progress/services/progress.service";
+import { buildProgressLabel } from "@/modules/progress/lib";
 import { certificateRepository } from "@/modules/certificates/data";
 import { BadgeDisplay } from "@/modules/progress/components";
 import { AvatarUpload } from "@/modules/profile/components/avatar-upload";
@@ -182,7 +183,7 @@ export default async function ProfilePage() {
                   <CardContent className="space-y-3 pt-0">
                     <ProgressBar
                       percentage={summary.progress.percentage}
-                      label={`${summary.progress.completedCount} de ${summary.progress.totalCount} lecciones`}
+                      label={buildProgressLabel(summary.progress)}
                       showPercentage
                     />
                     {certificate && (

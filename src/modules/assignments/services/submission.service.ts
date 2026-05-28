@@ -20,7 +20,10 @@ import {
   MAX_FILE_SIZE_BYTES,
   ALLOWED_MIME_TYPES,
 } from "@/modules/assignments/data";
+import { moduleRepository } from "@/modules/courses/data";
 import { canSubmitAssignment } from "@/modules/assignments/policies";
+import { progressService } from "@/modules/progress/services/progress.service";
+import { logger } from "@/core/logger/logger";
 import {
   AppError,
   AuthorizationError,
@@ -30,7 +33,36 @@ import {
 import { ErrorCodes } from "@/core/errors/codes";
 import { ok, err, type Result } from "@/lib/utils/result";
 import type { AuthenticatedUser } from "@/modules/auth/types";
-import type { Submission } from "../types";
+import type { Assignment, Submission } from "../types";
+
+// Bloque post-23: tras entregar una tarea, si era OBLIGATORIA, puede
+// ser que el curso llegue al 100% por esa entrega. Disparamos el
+// mismo helper que markLessonCompleted para emitir cert si aplica.
+// Fault-tolerant: si la emision falla, log warn pero NO bloquea el
+// submit (el student ya entrego y eso es lo importante).
+async function tryEmitCertAfterRequiredSubmission(
+  userId: string,
+  assignment: Assignment,
+): Promise<void> {
+  if (assignment.is_required !== true) return;
+  try {
+    const moduleRow = await moduleRepository.findById(assignment.module_id);
+    if (!moduleRow) return;
+    await progressService.tryEmitCertificateForCourse(
+      userId,
+      moduleRow.course_id,
+    );
+  } catch (e) {
+    logger.warn(
+      "Certificate emission flow from submitAssignment threw (non-blocking)",
+      {
+        userId,
+        assignmentId: assignment.id,
+        error: e instanceof Error ? e.message : String(e),
+      },
+    );
+  }
+}
 
 interface SubmitFileParams {
   user: AuthenticatedUser;
@@ -122,6 +154,8 @@ export const submissionService = {
       submitted_at: new Date().toISOString(),
     });
 
+    await tryEmitCertAfterRequiredSubmission(user.id, assignment);
+
     return ok(submission);
   },
 
@@ -173,6 +207,8 @@ export const submissionService = {
       essay_text: essayText,
       submitted_at: new Date().toISOString(),
     });
+
+    await tryEmitCertAfterRequiredSubmission(user.id, assignment);
 
     return ok(submission);
   },

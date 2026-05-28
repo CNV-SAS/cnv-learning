@@ -49,7 +49,7 @@ import {
 import { ErrorCodes } from "@/core/errors/codes";
 import { ok, err, type Result } from "@/lib/utils/result";
 import type { AuthenticatedUser } from "@/modules/auth/types";
-import type { Certificate } from "../types";
+import type { Certificate, CertificateKind } from "../types";
 
 const CURRENT_TEMPLATE_VERSION = "v1";
 
@@ -141,6 +141,7 @@ async function deliverCertificateNotification(params: {
         studentName: studentProfile.full_name,
         courseTitle: courseRow.title,
         certificateId: certificate.id,
+        certificateKind: certificate.kind,
       });
     } else {
       await sendCertificateRevokedEmail({
@@ -161,27 +162,18 @@ async function deliverCertificateNotification(params: {
 }
 
 export const certificateService = {
+  // Bloque post-23: la emision ahora distingue completion vs update.
+  //   - Sin completion valida previa -> emite completion (primera o
+  //     re-emision si la anterior estaba revoked, decision Q6).
+  //   - Con completion valida previa -> emite update (vuelve al 100%
+  //     tras agregarse contenido nuevo al curso).
+  // canIssueCertificate solo evalua isCourseComplete (el guard
+  // anti-duplicado vive aqui adentro via partial unique index del
+  // schema; el repo tampoco lo verifica explicito).
   async issueCertificate(
     params: IssueCertificateParams,
   ): Promise<Result<Certificate, AppError>> {
-    const existing = await certificateRepository.findByUserAndCourse(
-      params.userId,
-      params.courseId,
-    );
-
-    const allowed = canIssueCertificate({
-      isCourseComplete: params.isCourseComplete,
-      hasExistingCertificate: existing !== null,
-    });
-    if (!allowed) {
-      if (existing) {
-        return err(
-          new DomainError(
-            ErrorCodes.CERTIFICATE_ALREADY_ISSUED,
-            "Ya existe un certificado para este estudiante y curso.",
-          ),
-        );
-      }
+    if (!canIssueCertificate({ isCourseComplete: params.isCourseComplete })) {
       return err(
         new DomainError(
           ErrorCodes.CERTIFICATE_NOT_ELIGIBLE,
@@ -190,12 +182,21 @@ export const certificateService = {
       );
     }
 
+    const existingValidCompletion =
+      await certificateRepository.findValidCompletionByUserAndCourse(
+        params.userId,
+        params.courseId,
+      );
+    const kind: CertificateKind =
+      existingValidCompletion === null ? "completion" : "update";
+
     const issuedAt = new Date();
     const hash = computeCertificateHash({
       userId: params.userId,
       courseId: params.courseId,
       issuedAt,
       templateVersion: CURRENT_TEMPLATE_VERSION,
+      kind,
     });
 
     const certificate = await certificateRepository.create({
@@ -204,6 +205,7 @@ export const certificateService = {
       issued_at: issuedAt.toISOString(),
       hash,
       template_version: CURRENT_TEMPLATE_VERSION,
+      kind,
     });
 
     // Audit (regla 8). Fault-tolerant per audit repo (no throw).
@@ -219,6 +221,7 @@ export const certificateService = {
         userId: params.userId,
         courseId: params.courseId,
         templateVersion: CURRENT_TEMPLATE_VERSION,
+        kind,
         hashPrefix: hash.slice(0, 16),
       },
     });

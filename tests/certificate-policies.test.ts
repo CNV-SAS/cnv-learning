@@ -24,12 +24,15 @@ function makeUser(role: UserRole, id: string = OWNER_ID): AuthenticatedUser {
   };
 }
 
-describe("canIssueCertificate", () => {
-  it("permite cuando curso 100% y sin cert previo", () => {
+describe("canIssueCertificate (Bloque post-23 refactor)", () => {
+  // Post-23: el guard de duplicados ya no es responsabilidad de la
+  // policy (ahora vive en findValidCompletionByUserAndCourse + partial
+  // unique index del schema). La policy solo evalua isCourseComplete.
+
+  it("permite cuando curso 100%", () => {
     expect(
       canIssueCertificate({
         isCourseComplete: true,
-        hasExistingCertificate: false,
       }),
     ).toBe(true);
   });
@@ -38,16 +41,6 @@ describe("canIssueCertificate", () => {
     expect(
       canIssueCertificate({
         isCourseComplete: false,
-        hasExistingCertificate: false,
-      }),
-    ).toBe(false);
-  });
-
-  it("rechaza cuando ya existe cert previo (incluso si curso 100%)", () => {
-    expect(
-      canIssueCertificate({
-        isCourseComplete: true,
-        hasExistingCertificate: true,
       }),
     ).toBe(false);
   });

@@ -25,6 +25,10 @@ interface RenderCertificateParams {
   issuedAtIso: string;
   hash: string;
   isRevoked: boolean;
+  // Bloque post-23: indica el tipo de constancia para que el PDF
+  // renderice el label correcto ("CONSTANCIA DE FINALIZACION" vs
+  // "CONSTANCIA DE ACTUALIZACION").
+  kind: "completion" | "update";
 }
 
 function buildVerifyUrl(certificateId: string): string {
@@ -55,6 +59,7 @@ export async function renderCertificatePdf(
       verifyUrl={verifyUrl}
       qrDataUrl={qrDataUrl}
       isRevoked={params.isRevoked}
+      kind={params.kind}
     />,
   );
 }

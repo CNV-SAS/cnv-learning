@@ -120,11 +120,15 @@ export async function GET(
         issuedAtIso: certificate.issued_at,
         hash: certificate.hash,
         isRevoked: certificate.status === "revoked",
+        kind: certificate.kind,
       });
 
       // 22.7 rename: filename usa "constancia-" para alinear con la
-      // nomenclatura del catalogo expandido (Constancia de Finalizacion).
-      const filename = `constancia-${courseRow.slug}-${certificate.id.slice(0, 8)}.pdf`;
+      // nomenclatura del catalogo expandido. Bloque post-23: prefijo
+      // distinto para constancias de actualizacion.
+      const prefix =
+        certificate.kind === "update" ? "constancia-actualizacion" : "constancia";
+      const filename = `${prefix}-${courseRow.slug}-${certificate.id.slice(0, 8)}.pdf`;
 
       return new NextResponse(new Uint8Array(pdfBuffer), {
         status: 200,

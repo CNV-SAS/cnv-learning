@@ -30,11 +30,20 @@ describe("calculateProgress", () => {
     expect(calculateProgress(2, 3).percentage).toBe(67);
   });
 
-  it("retorna shape completo", () => {
+  it("retorna shape completo (post-23 ProgressSummary extendido)", () => {
     expect(calculateProgress(3, 5)).toEqual({
       percentage: 60,
       completedCount: 3,
       totalCount: 5,
+      // Bloque post-23: ProgressSummary extendido. La variante
+      // simple replica completedCount/totalCount como
+      // completedLessons/totalLessons; el breakdown explicito de
+      // tareas obligatorias queda en 0 (lo rellena progressService
+      // cuando aplica el modelo ponderado).
+      completedLessons: 3,
+      totalLessons: 5,
+      completedRequiredAssignments: 0,
+      totalRequiredAssignments: 0,
     });
   });
 });

@@ -9,6 +9,12 @@ export type Certificate =
 export type CertificateStatus =
   Database["public"]["Enums"]["certificate_status"];
 
+// Bloque post-23 (constancias de actualizacion): distingue la
+// primera emision (completion) de las posteriores generadas cuando
+// el student vuelve al 100% tras agregarse contenido nuevo.
+export type CertificateKind =
+  Database["public"]["Enums"]["certificate_kind"];
+
 // Shape consumido por /admin/certificates: cert + datos del
 // estudiante y curso para la tabla. Admin client + embed join.
 export interface CertificateWithDetails extends Certificate {
@@ -31,6 +37,7 @@ export interface CertificateForVerify {
   hash: string;
   template_version: string;
   status: CertificateStatus;
+  kind: CertificateKind;
   studentName: string;
   courseTitle: string;
 }

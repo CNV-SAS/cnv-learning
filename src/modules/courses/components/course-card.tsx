@@ -33,6 +33,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { ProgressBar } from "@/components/shared/progress-bar";
 import { BadgeDisplay } from "@/modules/progress/components";
+import { buildProgressLabel } from "@/modules/progress/lib";
 import type { CourseSummary } from "@/modules/progress/services/progress.service";
 import type { Certificate } from "@/modules/certificates/types";
 import type { Course } from "../types";
@@ -124,7 +125,7 @@ export function CourseCard({
       <CardContent className="space-y-4">
         <ProgressBar
           percentage={progress.percentage}
-          label={`${progress.completedCount} de ${progress.totalCount} lecciones`}
+          label={buildProgressLabel(progress)}
           showPercentage
         />
         {isComplete ? (

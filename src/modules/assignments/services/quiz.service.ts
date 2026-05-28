@@ -25,7 +25,9 @@ import { assignmentRepository } from "@/modules/assignments/data/assignment.repo
 import { submissionRepository } from "@/modules/assignments/data/submission.repository";
 import { gradingRepository } from "@/modules/assignments/data/grading.repository";
 import { quizRepository } from "@/modules/assignments/data/quiz.repository";
+import { moduleRepository } from "@/modules/courses/data";
 import { canSubmitAssignment } from "@/modules/assignments/policies";
+import { progressService } from "@/modules/progress/services/progress.service";
 import { auditRepository } from "@/modules/audit/data";
 import { gradeQuiz } from "../lib/quiz-grader";
 import {
@@ -226,6 +228,30 @@ export const quizService = {
         gradedBy: "auto",
       },
     });
+
+    // 5) Bloque post-23: si el quiz era OBLIGATORIO, puede que el
+    // curso llegue al 100% por esta entrega. Disparamos el helper
+    // de progressService (fault-tolerant; no bloquea el return).
+    if (assignment.is_required === true) {
+      try {
+        const moduleRow = await moduleRepository.findById(assignment.module_id);
+        if (moduleRow) {
+          await progressService.tryEmitCertificateForCourse(
+            user.id,
+            moduleRow.course_id,
+          );
+        }
+      } catch (e) {
+        logger.warn(
+          "Certificate emission flow from submitQuiz threw (non-blocking)",
+          {
+            userId: user.id,
+            assignmentId,
+            error: e instanceof Error ? e.message : String(e),
+          },
+        );
+      }
+    }
 
     return ok({
       finalGrade,

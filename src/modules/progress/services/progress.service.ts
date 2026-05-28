@@ -1,28 +1,33 @@
-// Service de progress. Bloque 4 sub-bloque 4.5 lo creo con
-// markLessonCompleted thin; Bloque 5 sub-bloque 5.1 lo extiende
-// con cálculos para dashboard y course view; Bloque 12 sub-bloque
-// 12.6 agrega la emision automatica del certificado al cruzar
-// 100% (orquestacion inline, no event bus).
+// Service de progress. Bloque 4.5 lo creo con markLessonCompleted
+// thin; Bloque 5.1 lo extiende con calculos para dashboard; Bloque
+// 12.6 agrega la emision automatica del certificado al cruzar 100%.
 //
-// API publica del service:
-//   - markLessonCompleted(userId, lessonId): persiste + side
-//     effects (emit cert si llega a 100%).
-//   - getCourseSummary(userId, courseId): {progress, badge,
-//     continueLesson} para el dashboard. 2 queries netas (modulos
-//     y lessons del curso paralelo + completed del user paralelo).
-//   - getModulesWithProgress(userId, courseId): array de
-//     {module, lessons, progress} para el course view. Reusa los
-//     mismos fetches que getCourseSummary; evita N+1 sobre
-//     getModuleProgress(moduleId) por cada modulo.
+// Bloque post-23: refactor al nuevo modelo de progreso ponderado.
+// El curso ya no se mide por count simple de lecciones; ahora es
+// suma ponderada de los modulos donde cada modulo aporta segun su
+// weight normalizado y el % de items completados del modulo
+// (lecciones + tareas con is_required=true).
 //
-// La decision de mantener orquestacion inline (vs event bus en
-// core/events/) es del Bloque 12: el bus in-memory no es durable
-// y ARCHITECTURE.md recomienda inline para flujos criticos como
-// emision de certificado. Si v1.1 introduce multiples handlers
-// reactivos al mismo evento, implementamos el bus entonces.
+// API publica:
+//   - markLessonCompleted: persiste + side effect (emite cert si
+//     el curso llega a 100% por primera vez O re-llega tras
+//     agregarse contenido nuevo).
+//   - tryEmitCertificateForCourse: helper extraido para que
+//     submitAssignment dispare la misma logica cuando una tarea
+//     obligatoria completa lleva al curso al 100%.
+//   - getCourseSummary: progreso ponderado + badge + continueLesson.
+//   - getModulesWithProgress: por modulo, breakdown del propio modulo
+//     (lecciones + tareas obligatorias). El % por modulo NO esta
+//     ponderado entre modulos (es el % del modulo en si mismo,
+//     util para barras de progreso del course view).
+//   - getRankEarnedDates: reescrito para iterar timeline unificado
+//     de eventos (lesson_progress + submissions) ordenado por
+//     timestamp, recalculando progreso ponderado en cada step.
 
 import { moduleRepository } from "@/modules/courses/data/module.repository";
 import { lessonRepository } from "@/modules/courses/data/lesson.repository";
+import { assignmentRepository } from "@/modules/assignments/data/assignment.repository";
+import { submissionRepository } from "@/modules/assignments/data/submission.repository";
 import type { Lesson, Module } from "@/modules/courses/types";
 import { certificateService } from "@/modules/certificates/services";
 import { enrollmentRepository } from "@/modules/enrollments/data";
@@ -30,10 +35,14 @@ import { logger } from "@/core/logger/logger";
 import { lessonProgressRepository } from "../data/lesson-progress.repository";
 import {
   calculateProgress,
+  calculateWeightedCourseProgress,
+  computeRankEarnedDatesFromTimeline,
   getBadge,
   pickFirstUncompleted,
   type Badge,
+  type ModuleProgressInput,
   type ProgressSummary,
+  type TimelineEvent,
 } from "../lib";
 
 export interface CourseSummary {
@@ -49,12 +58,73 @@ export interface ModuleWithProgress {
 }
 
 export interface RankEarnedDates {
-  // Junior se considera earned al inscribirse al curso (rango 0-49%
-  // por defecto). Fallback al primer lesson_progress si por alguna
-  // razon historica no hay enrollment.
   juniorAt: string | null;
   seniorAt: string | null;
   masterAt: string | null;
+}
+
+// Resuelve modulos + lecciones + assignments del curso + completed
+// del user en una sola pasada. Usado por getCourseSummary,
+// getModulesWithProgress y getRankEarnedDates para evitar duplicar
+// fetches. 5 queries paralelas para un user en un curso.
+async function loadCourseProgressContext(userId: string, courseId: string) {
+  const modules = await moduleRepository.listByCourse(courseId);
+
+  const [
+    lessonsByModule,
+    assignmentsByModule,
+    completedLessonIds,
+    submittedAssignmentIds,
+  ] = await Promise.all([
+    Promise.all(modules.map((m) => lessonRepository.listByModule(m.id))),
+    Promise.all(
+      modules.map((m) => assignmentRepository.listByModule(m.id)),
+    ),
+    lessonProgressRepository.listCompletedLessonIdsForUserAndCourse(
+      userId,
+      courseId,
+    ),
+    submissionRepository.listSubmittedOrGradedAssignmentIdsForUserAndCourse(
+      userId,
+      courseId,
+    ),
+  ]);
+
+  const completedLessonSet = new Set(completedLessonIds);
+  const submittedAssignmentSet = new Set(submittedAssignmentIds);
+
+  // Por modulo: items (lecciones + tareas obligatorias) + breakdown
+  // de cuantos completo el user.
+  const perModule = modules.map((module, idx) => {
+    const lessons = lessonsByModule[idx];
+    const assignments = assignmentsByModule[idx];
+    const requiredAssignments = assignments.filter(
+      (a) => a.is_required === true,
+    );
+
+    const completedLessons = lessons.filter((l) =>
+      completedLessonSet.has(l.id),
+    ).length;
+    const completedRequiredAssignments = requiredAssignments.filter((a) =>
+      submittedAssignmentSet.has(a.id),
+    ).length;
+
+    return {
+      module,
+      lessons,
+      assignments,
+      requiredAssignments,
+      completedLessons,
+      completedRequiredAssignments,
+    };
+  });
+
+  return {
+    modules,
+    perModule,
+    allLessons: lessonsByModule.flat(),
+    completedLessonSet,
+  };
 }
 
 export const progressService = {
@@ -65,40 +135,13 @@ export const progressService = {
     await lessonProgressRepository.markCompleted(userId, lessonId);
 
     // Emision automatica del certificado si el curso llega a 100%
-    // por primera vez (Bloque 12.6). Fault-tolerant per consideracion
-    // C del plan: si la emision falla por cualquier razon, log warn
-    // pero NO bloquea el markLessonCompleted. El estudiante ya
-    // completo la leccion; el cert se puede emitir manualmente o
-    // reintentar.
+    // (Bloque 12.6, refactor post-23). Fault-tolerant.
     try {
       const lesson = await lessonRepository.findById(lessonId);
       if (!lesson) return;
       const moduleRow = await moduleRepository.findById(lesson.module_id);
       if (!moduleRow) return;
-
-      const summary = await this.getCourseSummary(
-        userId,
-        moduleRow.course_id,
-      );
-      if (summary.progress.percentage !== 100) return;
-
-      const result = await certificateService.issueCertificate({
-        userId,
-        courseId: moduleRow.course_id,
-        isCourseComplete: true,
-      });
-      if (!result.ok) {
-        // Outcomes esperables: CERTIFICATE_ALREADY_ISSUED (race con
-        // otra leccion marcada concurrente; idempotent OK) o
-        // INFRA_ERROR (BD caida; reintenta manualmente). En ambos
-        // casos log + return; no se propaga al markLessonCompleted.
-        logger.warn("Certificate emission did not succeed (non-blocking)", {
-          userId,
-          courseId: moduleRow.course_id,
-          errorCode: result.error.code,
-          errorMessage: result.error.message,
-        });
-      }
+      await this.tryEmitCertificateForCourse(userId, moduleRow.course_id);
     } catch (e) {
       logger.warn(
         "Certificate emission flow threw unexpected (non-blocking)",
@@ -111,107 +154,160 @@ export const progressService = {
     }
   },
 
+  // Bloque post-23: helper extraido para reuse desde submitAssignment.
+  // Verifica si el curso esta al 100% y, si es asi, dispara
+  // certificateService.issueCertificate que internamente decide kind
+  // (completion vs update). Fault-tolerant.
+  async tryEmitCertificateForCourse(
+    userId: string,
+    courseId: string,
+  ): Promise<void> {
+    const summary = await this.getCourseSummary(userId, courseId);
+    if (summary.progress.percentage !== 100) return;
+
+    const result = await certificateService.issueCertificate({
+      userId,
+      courseId,
+      isCourseComplete: true,
+    });
+    if (!result.ok) {
+      logger.warn("Certificate emission did not succeed (non-blocking)", {
+        userId,
+        courseId,
+        errorCode: result.error.code,
+        errorMessage: result.error.message,
+      });
+    }
+  },
+
   async getCourseSummary(
     userId: string,
     courseId: string,
   ): Promise<CourseSummary> {
-    const modules = await moduleRepository.listByCourse(courseId);
+    const ctx = await loadCourseProgressContext(userId, courseId);
 
-    // Fetch lessons de cada modulo en paralelo + completed del user
-    // en paralelo. lessons.flat() preserva orden global por position
-    // (mismo patron del lessonNavigationService de Bloque 4).
-    const [lessonsByModule, completedIds] = await Promise.all([
-      Promise.all(modules.map((mod) => lessonRepository.listByModule(mod.id))),
-      lessonProgressRepository.listCompletedLessonIdsForUserAndCourse(
-        userId,
-        courseId,
-      ),
-    ]);
+    const moduleInputs: ModuleProgressInput[] = ctx.perModule.map((row) => ({
+      weight: Number(row.module.weight ?? 0),
+      completedLessons: row.completedLessons,
+      totalLessons: row.lessons.length,
+      completedRequiredAssignments: row.completedRequiredAssignments,
+      totalRequiredAssignments: row.requiredAssignments.length,
+    }));
 
-    const allLessons = lessonsByModule.flat();
-    const progress = calculateProgress(completedIds.length, allLessons.length);
+    const progress = calculateWeightedCourseProgress(moduleInputs);
     const badge = getBadge(progress.percentage);
     const continueLesson = pickFirstUncompleted(
-      allLessons,
-      new Set(completedIds),
+      ctx.allLessons,
+      ctx.completedLessonSet,
     );
 
     return { progress, badge, continueLesson };
-  },
-
-  // Calcula la fecha en que el student cruzo cada threshold de
-  // rank (Bloque 22.1): Senior >= 50%, Master >= 85%. Junior se
-  // earned al inscribirse (rango por defecto). Si el student aun
-  // no cruzo un threshold, la fecha es null. Si no esta enrolled,
-  // todas son null.
-  //
-  // Itera lesson_progress ordenado por completed_at ASC, manteniendo
-  // contador, y reporta la lesson row que primero cruzo cada
-  // umbral. Una sola pasada O(n).
-  async getRankEarnedDates(
-    userId: string,
-    courseId: string,
-  ): Promise<RankEarnedDates> {
-    const [modules, progressRows, enrollment] = await Promise.all([
-      moduleRepository.listByCourse(courseId),
-      lessonProgressRepository.listForUserAndCourse(userId, courseId),
-      enrollmentRepository.findActiveByUserAndCourse(userId, courseId),
-    ]);
-    if (!enrollment) {
-      return { juniorAt: null, seniorAt: null, masterAt: null };
-    }
-
-    const lessonsByModule = await Promise.all(
-      modules.map((m) => lessonRepository.listByModule(m.id)),
-    );
-    const totalLessons = lessonsByModule.flat().length;
-
-    let seniorAt: string | null = null;
-    let masterAt: string | null = null;
-    if (totalLessons > 0) {
-      for (let i = 0; i < progressRows.length; i++) {
-        const pct = ((i + 1) / totalLessons) * 100;
-        if (seniorAt === null && pct >= 50)
-          seniorAt = progressRows[i].completed_at;
-        if (masterAt === null && pct >= 85)
-          masterAt = progressRows[i].completed_at;
-        if (seniorAt !== null && masterAt !== null) break;
-      }
-    }
-
-    return {
-      juniorAt: enrollment.enrolled_at,
-      seniorAt,
-      masterAt,
-    };
   },
 
   async getModulesWithProgress(
     userId: string,
     courseId: string,
   ): Promise<ModuleWithProgress[]> {
-    const modules = await moduleRepository.listByCourse(courseId);
+    const ctx = await loadCourseProgressContext(userId, courseId);
 
-    const [lessonsByModule, completedIds] = await Promise.all([
-      Promise.all(modules.map((mod) => lessonRepository.listByModule(mod.id))),
-      lessonProgressRepository.listCompletedLessonIdsForUserAndCourse(
+    return ctx.perModule.map((row) => {
+      const totalItems =
+        row.lessons.length + row.requiredAssignments.length;
+      const completedItems =
+        row.completedLessons + row.completedRequiredAssignments;
+      const base = calculateProgress(completedItems, totalItems);
+      return {
+        module: row.module,
+        lessons: row.lessons,
+        progress: {
+          ...base,
+          completedLessons: row.completedLessons,
+          totalLessons: row.lessons.length,
+          completedRequiredAssignments: row.completedRequiredAssignments,
+          totalRequiredAssignments: row.requiredAssignments.length,
+        },
+      };
+    });
+  },
+
+  // Bloque post-23 rewrite: itera timeline unificado de eventos
+  // (lecciones completadas + tareas obligatorias entregadas) ordenado
+  // por timestamp, recalculando progreso ponderado en cada step para
+  // detectar exactamente cuando se cruzaron los thresholds de Senior
+  // (50%) y Master (85%). Junior queda en enrollment.enrolled_at.
+  async getRankEarnedDates(
+    userId: string,
+    courseId: string,
+  ): Promise<RankEarnedDates> {
+    const enrollment =
+      await enrollmentRepository.findActiveByUserAndCourse(userId, courseId);
+    if (!enrollment) {
+      return { juniorAt: null, seniorAt: null, masterAt: null };
+    }
+
+    const ctx = await loadCourseProgressContext(userId, courseId);
+
+    // Reverse indices para acumular counts del modulo correcto en
+    // O(1) por evento del timeline.
+    const lessonIdToModuleIdx = new Map<string, number>();
+    const requiredAssignmentIdToModuleIdx = new Map<string, number>();
+    for (let idx = 0; idx < ctx.perModule.length; idx++) {
+      const row = ctx.perModule[idx];
+      for (const l of row.lessons) lessonIdToModuleIdx.set(l.id, idx);
+      for (const a of row.requiredAssignments) {
+        requiredAssignmentIdToModuleIdx.set(a.id, idx);
+      }
+    }
+
+    // Counter mutable por modulo. Empieza en 0 y crece con cada
+    // evento del timeline.
+    const counters: ModuleProgressInput[] = ctx.perModule.map((row) => ({
+      weight: Number(row.module.weight ?? 0),
+      completedLessons: 0,
+      totalLessons: row.lessons.length,
+      completedRequiredAssignments: 0,
+      totalRequiredAssignments: row.requiredAssignments.length,
+    }));
+
+    const [lessonProgressRows, submissionRows] = await Promise.all([
+      lessonProgressRepository.listForUserAndCourse(userId, courseId),
+      submissionRepository.listSubmittedOrGradedTimelineForUserAndCourse(
         userId,
         courseId,
       ),
     ]);
 
-    const completedSet = new Set(completedIds);
+    const events: TimelineEvent[] = [];
+    for (const row of lessonProgressRows) {
+      const moduleIdx = lessonIdToModuleIdx.get(row.lesson_id);
+      if (moduleIdx === undefined) continue;
+      events.push({
+        timestamp: row.completed_at,
+        kind: "lesson",
+        moduleIdx,
+      });
+    }
+    for (const row of submissionRows) {
+      const moduleIdx = requiredAssignmentIdToModuleIdx.get(row.assignment_id);
+      // Si el submission es de una tarea NO obligatoria, no esta en
+      // el index y skipeamos (no contribuye al progreso).
+      if (moduleIdx === undefined) continue;
+      events.push({
+        timestamp: row.submitted_at,
+        kind: "assignment",
+        moduleIdx,
+      });
+    }
 
-    return modules.map((mod, idx) => {
-      const lessons = lessonsByModule[idx];
-      const completedCount = lessons.filter((l) =>
-        completedSet.has(l.id),
-      ).length;
-      return {
-        module: mod,
-        lessons,
-        progress: calculateProgress(completedCount, lessons.length),
-      };
-    });
+    const { seniorAt, masterAt } = computeRankEarnedDatesFromTimeline(
+      counters,
+      events,
+    );
+
+    return {
+      juniorAt: enrollment.enrolled_at,
+      seniorAt,
+      masterAt,
+    };
   },
 };

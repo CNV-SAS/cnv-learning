@@ -1,27 +1,27 @@
 // Policy: si la emision del certificado esta permitida para este
 // estudiante y curso.
 //
-// Reglas para MVP:
-//   - El curso esta completado (100% progreso).
-//   - No existe un certificado previo para el par (userId, courseId)
-//     que NO este revocado. Si existe revoked, MVP no permite re-emit
-//     (post-MVP: admin puede emitir uno nuevo, scope diferente).
+// Bloque post-23: refactor para el modelo de constancias de
+// actualizacion. La policy solo evalua "esta el curso al 100%". El
+// guard de duplicados (1 sola completion valida por user/course) lo
+// delega al partial unique index del schema (migracion 0036) +
+// findValidCompletionByUserAndCourse en el service que decide kind
+// (completion vs update).
+//
+// Pre-23 la policy chequeaba hasExistingCertificate para bloquear
+// re-emisiones; ese check ya no tiene sentido porque queremos
+// permitir constancias de actualizacion sobre un mismo (user, course).
 //
 // El issue es disparado por el sistema (progressService al alcanzar
 // 100%), no por un user con accion explicita. Por eso esta policy
-// no toma AuthenticatedUser: es una pre-check del service. Si
-// quisieramos exponer "admin issue manualmente", esa funcion tendria
-// su propia policy basada en rol.
+// no toma AuthenticatedUser.
 
 export interface IssueCertificateContext {
   isCourseComplete: boolean;
-  hasExistingCertificate: boolean;
 }
 
 export function canIssueCertificate(
   context: IssueCertificateContext,
 ): boolean {
-  if (!context.isCourseComplete) return false;
-  if (context.hasExistingCertificate) return false;
-  return true;
+  return context.isCourseComplete;
 }

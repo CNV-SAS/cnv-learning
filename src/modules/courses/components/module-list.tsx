@@ -18,6 +18,7 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { ProgressBar } from "@/components/shared/progress-bar";
+import { buildProgressLabel } from "@/modules/progress/lib";
 import type { ModuleWithProgress } from "@/modules/progress/services/progress.service";
 import type { Assignment } from "@/modules/assignments/types";
 // Path directo, NO barrel: el barrel components/index.ts mezclaba
@@ -74,7 +75,7 @@ export function ModuleList({ courseId, modules }: ModuleListProps) {
                   </div>
                   <ProgressBar
                     percentage={progress.percentage}
-                    label={`${progress.completedCount} de ${progress.totalCount} lecciones`}
+                    label={buildProgressLabel(progress)}
                     size="sm"
                   />
                 </div>

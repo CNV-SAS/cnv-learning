@@ -83,7 +83,7 @@ export const certificateRepository = {
     const { data, error } = await supabase
       .from("certificates")
       .select(
-        "id, user_id, course_id, issued_at, revoked_at, revoked_reason, hash, template_version, status, student:profiles!certificates_user_id_fkey(full_name), course:courses!certificates_course_id_fkey(title)",
+        "id, user_id, course_id, issued_at, revoked_at, revoked_reason, hash, template_version, status, kind, student:profiles!certificates_user_id_fkey(full_name), course:courses!certificates_course_id_fkey(title)",
       )
       .eq("id", id)
       .maybeSingle();
@@ -116,6 +116,7 @@ export const certificateRepository = {
       hash: row.hash,
       template_version: row.template_version,
       status: row.status,
+      kind: row.kind,
       studentName: row.student.full_name,
       courseTitle: row.course.title,
     };
@@ -131,6 +132,34 @@ export const certificateRepository = {
       .select("*")
       .eq("user_id", userId)
       .eq("course_id", courseId)
+      .maybeSingle();
+
+    if (error) {
+      throw new InfrastructureError(ErrorCodes.DATABASE_ERROR, error.message);
+    }
+    return data;
+  },
+
+  // Bloque post-23 (constancias de actualizacion). Lookup de la
+  // completion VALIDA por (user, course). Usado por
+  // certificateService.issueCertificate para decidir kind:
+  //   - null -> emite completion (primera vez O completion previa
+  //     fue revocada y se re-emite, decision Q6).
+  //   - existe -> emite update (vuelve al 100% tras contenido nuevo).
+  // Ignora revoked completions y todos los updates (que tambien
+  // pueden tener status valid sin afectar la decision).
+  async findValidCompletionByUserAndCourse(
+    userId: string,
+    courseId: string,
+  ): Promise<Certificate | null> {
+    const supabase = createAdminClient();
+    const { data, error } = await supabase
+      .from("certificates")
+      .select("*")
+      .eq("user_id", userId)
+      .eq("course_id", courseId)
+      .eq("kind", "completion")
+      .eq("status", "valid")
       .maybeSingle();
 
     if (error) {
@@ -230,6 +259,9 @@ export const certificateRepository = {
       | "issued_at"
       | "hash"
       | "template_version"
+      // Bloque post-23: kind se setea por el service (default DB es
+      // 'completion' pero hacerlo explicito evita ambiguedad).
+      | "kind"
     >,
   ): Promise<Certificate> {
     const supabase = createAdminClient();

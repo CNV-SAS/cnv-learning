@@ -13,6 +13,7 @@ const BASE_INPUT = {
   courseId: "00000000-0000-0000-0000-000000000002",
   issuedAt: new Date("2026-05-19T12:00:00.000Z"),
   templateVersion: "v1",
+  kind: "completion" as const,
 };
 
 describe("computeCertificateHash", () => {
@@ -59,6 +60,15 @@ describe("computeCertificateHash", () => {
     const b = computeCertificateHash({
       ...BASE_INPUT,
       templateVersion: "v2",
+    });
+    expect(a).not.toBe(b);
+  });
+
+  it("cambia si kind cambia (completion vs update)", () => {
+    const a = computeCertificateHash(BASE_INPUT);
+    const b = computeCertificateHash({
+      ...BASE_INPUT,
+      kind: "update",
     });
     expect(a).not.toBe(b);
   });

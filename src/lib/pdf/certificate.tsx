@@ -179,14 +179,27 @@ interface CertificateDocumentProps {
   verifyUrl: string;
   qrDataUrl: string;
   isRevoked: boolean;
+  // Bloque post-23: distingue "CONSTANCIA DE FINALIZACION" (primera
+  // emision) de "CONSTANCIA DE ACTUALIZACION" (re-emision tras
+  // contenido nuevo). Mismo layout, solo cambia el label.
+  kind: "completion" | "update";
 }
 
 export function CertificateDocument(props: CertificateDocumentProps) {
+  const certificateLabel =
+    props.kind === "update"
+      ? "CONSTANCIA DE ACTUALIZACION"
+      : "CONSTANCIA DE FINALIZACION";
+  const docSubject =
+    props.kind === "update"
+      ? `Constancia de Actualizacion de ${props.courseName}`
+      : `Constancia de Finalizacion de ${props.courseName}`;
+
   return (
     <Document
       title={`Constancia ${props.certificateIdShort}`}
       author="CNV Learning"
-      subject={`Constancia de Finalizacion de ${props.courseName}`}
+      subject={docSubject}
     >
       <Page size="A4" orientation="landscape" style={styles.page}>
         <View style={styles.borderFrame} />
@@ -198,7 +211,7 @@ export function CertificateDocument(props: CertificateDocumentProps) {
 
         <View style={styles.bodyCenter}>
           <Text style={styles.certificateLabel}>
-            CONSTANCIA DE FINALIZACION
+            {certificateLabel}
           </Text>
           <Text style={styles.title}>Reconocimiento académico</Text>
 

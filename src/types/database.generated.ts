@@ -302,6 +302,7 @@ export type Database = {
           hash: string
           id: string
           issued_at: string
+          kind: Database["public"]["Enums"]["certificate_kind"]
           revoked_at: string | null
           revoked_by: string | null
           revoked_reason: string | null
@@ -314,6 +315,7 @@ export type Database = {
           hash: string
           id?: string
           issued_at?: string
+          kind?: Database["public"]["Enums"]["certificate_kind"]
           revoked_at?: string | null
           revoked_by?: string | null
           revoked_reason?: string | null
@@ -326,6 +328,7 @@ export type Database = {
           hash?: string
           id?: string
           issued_at?: string
+          kind?: Database["public"]["Enums"]["certificate_kind"]
           revoked_at?: string | null
           revoked_by?: string | null
           revoked_reason?: string | null
@@ -1256,6 +1259,7 @@ export type Database = {
     }
     Enums: {
       assignment_type: "file_upload" | "quiz_multiple_choice" | "essay"
+      certificate_kind: "completion" | "update"
       certificate_status: "valid" | "revoked"
       lesson_type: "video" | "pdf" | "mixed"
       notification_kind:
@@ -1399,6 +1403,7 @@ export const Constants = {
   public: {
     Enums: {
       assignment_type: ["file_upload", "quiz_multiple_choice", "essay"],
+      certificate_kind: ["completion", "update"],
       certificate_status: ["valid", "revoked"],
       lesson_type: ["video", "pdf", "mixed"],
       notification_kind: [
