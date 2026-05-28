@@ -41,6 +41,14 @@ export const createAssignmentSchema = z.object({
     .min(1, "El puntaje máximo debe ser >= 1")
     .max(100, "El puntaje máximo debe ser <= 100"),
   isRequired: z.boolean().default(true),
+  // Bloque post-23 ISSUE 3: max_attempts del assignment. 0 = ilimitados.
+  // N > 0 = el alumno tiene N entregas; si la N-esima no aprueba el
+  // passing_grade del curso, la tarea queda reprobada permanentemente.
+  maxAttempts: z
+    .number()
+    .int("Los intentos deben ser un número entero")
+    .min(0, "Los intentos máximos deben ser >= 0")
+    .default(0),
 });
 
 export type CreateAssignmentInput = z.infer<typeof createAssignmentSchema>;

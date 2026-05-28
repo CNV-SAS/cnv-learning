@@ -57,6 +57,7 @@ export async function createCourseAction(
         slug: parsed.data.slug,
         description: parsed.data.description ?? null,
         coverUrl: parsed.data.coverUrl ?? null,
+        passingGrade: parsed.data.passingGrade,
       });
       if (!result.ok) return err(toActionError(result.error));
 

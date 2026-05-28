@@ -45,6 +45,9 @@ export function EditCourseDialog({ course }: EditCourseDialogProps) {
   const [description, setDescription] = useState(course.description ?? "");
   const [coverUrl, setCoverUrl] = useState(course.cover_url ?? "");
   const [isPublished, setIsPublished] = useState(course.is_published);
+  const [passingGrade, setPassingGrade] = useState(
+    Number(course.passing_grade ?? 70),
+  );
   const [isPending, startTransition] = useTransition();
 
   // Reset state al abrir (por si el curso cambio en el server entre
@@ -57,6 +60,7 @@ export function EditCourseDialog({ course }: EditCourseDialogProps) {
       setDescription(course.description ?? "");
       setCoverUrl(course.cover_url ?? "");
       setIsPublished(course.is_published);
+      setPassingGrade(Number(course.passing_grade ?? 70));
     }
     setOpen(next);
   }
@@ -71,6 +75,7 @@ export function EditCourseDialog({ course }: EditCourseDialogProps) {
         description: description.trim() === "" ? null : description.trim(),
         coverUrl: coverUrl.trim() === "" ? null : coverUrl.trim(),
         isPublished,
+        passingGrade,
       });
       if (!result.ok) {
         toast.error(result.error.message);
@@ -176,6 +181,30 @@ export function EditCourseDialog({ course }: EditCourseDialogProps) {
                 y docentes asignados.
               </p>
             </div>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor={`edit-course-passing-grade-${course.id}`}>
+              Nota mínima para aprobar tareas obligatorias (% del puntaje
+              máximo)
+            </Label>
+            <Input
+              id={`edit-course-passing-grade-${course.id}`}
+              type="number"
+              min={0}
+              max={100}
+              step={0.1}
+              value={passingGrade}
+              onChange={(e) =>
+                setPassingGrade(Number(e.target.value))
+              }
+              required
+              disabled={isPending}
+            />
+            <p className="text-xs text-muted-foreground">
+              Si la nota final de una tarea obligatoria está debajo de
+              este umbral, no cuenta para el progreso. 0 = cualquier
+              nota aprueba. Aplica a todo el curso.
+            </p>
           </div>
           <DialogFooter>
             <Button

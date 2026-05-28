@@ -34,6 +34,11 @@ export const updateAssignmentSchema = z.object({
     .min(1, "El puntaje máximo debe ser >= 1")
     .max(100, "El puntaje máximo debe ser <= 100"),
   isRequired: z.boolean(),
+  // Bloque post-23 ISSUE 3: max_attempts del assignment.
+  maxAttempts: z
+    .number()
+    .int("Los intentos deben ser un número entero")
+    .min(0, "Los intentos máximos deben ser >= 0"),
 });
 
 export type UpdateAssignmentInput = z.infer<typeof updateAssignmentSchema>;

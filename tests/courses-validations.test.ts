@@ -419,6 +419,7 @@ describe("updateAssignmentSchema", () => {
       dueAt: null,
       maxScore: 50,
       isRequired: false,
+      maxAttempts: 3,
     });
     expect(result.success).toBe(true);
   });
@@ -431,11 +432,36 @@ describe("updateAssignmentSchema", () => {
       type: "essay",
       maxScore: 100,
       isRequired: true,
+      maxAttempts: 0,
     });
     expect(result.success).toBe(true);
     if (result.success) {
       expect(result.data.description).toBeNull();
     }
+  });
+
+  it("rechaza maxAttempts negativo", () => {
+    const result = updateAssignmentSchema.safeParse({
+      assignmentId: VALID_UUID,
+      title: "Editada",
+      type: "essay",
+      maxScore: 100,
+      isRequired: true,
+      maxAttempts: -1,
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("rechaza maxAttempts no-entero", () => {
+    const result = updateAssignmentSchema.safeParse({
+      assignmentId: VALID_UUID,
+      title: "Editada",
+      type: "essay",
+      maxScore: 100,
+      isRequired: true,
+      maxAttempts: 2.5,
+    });
+    expect(result.success).toBe(false);
   });
 });
 

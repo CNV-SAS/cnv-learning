@@ -37,6 +37,7 @@ interface CreateCourseParams {
   slug: string;
   description: string | null;
   coverUrl: string | null;
+  passingGrade: number;
 }
 
 interface UpdateCourseParams {
@@ -47,6 +48,7 @@ interface UpdateCourseParams {
   description: string | null;
   coverUrl: string | null;
   isPublished: boolean;
+  passingGrade: number;
 }
 
 interface DeleteCourseParams {
@@ -85,6 +87,7 @@ export const courseMetaService = {
       slug: params.slug,
       description: params.description,
       cover_url: params.coverUrl,
+      passing_grade: params.passingGrade,
     });
 
     await auditRepository.record({
@@ -170,6 +173,7 @@ export const courseMetaService = {
       description: params.description,
       cover_url: params.coverUrl,
       is_published: params.isPublished,
+      passing_grade: params.passingGrade,
     });
 
     // Snapshot de cambios para audit. Solo registramos los campos que
@@ -197,6 +201,12 @@ export const courseMetaService = {
       changes.is_published = {
         previous: course.is_published,
         next: updated.is_published,
+      };
+    }
+    if (Number(course.passing_grade) !== Number(updated.passing_grade)) {
+      changes.passing_grade = {
+        previous: Number(course.passing_grade),
+        next: Number(updated.passing_grade),
       };
     }
 

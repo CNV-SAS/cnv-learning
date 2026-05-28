@@ -18,6 +18,9 @@ export interface CreateAssignmentInput {
   due_at: string | null;
   max_score: number;
   is_required: boolean;
+  // Bloque post-23 ISSUE 3: 0 = ilimitados, N > 0 = el alumno solo
+  // puede entregar N veces.
+  max_attempts: number;
 }
 
 export interface UpdateAssignmentInput {
@@ -27,6 +30,7 @@ export interface UpdateAssignmentInput {
   due_at: string | null;
   max_score: number;
   is_required: boolean;
+  max_attempts: number;
 }
 
 export const assignmentRepository = {

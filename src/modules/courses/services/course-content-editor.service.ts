@@ -674,6 +674,7 @@ export const courseContentEditorService = {
     dueAt: string | null;
     maxScore: number;
     isRequired: boolean;
+    maxAttempts: number;
   }): Promise<Result<Assignment, AppError>> {
     const module = await moduleRepository.findById(params.moduleId);
     if (!module) {
@@ -695,6 +696,7 @@ export const courseContentEditorService = {
       due_at: params.dueAt,
       max_score: params.maxScore,
       is_required: params.isRequired,
+      max_attempts: params.maxAttempts,
     });
     return ok(created);
   },
@@ -708,6 +710,7 @@ export const courseContentEditorService = {
     dueAt: string | null;
     maxScore: number;
     isRequired: boolean;
+    maxAttempts: number;
   }): Promise<Result<Assignment, AppError>> {
     const assignment = await assignmentRepository.findById(
       params.assignmentId,
@@ -739,6 +742,7 @@ export const courseContentEditorService = {
       due_at: params.dueAt,
       max_score: params.maxScore,
       is_required: params.isRequired,
+      max_attempts: params.maxAttempts,
     });
     return ok(updated);
   },

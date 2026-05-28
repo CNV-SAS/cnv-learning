@@ -68,6 +68,7 @@ export async function createAssignmentAction(
         dueAt: parsed.data.dueAt,
         maxScore: parsed.data.maxScore,
         isRequired: parsed.data.isRequired,
+        maxAttempts: parsed.data.maxAttempts,
       });
       if (!result.ok) return err(toActionError(result.error));
 

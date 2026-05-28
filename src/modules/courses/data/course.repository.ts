@@ -17,6 +17,8 @@ export interface CreateCourseRow {
   slug: string;
   description: string | null;
   cover_url: string | null;
+  // Bloque post-23 ISSUE 3: nota minima de aprobacion (% del max_score).
+  passing_grade: number;
 }
 
 export interface UpdateCourseRow {
@@ -25,6 +27,7 @@ export interface UpdateCourseRow {
   description: string | null;
   cover_url: string | null;
   is_published: boolean;
+  passing_grade: number;
 }
 
 export const courseRepository = {

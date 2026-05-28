@@ -49,6 +49,14 @@ export const updateCourseSchema = z.object({
       return t === "" ? null : t;
     }),
   isPublished: z.boolean(),
+  // Bloque post-23 ISSUE 3: nota minima de aprobacion (% del max_score).
+  // Cambiar este valor afecta retroactivamente que tareas cuentan para
+  // el progreso de alumnos enrolled (el progressService recalcula en
+  // cada visita).
+  passingGrade: z
+    .number()
+    .min(0, "La nota mínima debe ser >= 0")
+    .max(100, "La nota mínima debe ser <= 100"),
 });
 
 export type UpdateCourseInput = z.infer<typeof updateCourseSchema>;

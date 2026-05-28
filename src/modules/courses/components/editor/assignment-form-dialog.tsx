@@ -86,6 +86,9 @@ export function AssignmentFormDialog(props: Props) {
   const [isRequired, setIsRequired] = useState(
     isEdit ? props.assignment.is_required : true,
   );
+  const [maxAttempts, setMaxAttempts] = useState<string>(
+    isEdit ? String(props.assignment.max_attempts ?? 0) : "0",
+  );
   const [isPending, startTransition] = useTransition();
 
   function reset() {
@@ -96,6 +99,7 @@ export function AssignmentFormDialog(props: Props) {
       setDueAt("");
       setMaxScore("100");
       setIsRequired(true);
+      setMaxAttempts("0");
     }
   }
 
@@ -113,6 +117,16 @@ export function AssignmentFormDialog(props: Props) {
       return;
     }
 
+    const maxAttemptsNum = Number(maxAttempts);
+    if (
+      Number.isNaN(maxAttemptsNum) ||
+      !Number.isInteger(maxAttemptsNum) ||
+      maxAttemptsNum < 0
+    ) {
+      toast.error("Los intentos máximos deben ser un entero >= 0.");
+      return;
+    }
+
     const dueAtIso = localInputToIso(dueAt);
 
     const payload = {
@@ -122,6 +136,7 @@ export function AssignmentFormDialog(props: Props) {
       dueAt: dueAtIso,
       maxScore: maxScoreNum,
       isRequired,
+      maxAttempts: maxAttemptsNum,
     };
 
     startTransition(async () => {
@@ -272,6 +287,25 @@ export function AssignmentFormDialog(props: Props) {
             >
               Obligatoria (pesa en el progreso del curso)
             </Label>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="assignment-max-attempts">Intentos máximos</Label>
+            <Input
+              id="assignment-max-attempts"
+              type="number"
+              min={0}
+              step={1}
+              value={maxAttempts}
+              onChange={(e) => setMaxAttempts(e.target.value)}
+              required
+              disabled={isPending}
+            />
+            <p className="text-xs text-muted-foreground">
+              0 = intentos ilimitados. N &gt; 0 = el alumno puede entregar
+              hasta N veces; si la última nota no aprueba el umbral del
+              curso, la tarea queda reprobada y bloquea el progreso.
+            </p>
           </div>
 
           <DialogFooter>

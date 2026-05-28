@@ -41,6 +41,7 @@ export function CreateCourseDialog() {
   const [slugTouched, setSlugTouched] = useState(false);
   const [description, setDescription] = useState("");
   const [coverUrl, setCoverUrl] = useState("");
+  const [passingGrade, setPassingGrade] = useState(70);
   const [isPending, startTransition] = useTransition();
 
   function reset() {
@@ -49,6 +50,7 @@ export function CreateCourseDialog() {
     setSlugTouched(false);
     setDescription("");
     setCoverUrl("");
+    setPassingGrade(70);
   }
 
   function handleTitleChange(value: string) {
@@ -71,6 +73,7 @@ export function CreateCourseDialog() {
         slug: slug.trim().toLowerCase(),
         description: description.trim() === "" ? null : description.trim(),
         coverUrl: coverUrl.trim() === "" ? null : coverUrl.trim(),
+        passingGrade,
       });
       if (!result.ok) {
         toast.error(result.error.message);
@@ -158,6 +161,30 @@ export function CreateCourseDialog() {
               disabled={isPending}
               placeholder="https://..."
             />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="new-course-passing-grade">
+              Nota mínima para aprobar tareas obligatorias (% del puntaje
+              máximo)
+            </Label>
+            <Input
+              id="new-course-passing-grade"
+              type="number"
+              min={0}
+              max={100}
+              step={0.1}
+              value={passingGrade}
+              onChange={(e) =>
+                setPassingGrade(Number(e.target.value))
+              }
+              required
+              disabled={isPending}
+            />
+            <p className="text-xs text-muted-foreground">
+              Si la nota final de una tarea obligatoria está debajo de
+              este umbral, no cuenta para el progreso. 0 = cualquier
+              nota aprueba.
+            </p>
           </div>
           <DialogFooter>
             <Button

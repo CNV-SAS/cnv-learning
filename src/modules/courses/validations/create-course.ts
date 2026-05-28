@@ -51,6 +51,14 @@ export const createCourseSchema = z.object({
       const t = v.trim();
       return t === "" ? null : t;
     }),
+  // Bloque post-23 ISSUE 3: nota minima de aprobacion (% del max_score)
+  // aplicada a tareas obligatorias del curso. Default 70%; 0 = cualquier
+  // nota aprueba.
+  passingGrade: z
+    .number()
+    .min(0, "La nota mínima debe ser >= 0")
+    .max(100, "La nota mínima debe ser <= 100")
+    .default(70),
 });
 
 export type CreateCourseInput = z.infer<typeof createCourseSchema>;

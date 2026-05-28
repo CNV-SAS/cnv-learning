@@ -57,6 +57,7 @@ export async function updateCourseAction(
         description: parsed.data.description ?? null,
         coverUrl: parsed.data.coverUrl ?? null,
         isPublished: parsed.data.isPublished,
+        passingGrade: parsed.data.passingGrade,
       });
       if (!result.ok) return err(toActionError(result.error));
 
