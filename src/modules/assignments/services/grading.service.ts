@@ -18,10 +18,15 @@ import {
   gradingRepository,
 } from "@/modules/assignments/data";
 import { canGradeAssignment } from "@/modules/assignments/policies";
+import {
+  passes,
+  passingThreshold,
+} from "@/modules/assignments/lib/assignment-status";
 import { auditRepository } from "@/modules/audit/data";
 import { moduleRepository } from "@/modules/courses/data/module.repository";
 import { courseRepository } from "@/modules/courses/data/course.repository";
 import { profileRepository } from "@/modules/auth/data/profile.repository";
+import { progressService } from "@/modules/progress/services/progress.service";
 import { sendGradingPublishedEmail } from "@/lib/email";
 import { notificationRepository } from "@/modules/notifications/data";
 import { logger } from "@/core/logger/logger";
@@ -196,6 +201,39 @@ export const gradingService = {
         gradingId: grading.id,
         error: e instanceof Error ? e.message : String(e),
       });
+    }
+
+    // Bloque post-23 ISSUE 3 sub-bloque 4: trigger de emision de
+    // constancia relocalizado desde submission.service.
+    // Si el grading aprueba el threshold del curso AND el assignment
+    // es obligatorio, puede que esta calificacion lleve el curso al
+    // 100%. Llamamos tryEmitCertificateForCourse que internamente
+    // verifica el percentage y emite si corresponde (idempotente:
+    // si ya emitio cert para este curso, kind='update' o
+    // CERTIFICATE_ALREADY_ISSUED se loguean como warn).
+    // Fault-tolerant: si la emision falla, log warn pero NO bloquea
+    // el publishGrading (el grading + audit ya son ok).
+    if (assignment.is_required === true) {
+      try {
+        const threshold = passingThreshold(
+          Number(assignment.max_score),
+          Number(courseRow.passing_grade),
+        );
+        if (passes(Number(grading.final_grade), threshold)) {
+          await progressService.tryEmitCertificateForCourse(
+            submission.user_id,
+            courseRow.id,
+          );
+        }
+      } catch (e) {
+        logger.warn(
+          "Certificate emission flow from publishGrading threw (non-blocking)",
+          {
+            gradingId: grading.id,
+            error: e instanceof Error ? e.message : String(e),
+          },
+        );
+      }
     }
 
     return ok(grading);

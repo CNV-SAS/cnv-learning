@@ -7,11 +7,22 @@
 //   - Si existe submission previa con status='submitted', error
 //     SUBMISSION_ALREADY_SUBMITTED (MVP: una sola entrega por
 //     assignment; reenvio post-submitted bloqueado por RLS + chequeo
-//     defensivo aqui).
+//     defensivo aqui). El refactor con canResubmit + max_attempts
+//     viene en sub-bloque 5 del ISSUE 3.
 //
 // Para file_upload: validar size + MIME ANTES de subir, subir via
 // storage helper, si habia archivo previo (draft) borrarlo
-// fault-tolerant, upsert submission con status='submitted'.
+// fault-tolerant, insert nuevo intento con status='submitted'.
+//
+// Bloque post-23 ISSUE 3 sub-bloque 4: el trigger de emision de
+// constancia YA NO se dispara desde aqui. Entregar una tarea
+// (file/essay) ya no garantiza que cuente para el progreso del
+// curso: la calificacion aprobatoria es lo que cuenta (decision E
+// del analisis). El trigger se relocalizo a
+// gradingService.publishGrading post-calificacion si
+// final_grade >= threshold. Quiz se queda con su trigger inline
+// porque la calificacion es automatica al submit (no pasa por
+// gradingService.publishGrading).
 
 import {
   assignmentRepository,
@@ -20,10 +31,7 @@ import {
   MAX_FILE_SIZE_BYTES,
   ALLOWED_MIME_TYPES,
 } from "@/modules/assignments/data";
-import { moduleRepository } from "@/modules/courses/data";
 import { canSubmitAssignment } from "@/modules/assignments/policies";
-import { progressService } from "@/modules/progress/services/progress.service";
-import { logger } from "@/core/logger/logger";
 import {
   AppError,
   AuthorizationError,
@@ -33,36 +41,7 @@ import {
 import { ErrorCodes } from "@/core/errors/codes";
 import { ok, err, type Result } from "@/lib/utils/result";
 import type { AuthenticatedUser } from "@/modules/auth/types";
-import type { Assignment, Submission } from "../types";
-
-// Bloque post-23: tras entregar una tarea, si era OBLIGATORIA, puede
-// ser que el curso llegue al 100% por esa entrega. Disparamos el
-// mismo helper que markLessonCompleted para emitir cert si aplica.
-// Fault-tolerant: si la emision falla, log warn pero NO bloquea el
-// submit (el student ya entrego y eso es lo importante).
-async function tryEmitCertAfterRequiredSubmission(
-  userId: string,
-  assignment: Assignment,
-): Promise<void> {
-  if (assignment.is_required !== true) return;
-  try {
-    const moduleRow = await moduleRepository.findById(assignment.module_id);
-    if (!moduleRow) return;
-    await progressService.tryEmitCertificateForCourse(
-      userId,
-      moduleRow.course_id,
-    );
-  } catch (e) {
-    logger.warn(
-      "Certificate emission flow from submitAssignment threw (non-blocking)",
-      {
-        userId,
-        assignmentId: assignment.id,
-        error: e instanceof Error ? e.message : String(e),
-      },
-    );
-  }
-}
+import type { Submission } from "../types";
 
 interface SubmitFileParams {
   user: AuthenticatedUser;
@@ -154,8 +133,6 @@ export const submissionService = {
       submitted_at: new Date().toISOString(),
     });
 
-    await tryEmitCertAfterRequiredSubmission(user.id, assignment);
-
     return ok(submission);
   },
 
@@ -207,8 +184,6 @@ export const submissionService = {
       essay_text: essayText,
       submitted_at: new Date().toISOString(),
     });
-
-    await tryEmitCertAfterRequiredSubmission(user.id, assignment);
 
     return ok(submission);
   },
