@@ -32,6 +32,11 @@ import {
   ALLOWED_MIME_TYPES,
 } from "@/modules/assignments/data";
 import { canSubmitAssignment } from "@/modules/assignments/policies";
+import { canResubmit } from "@/modules/assignments/lib/assignment-status";
+import {
+  loadAssignmentSubmissionContext,
+  statusToResubmitError,
+} from "./submission-context";
 import {
   AppError,
   AuthorizationError,
@@ -101,17 +106,18 @@ export const submissionService = {
       );
     }
 
-    const existing = await submissionRepository.findByAssignmentAndUser(
-      assignmentId,
+    // Bloque post-23 ISSUE 3 sub-5: guard de reenvio via
+    // computeAssignmentStatus. Reemplaza el check anterior
+    // "existing && status='submitted'" por una verificacion que
+    // contempla passing_grade del curso + max_attempts del assignment.
+    const ctxResult = await loadAssignmentSubmissionContext(
       user.id,
+      assignment,
     );
-    if (existing && existing.status === "submitted") {
-      return err(
-        new DomainError(
-          ErrorCodes.SUBMISSION_ALREADY_SUBMITTED,
-          "Ya entregaste esta tarea.",
-        ),
-      );
+    if (!ctxResult.ok) return err(ctxResult.error);
+    const { status } = ctxResult.value;
+    if (!canResubmit(status)) {
+      return err(statusToResubmitError(status));
     }
 
     const { storagePath } = await submissionStorageRepository.uploadFile(
@@ -119,11 +125,6 @@ export const submissionService = {
       assignmentId,
       file,
     );
-
-    // Si habia archivo previo (draft), borrar fault-tolerant.
-    if (existing?.storage_path) {
-      await submissionStorageRepository.deleteFile(existing.storage_path);
-    }
 
     const submission = await submissionRepository.insertNewAttempt({
       assignment_id: assignmentId,
@@ -164,17 +165,14 @@ export const submissionService = {
       );
     }
 
-    const existing = await submissionRepository.findByAssignmentAndUser(
-      assignmentId,
+    const ctxResult = await loadAssignmentSubmissionContext(
       user.id,
+      assignment,
     );
-    if (existing && existing.status === "submitted") {
-      return err(
-        new DomainError(
-          ErrorCodes.SUBMISSION_ALREADY_SUBMITTED,
-          "Ya entregaste esta tarea.",
-        ),
-      );
+    if (!ctxResult.ok) return err(ctxResult.error);
+    const { status } = ctxResult.value;
+    if (!canResubmit(status)) {
+      return err(statusToResubmitError(status));
     }
 
     const submission = await submissionRepository.insertNewAttempt({

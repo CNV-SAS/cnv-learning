@@ -187,14 +187,35 @@ export function QuizPlayer({ courseId, assignmentId }: QuizPlayerProps) {
   }
 
   if (loadError) {
-    if (loadError.code === "SUBMISSION_ALREADY_SUBMITTED") {
+    // Bloque post-23 ISSUE 3 sub-5: tres codes nuevos cubren los
+    // estados "no puedes tomar el quiz ahora":
+    //   - SUBMISSION_ALREADY_PASSED: aprobado.
+    //   - SUBMISSION_PENDING_GRADE: entrega anterior pendiente de
+    //     calificacion (raro en quiz, auto-graded; aplicaria si quiz
+    //     se reintenta con UI pendiente).
+    //   - SUBMISSION_MAX_ATTEMPTS_REACHED: sin intentos restantes.
+    // SUBMISSION_ALREADY_SUBMITTED se mantiene como catch-all para
+    // backward-compat (cohorte de prueba con flow anterior).
+    const blockingCodes = new Set([
+      "SUBMISSION_ALREADY_SUBMITTED",
+      "SUBMISSION_ALREADY_PASSED",
+      "SUBMISSION_PENDING_GRADE",
+      "SUBMISSION_MAX_ATTEMPTS_REACHED",
+    ]);
+    if (blockingCodes.has(loadError.code)) {
+      const title =
+        loadError.code === "SUBMISSION_ALREADY_PASSED"
+          ? "Ya aprobaste este quiz"
+          : loadError.code === "SUBMISSION_MAX_ATTEMPTS_REACHED"
+            ? "Agotaste tus intentos"
+            : loadError.code === "SUBMISSION_PENDING_GRADE"
+              ? "Tu entrega anterior está pendiente"
+              : "Ya tomaste este quiz";
       return (
         <Card>
           <CardHeader>
-            <CardTitle>Ya tomaste este quiz</CardTitle>
-            <CardDescription>
-              Puedes ver tu calificación en el libro de notas del curso.
-            </CardDescription>
+            <CardTitle>{title}</CardTitle>
+            <CardDescription>{loadError.message}</CardDescription>
           </CardHeader>
           <CardContent>
             <Button asChild variant="outline">

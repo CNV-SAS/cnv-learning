@@ -27,6 +27,11 @@ import { gradingRepository } from "@/modules/assignments/data/grading.repository
 import { quizRepository } from "@/modules/assignments/data/quiz.repository";
 import { moduleRepository } from "@/modules/courses/data";
 import { canSubmitAssignment } from "@/modules/assignments/policies";
+import { canResubmit } from "@/modules/assignments/lib/assignment-status";
+import {
+  loadAssignmentSubmissionContext,
+  statusToResubmitError,
+} from "./submission-context";
 import { progressService } from "@/modules/progress/services/progress.service";
 import { auditRepository } from "@/modules/audit/data";
 import { gradeQuiz } from "../lib/quiz-grader";
@@ -86,19 +91,17 @@ export const quizService = {
       );
     }
 
-    // Si ya tomo el quiz, devolver error claro (la UI direcciona al
-    // GradeDisplay en lugar de mostrar el player).
-    const existing = await submissionRepository.findByAssignmentAndUser(
-      assignmentId,
+    // Bloque post-23 ISSUE 3 sub-5: si el alumno no puede reenviar
+    // (passed, pending_grade, failed_permanent), retornamos error
+    // especifico que la UI mapea a una vista distinta del player.
+    const ctxResult = await loadAssignmentSubmissionContext(
       user.id,
+      assignment,
     );
-    if (existing && existing.status === "submitted") {
-      return err(
-        new DomainError(
-          ErrorCodes.SUBMISSION_ALREADY_SUBMITTED,
-          "Ya completaste este quiz.",
-        ),
-      );
+    if (!ctxResult.ok) return err(ctxResult.error);
+    const { status: getStatus } = ctxResult.value;
+    if (!canResubmit(getStatus)) {
+      return err(statusToResubmitError(getStatus));
     }
 
     const questions =
@@ -138,17 +141,14 @@ export const quizService = {
       );
     }
 
-    const existing = await submissionRepository.findByAssignmentAndUser(
-      assignmentId,
+    const submitCtxResult = await loadAssignmentSubmissionContext(
       user.id,
+      assignment,
     );
-    if (existing && existing.status === "submitted") {
-      return err(
-        new DomainError(
-          ErrorCodes.SUBMISSION_ALREADY_SUBMITTED,
-          "Ya completaste este quiz.",
-        ),
-      );
+    if (!submitCtxResult.ok) return err(submitCtxResult.error);
+    const { status: submitStatus } = submitCtxResult.value;
+    if (!canResubmit(submitStatus)) {
+      return err(statusToResubmitError(submitStatus));
     }
 
     // Fetch questions + options con is_correct (admin client).
