@@ -209,6 +209,7 @@ export type Database = {
           due_at: string | null
           id: string
           is_required: boolean
+          max_attempts: number
           max_score: number
           module_id: string
           title: string
@@ -221,6 +222,7 @@ export type Database = {
           due_at?: string | null
           id?: string
           is_required?: boolean
+          max_attempts?: number
           max_score?: number
           module_id: string
           title: string
@@ -233,6 +235,7 @@ export type Database = {
           due_at?: string | null
           id?: string
           is_required?: boolean
+          max_attempts?: number
           max_score?: number
           module_id?: string
           title?: string
@@ -589,6 +592,7 @@ export type Database = {
           ends_at: string | null
           id: string
           is_published: boolean
+          passing_grade: number
           slug: string
           starts_at: string | null
           title: string
@@ -601,6 +605,7 @@ export type Database = {
           ends_at?: string | null
           id?: string
           is_published?: boolean
+          passing_grade?: number
           slug: string
           starts_at?: string | null
           title: string
@@ -613,6 +618,7 @@ export type Database = {
           ends_at?: string | null
           id?: string
           is_published?: boolean
+          passing_grade?: number
           slug?: string
           starts_at?: string | null
           title?: string
@@ -1173,6 +1179,7 @@ export type Database = {
       submissions: {
         Row: {
           assignment_id: string
+          attempt_number: number
           created_at: string
           essay_text: string | null
           id: string
@@ -1185,6 +1192,7 @@ export type Database = {
         }
         Insert: {
           assignment_id: string
+          attempt_number?: number
           created_at?: string
           essay_text?: string | null
           id?: string
@@ -1197,6 +1205,7 @@ export type Database = {
         }
         Update: {
           assignment_id?: string
+          attempt_number?: number
           created_at?: string
           essay_text?: string | null
           id?: string
