@@ -1,14 +1,14 @@
 "use client";
 
-// Dialog de confirmacion de borrado de leccion (Bloque 19.3).
-// Recibe el impact pre-calculado por el page (progressCount). Si
-// hay alumnos que ya marcaron completada la leccion, bloquea con
-// mensaje contextual. Si no, requiere escribir el titulo exacto
-// para confirmar.
+// Dialog de confirmacion de borrado de leccion (Bloque 19.3 + smoke
+// E2E post-ISSUE-3 admin force-delete).
+//
+// Teacher: blocking estandar si hay progreso de alumnos.
+// Admin con progreso: warning rojo + type-to-confirm + forceDelete.
 
 import { useState, useTransition, type FormEvent } from "react";
 import { toast } from "sonner";
-import { Trash2 } from "lucide-react";
+import { Trash2, AlertTriangle } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -28,19 +28,25 @@ interface DeleteLessonDialogProps {
   lessonId: string;
   lessonTitle: string;
   impact: LessonDeleteImpact;
+  actorRole: "admin" | "teacher" | "student";
 }
 
 export function DeleteLessonDialog({
   lessonId,
   lessonTitle,
   impact,
+  actorRole,
 }: DeleteLessonDialogProps) {
   const [open, setOpen] = useState(false);
   const [confirmText, setConfirmText] = useState("");
   const [isPending, startTransition] = useTransition();
 
   const hasDeps = impact.progressCount > 0;
-  const canSubmit = !hasDeps && confirmText.trim() === lessonTitle && !isPending;
+  const isAdmin = actorRole === "admin";
+  const isForce = hasDeps && isAdmin;
+  const isBlocked = hasDeps && !isAdmin;
+  const canSubmit =
+    !isBlocked && confirmText.trim() === lessonTitle && !isPending;
 
   function handleOpenChange(next: boolean) {
     setOpen(next);
@@ -50,7 +56,10 @@ export function DeleteLessonDialog({
   function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     startTransition(async () => {
-      const result = await deleteLessonAction({ lessonId });
+      const result = await deleteLessonAction({
+        lessonId,
+        forceDelete: isForce,
+      });
       if (!result.ok) {
         toast.error(result.error.message);
         return;
@@ -71,18 +80,31 @@ export function DeleteLessonDialog({
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Eliminar lección</DialogTitle>
+          <DialogTitle className={isForce ? "text-rose-700" : undefined}>
+            {isForce ? "Eliminar lección (FORZADO)" : "Eliminar lección"}
+          </DialogTitle>
           <DialogDescription>
-            {hasDeps
+            {isBlocked
               ? `Esta lección tiene ${impact.progressCount} alumno${impact.progressCount === 1 ? "" : "s"} que la completaron. No se puede eliminar mientras existan datos asociados. Para forzar la eliminación, contacta al administrador.`
-              : `Esta acción no se puede deshacer. Escribe el título exacto de la lección para confirmar.`}
+              : isForce
+                ? `Esta lección tiene ${impact.progressCount} alumno${impact.progressCount === 1 ? "" : "s"} con progreso registrado. Al eliminarla se perderán TODOS los datos de progreso. Esta acción es IRREVERSIBLE.`
+                : `Esta acción no se puede deshacer. Escribe el título exacto de la lección para confirmar.`}
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
-          {!hasDeps && (
+          {isForce && (
+            <div className="flex items-start gap-2 rounded-md border border-rose-300 bg-rose-50 p-3 text-sm text-rose-900">
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+              <p>
+                Vas a eliminar contenido con datos de alumnos. Esta
+                acción quedará registrada en el audit log.
+              </p>
+            </div>
+          )}
+          {!isBlocked && (
             <div className="space-y-2">
               <Label htmlFor="confirm-lesson-title">
-                Título de la lección
+                Escribe el título de la lección para confirmar
               </Label>
               <Input
                 id="confirm-lesson-title"
@@ -108,7 +130,11 @@ export function DeleteLessonDialog({
               variant="destructive"
               disabled={!canSubmit}
             >
-              {isPending ? "Eliminando..." : "Eliminar"}
+              {isPending
+                ? "Eliminando..."
+                : isForce
+                  ? "Eliminar de forma forzada"
+                  : "Eliminar"}
             </Button>
           </DialogFooter>
         </form>

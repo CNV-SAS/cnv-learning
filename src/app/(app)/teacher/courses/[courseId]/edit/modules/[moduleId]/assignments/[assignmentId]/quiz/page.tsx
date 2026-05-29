@@ -16,6 +16,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { CheckCircle2, ListChecks } from "lucide-react";
 import { profileRepository } from "@/modules/auth/data/profile.repository";
+import { panelHomeFor, panelLabelFor } from "@/modules/auth/policies";
 import {
   courseRepository,
   moduleRepository,
@@ -93,8 +94,8 @@ export default async function QuizEditPage({ params }: QuizEditPageProps) {
         aria-label="Ruta"
         className="text-xs font-black uppercase tracking-widest text-muted-foreground"
       >
-        <Link href="/teacher" className="hover:text-foreground">
-          Panel docente
+        <Link href={panelHomeFor(user)} className="hover:text-foreground">
+          {panelLabelFor(user)}
         </Link>
         <span className="mx-2">/</span>
         <Link

@@ -6,3 +6,4 @@ export { canAccessTeacherPanel } from "./can-access-teacher-panel";
 export { canAccessTeacherInbox } from "./can-access-teacher-inbox";
 export { canAccessStudentArea } from "./can-access-student-area";
 export { getNavigationFor, type NavItem } from "./navigation";
+export { panelHomeFor, panelLabelFor } from "./panel-home";

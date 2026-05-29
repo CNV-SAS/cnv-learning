@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { profileRepository } from "@/modules/auth/data/profile.repository";
 import { courseRepository } from "@/modules/courses/data";
+import { panelHomeFor, panelLabelFor } from "@/modules/auth/policies";
 import {
   canEditCourseContent,
   canEditCourseMeta,
@@ -80,8 +81,8 @@ export default async function EditCoursePage({ params }: EditCoursePageProps) {
         aria-label="Ruta"
         className="text-xs font-black uppercase tracking-widest text-muted-foreground"
       >
-        <Link href="/teacher" className="hover:text-foreground">
-          Panel docente
+        <Link href={panelHomeFor(user)} className="hover:text-foreground">
+          {panelLabelFor(user)}
         </Link>
         <span className="mx-2">/</span>
         <span className="text-foreground">Editar contenido</span>
@@ -217,6 +218,7 @@ export default async function EditCoursePage({ params }: EditCoursePageProps) {
                       moduleId={entry.module.id}
                       moduleTitle={entry.module.title}
                       impact={entry.impact}
+                      actorRole={user.role}
                     />
                   </div>
                 </CardContent>

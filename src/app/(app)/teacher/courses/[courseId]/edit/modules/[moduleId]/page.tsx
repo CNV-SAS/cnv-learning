@@ -25,6 +25,7 @@ import {
   moduleRepository,
 } from "@/modules/courses/data";
 import { canEditCourseContent } from "@/modules/courses/policies";
+import { panelHomeFor, panelLabelFor } from "@/modules/auth/policies";
 import { courseContentEditorService } from "@/modules/courses/services/course-content-editor.service";
 import { courseResourceService } from "@/modules/courses/services/course-resource.service";
 import { CreateResourceDialog } from "@/modules/courses/components/editor/create-resource-dialog";
@@ -100,8 +101,8 @@ export default async function ModuleEditPage({ params }: ModuleEditPageProps) {
         aria-label="Ruta"
         className="text-xs font-black uppercase tracking-widest text-muted-foreground"
       >
-        <Link href="/teacher" className="hover:text-foreground">
-          Panel docente
+        <Link href={panelHomeFor(user)} className="hover:text-foreground">
+          {panelLabelFor(user)}
         </Link>
         <span className="mx-2">/</span>
         <Link
@@ -232,6 +233,7 @@ export default async function ModuleEditPage({ params }: ModuleEditPageProps) {
                         lessonId={entry.lesson.id}
                         lessonTitle={entry.lesson.title}
                         impact={entry.impact}
+                        actorRole={user.role}
                       />
                     </div>
                   </CardContent>
@@ -327,6 +329,7 @@ export default async function ModuleEditPage({ params }: ModuleEditPageProps) {
                         assignmentId={entry.assignment.id}
                         assignmentTitle={entry.assignment.title}
                         impact={entry.impact}
+                        actorRole={user.role}
                       />
                     </div>
                   </CardContent>

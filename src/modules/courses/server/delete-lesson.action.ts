@@ -72,6 +72,7 @@ export async function deleteLessonAction(
       const result = await courseContentEditorService.deleteLesson({
         user,
         lessonId: parsed.data.lessonId,
+        forceDelete: parsed.data.forceDelete,
       });
       if (!result.ok) return err(toActionError(result.error));
 

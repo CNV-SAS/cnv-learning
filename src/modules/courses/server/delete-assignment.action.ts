@@ -72,6 +72,7 @@ export async function deleteAssignmentAction(
       const result = await courseContentEditorService.deleteAssignment({
         user,
         assignmentId: parsed.data.assignmentId,
+        forceDelete: parsed.data.forceDelete,
       });
       if (!result.ok) return err(toActionError(result.error));
 

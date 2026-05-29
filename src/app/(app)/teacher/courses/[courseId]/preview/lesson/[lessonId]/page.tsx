@@ -20,6 +20,7 @@ import {
   moduleRepository,
 } from "@/modules/courses/data";
 import { canEditCourseContent } from "@/modules/courses/policies";
+import { panelHomeFor, panelLabelFor } from "@/modules/auth/policies";
 import { VideoEmbed } from "@/modules/courses/components/video-embed";
 import { LessonContent } from "@/modules/courses/components/lesson-content";
 import {
@@ -96,8 +97,8 @@ export default async function PreviewLessonPage({
         aria-label="Ruta"
         className="text-xs font-black uppercase tracking-widest text-muted-foreground"
       >
-        <Link href="/teacher" className="hover:text-foreground">
-          Panel docente
+        <Link href={panelHomeFor(user)} className="hover:text-foreground">
+          {panelLabelFor(user)}
         </Link>
         <span className="mx-2">/</span>
         <Link

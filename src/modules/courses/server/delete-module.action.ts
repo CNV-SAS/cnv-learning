@@ -58,6 +58,7 @@ export async function deleteModuleAction(
       const result = await courseContentEditorService.deleteModule({
         user,
         moduleId: parsed.data.moduleId,
+        forceDelete: parsed.data.forceDelete,
       });
       if (!result.ok) return err(toActionError(result.error));
 

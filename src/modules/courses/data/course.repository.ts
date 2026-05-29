@@ -183,6 +183,10 @@ export const courseRepository = {
         description: input.description,
         cover_url: input.cover_url,
         is_published: false,
+        // ISSUE 3 fix: passing_grade omitido aqui caia en el default
+        // 70 de la columna, asi que creates con valor distinto al
+        // default quedaban silenciosamente en 70.
+        passing_grade: input.passing_grade,
       })
       .select("*")
       .single();
@@ -240,6 +244,10 @@ export const courseRepository = {
         description: input.description,
         cover_url: input.cover_url,
         is_published: input.is_published,
+        // ISSUE 3 fix BUG CRÍTICO 2: passing_grade no estaba en el
+        // payload del update; el valor se descartaba silenciosamente
+        // y el service auditaba un "cambio" que nunca persistia.
+        passing_grade: input.passing_grade,
       })
       .eq("id", id)
       .select("*")

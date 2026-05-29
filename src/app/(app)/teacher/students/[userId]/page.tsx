@@ -112,9 +112,15 @@ export default async function TeacherStudentDetailPage({
     assignmentRepository.listByCourse(courseId),
   ]);
 
+  // Smoke E2E post-ISSUE-3 BUG ADICIONAL: con multi-attempt una
+  // assignment puede tener N rows en submissions. Necesitamos solo
+  // la mas reciente (mayor attempt_number) por (assignment, user)
+  // para que el panel del docente muestre la nota del intento que
+  // realmente cuenta. listLatestByAssignmentIdsForUser ya aplica el
+  // pickLatestPerAssignmentUser internamente.
   const userSubmissions =
     allAssignments.length > 0
-      ? await submissionRepository.listByAssignmentIdsForUser(
+      ? await submissionRepository.listLatestByAssignmentIdsForUser(
           allAssignments.map((a) => a.id),
           userId,
         )

@@ -14,6 +14,7 @@ import {
   moduleRepository,
 } from "@/modules/courses/data";
 import { canEditCourseResources } from "@/modules/courses/policies";
+import { panelHomeFor, panelLabelFor } from "@/modules/auth/policies";
 import { courseResourceService } from "@/modules/courses/services/course-resource.service";
 import { CreateResourceDialog } from "@/modules/courses/components/editor/create-resource-dialog";
 import { ResourceListItem } from "@/modules/courses/components/editor/resource-list-item";
@@ -61,8 +62,8 @@ export default async function ResourcesPage({ params }: ResourcesPageProps) {
         aria-label="Ruta"
         className="text-xs font-black uppercase tracking-widest text-muted-foreground"
       >
-        <Link href="/teacher" className="hover:text-foreground">
-          Panel docente
+        <Link href={panelHomeFor(user)} className="hover:text-foreground">
+          {panelLabelFor(user)}
         </Link>
         <span className="mx-2">/</span>
         <Link

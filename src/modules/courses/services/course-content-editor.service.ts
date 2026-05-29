@@ -284,6 +284,10 @@ export const courseContentEditorService = {
   async deleteModule(params: {
     user: AuthenticatedUser;
     moduleId: string;
+    // Smoke E2E post-ISSUE-3: admin puede forzar el delete cuando
+    // hay dependencias. Teacher no (forceDelete=true desde teacher
+    // se ignora y se rechaza como falta de admin).
+    forceDelete?: boolean;
   }): Promise<Result<ModuleDeleteImpact | null, AppError>> {
     const module = await moduleRepository.findById(params.moduleId);
     if (!module) {
@@ -298,7 +302,6 @@ export const courseContentEditorService = {
     const auth = await authorizeCourseEdit(params.user, module.course_id);
     if (!auth.ok) return err(auth.error);
 
-    // Blocking estricto: cualquier dependencia abre el escudo.
     const impactResult = await this.getModuleDeleteImpact({
       user: params.user,
       moduleId: params.moduleId,
@@ -310,19 +313,24 @@ export const courseContentEditorService = {
       impact.assignmentCount > 0 ||
       impact.submissionCount > 0 ||
       impact.gradingCount > 0;
-    if (hasDeps) {
+
+    // forceDelete solo lo honra admin. Si llega de un teacher se
+    // ignora (defense-in-depth) y caemos al blocking estandar.
+    const isAdminForce =
+      params.forceDelete === true && params.user.role === "admin";
+
+    if (hasDeps && !isAdminForce) {
       return err(
         new DomainError(
           ErrorCodes.MODULE_HAS_DEPENDENCIES,
-          // Mensaje no se muestra al user (la UI ya tiene el impact
-          // detallado); este es para logs/audit.
           `El módulo tiene dependencias: ${impact.lessonCount} lecciones, ${impact.assignmentCount} tareas, ${impact.submissionCount} entregas, ${impact.gradingCount} calificaciones.`,
         ),
       );
     }
 
-    // Snapshot ANTES del delete (regla 8 + memo de audit ANTES de
-    // mutaciones destructivas) para preservar forensics.
+    // Snapshot ANTES del delete (regla 8). Incluye conteo de
+    // dependencias arrastradas por CASCADE para forensics. Si fue
+    // force delete del admin lo marcamos en el metadata.
     await auditRepository.record({
       event: "course_module.deleted",
       resourceType: "module",
@@ -339,6 +347,13 @@ export const courseContentEditorService = {
           weight: module.weight,
           created_at: module.created_at,
           updated_at: module.updated_at,
+        },
+        forced: isAdminForce,
+        impactAtDelete: {
+          lessonCount: impact.lessonCount,
+          assignmentCount: impact.assignmentCount,
+          submissionCount: impact.submissionCount,
+          gradingCount: impact.gradingCount,
         },
       },
     });
@@ -522,6 +537,7 @@ export const courseContentEditorService = {
   async deleteLesson(params: {
     user: AuthenticatedUser;
     lessonId: string;
+    forceDelete?: boolean;
   }): Promise<Result<void, AppError>> {
     const lesson = await lessonRepository.findById(params.lessonId);
     if (!lesson) {
@@ -547,7 +563,11 @@ export const courseContentEditorService = {
     const progressCount = await lessonProgressRepository.countByLessonId(
       params.lessonId,
     );
-    if (progressCount > 0) {
+
+    const isAdminForce =
+      params.forceDelete === true && params.user.role === "admin";
+
+    if (progressCount > 0 && !isAdminForce) {
       return err(
         new DomainError(
           ErrorCodes.LESSON_HAS_DEPENDENCIES,
@@ -556,7 +576,8 @@ export const courseContentEditorService = {
       );
     }
 
-    // Audit ANTES del delete con snapshot completo (regla 8).
+    // Audit ANTES del delete con snapshot completo (regla 8). forced
+    // y impactAtDelete clarifican el contexto en el log.
     await auditRepository.record({
       event: "course_lesson.deleted",
       resourceType: "lesson",
@@ -576,6 +597,8 @@ export const courseContentEditorService = {
           created_at: lesson.created_at,
           updated_at: lesson.updated_at,
         },
+        forced: isAdminForce,
+        impactAtDelete: { progressCount },
       },
     });
 
@@ -792,6 +815,7 @@ export const courseContentEditorService = {
   async deleteAssignment(params: {
     user: AuthenticatedUser;
     assignmentId: string;
+    forceDelete?: boolean;
   }): Promise<Result<void, AppError>> {
     const assignment = await assignmentRepository.findById(
       params.assignmentId,
@@ -819,10 +843,16 @@ export const courseContentEditorService = {
     const submissions = await submissionRepository.listByAssignmentIds([
       params.assignmentId,
     ]);
-    if (submissions.length > 0) {
-      const submissionIds = submissions.map((s) => s.id);
-      const gradings =
-        await gradingRepository.listBySubmissionIds(submissionIds);
+    const submissionIds = submissions.map((s) => s.id);
+    const gradings =
+      submissionIds.length > 0
+        ? await gradingRepository.listBySubmissionIds(submissionIds)
+        : [];
+
+    const isAdminForce =
+      params.forceDelete === true && params.user.role === "admin";
+
+    if (submissions.length > 0 && !isAdminForce) {
       return err(
         new DomainError(
           ErrorCodes.ASSIGNMENT_HAS_DEPENDENCIES,
@@ -831,7 +861,8 @@ export const courseContentEditorService = {
       );
     }
 
-    // Audit ANTES del delete con snapshot completo (regla 8).
+    // Audit ANTES del delete con snapshot completo (regla 8). forced
+    // y impactAtDelete clarifican el contexto en el log.
     await auditRepository.record({
       event: "course_assignment.deleted",
       resourceType: "assignment",
@@ -850,6 +881,11 @@ export const courseContentEditorService = {
           is_required: assignment.is_required,
           created_at: assignment.created_at,
           updated_at: assignment.updated_at,
+        },
+        forced: isAdminForce,
+        impactAtDelete: {
+          submissionCount: submissions.length,
+          gradingCount: gradings.length,
         },
       },
     });
