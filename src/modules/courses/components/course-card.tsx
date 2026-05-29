@@ -45,20 +45,28 @@ interface CourseCardProps {
 }
 
 // Bloque post-23 ISSUE 1: cover_url se renderiza arriba del header.
-// Si null, placeholder con gradient emerald (alineado con BRAND.md).
+// Si null/empty/whitespace, placeholder con gradient emerald
+// (alineado con BRAND.md). Smoke E2E post-ISSUE-3 VISUAL 2: tambien
+// renderizamos el gradient COMO BACKGROUND del contenedor del img,
+// asi una URL truthy pero con imagen rota (404, CORS) deja ver el
+// gradient debajo en lugar de un cuadro blanco.
+//
 // Usamos <img> HTML simple en lugar de Next Image para evitar la
 // whitelist de remotePatterns en next.config.ts (covers vienen de
 // URLs externas variadas).
 function CoverImage({ course }: { course: Course }) {
-  if (course.cover_url) {
+  const url = course.cover_url?.trim() ?? "";
+  if (url !== "") {
     return (
-      // eslint-disable-next-line @next/next/no-img-element -- ISSUE 1 fix
-      <img
-        src={course.cover_url}
-        alt=""
-        className="aspect-[16/9] w-full rounded-t-xl object-cover"
-        loading="lazy"
-      />
+      <div className="aspect-[16/9] w-full overflow-hidden rounded-t-xl bg-gradient-to-br from-emerald-500 to-emerald-700">
+        {/* eslint-disable-next-line @next/next/no-img-element -- ISSUE 1 fix */}
+        <img
+          src={url}
+          alt=""
+          className="h-full w-full object-cover"
+          loading="lazy"
+        />
+      </div>
     );
   }
   return (

@@ -15,6 +15,12 @@
 // futuro = primer curso enrolled (caller decide; este service lo
 // recibe ya resuelto).
 //
+// Smoke E2E post-ISSUE-3 VISUAL 1: el contrato es estricto - los
+// RANKS (Junior/Senior/Master) se calculan UNA SOLA VEZ sobre el
+// primaryCourseId y no se iteran por curso. Si en multi-curso futuro
+// se quiere mostrar rank por curso, el caller debe llamar al service
+// con cada courseId; este service no concatena resultados.
+//
 // 22.14: agrega evaluacion de Explorador CNV (>= 5 certs validos)
 // y Maestro CNV (>= 10). Sin earnedAt (no se trackea la fecha del
 // cert que cruzo el threshold; podria reconstruirse en post-MVP).

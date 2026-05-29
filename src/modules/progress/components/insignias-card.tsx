@@ -54,6 +54,18 @@ function BadgeRow({ entry }: { entry: StudentBadgeEntry }) {
   );
 }
 
+// Smoke E2E post-ISSUE-3 VISUAL 3: el grid se adapta al numero de
+// badges conseguidos para evitar layouts desbalanceados (3 badges en
+// grid-cols-2 dejaba 2+1). Regla por sub-grupo (ranks / achievements):
+//   - 1-2 badges: grid-cols-2.
+//   - 3 badges: grid-cols-3.
+//   - 4+ badges: grid-cols-2 sm:grid-cols-4 (responsive).
+function gridColsFor(count: number): string {
+  if (count >= 4) return "grid grid-cols-2 sm:grid-cols-4";
+  if (count === 3) return "grid grid-cols-3";
+  return "grid grid-cols-2";
+}
+
 export function InsigniasCard({ entries }: InsigniasCardProps) {
   // CORRECCION 9: filtrar showInDashboard Y earned. Las no conseguidas
   // viven en /certificates (ExpandedBadgesCard), no en el dashboard.
@@ -63,6 +75,8 @@ export function InsigniasCard({ entries }: InsigniasCardProps) {
   const ranks = visible.filter((e) => e.badge.kind === "rank");
   const achievements = visible.filter((e) => e.badge.kind === "achievement");
   const hasNone = ranks.length === 0 && achievements.length === 0;
+  const ranksGridCls = gridColsFor(ranks.length);
+  const achievementsGridCls = gridColsFor(achievements.length);
 
   return (
     <Card>
@@ -79,18 +93,20 @@ export function InsigniasCard({ entries }: InsigniasCardProps) {
           </p>
         ) : (
           <>
-            {/* Bloque post-23 ISSUE 2: grid responsive 2/3/4 cols
-                acomoda mejor las insignias cuando hay 4 (el flex-wrap
-                anterior dejaba 3+1 desbalanceado). Mobile 2x2, sm
-                3 por fila, md+ 4 por fila. justify-items-center
-                centra la card dentro de su celda cuando la celda es
-                mas ancha que la badge (w-28 fixed). */}
+            {/* Smoke E2E post-ISSUE-3 VISUAL 3: ranksGridCls /
+                achievementsGridCls calculan el numero de columnas
+                segun el conteo conseguido para mantener una sola fila
+                cuando los badges caben. justify-items-center centra
+                la card cuando la celda es mas ancha que la badge
+                (w-28 fixed). */}
             {ranks.length > 0 && (
               <div className="space-y-2">
                 <p className="text-xs text-muted-foreground">
                   Diplomado de Medicina Bioeléctrica y ANI BIS-E
                 </p>
-                <div className="grid grid-cols-2 justify-items-center gap-3 sm:grid-cols-3 md:grid-cols-4">
+                <div
+                  className={`${ranksGridCls} justify-items-center gap-3`}
+                >
                   {ranks.map((entry) => (
                     <BadgeRow key={entry.badge.id} entry={entry} />
                   ))}
@@ -101,7 +117,9 @@ export function InsigniasCard({ entries }: InsigniasCardProps) {
               <div className="space-y-2">
                 {/* Logros CNV no llevan subtitulo: son transversales
                     al ecosistema y no requieren aclarar scope. */}
-                <div className="grid grid-cols-2 justify-items-center gap-3 sm:grid-cols-3 md:grid-cols-4">
+                <div
+                  className={`${achievementsGridCls} justify-items-center gap-3`}
+                >
                   {achievements.map((entry) => (
                     <BadgeRow key={entry.badge.id} entry={entry} />
                   ))}
