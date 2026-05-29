@@ -46,10 +46,11 @@ interface CourseCardProps {
 
 // Bloque post-23 ISSUE 1: cover_url se renderiza arriba del header.
 // Si null/empty/whitespace, placeholder con gradient emerald
-// (alineado con BRAND.md). Smoke E2E post-ISSUE-3 VISUAL 2: tambien
-// renderizamos el gradient COMO BACKGROUND del contenedor del img,
-// asi una URL truthy pero con imagen rota (404, CORS) deja ver el
-// gradient debajo en lugar de un cuadro blanco.
+// (alineado con BRAND.md). Smoke E2E post-ISSUE-3 VISUAL 2 v2:
+// envolvemos el <img> en un div con gradient (asi una URL rota deja
+// ver el gradient debajo). El Card padre lleva pt-0 para que el cover
+// toque el borde superior (el has-[>img:first-child]:pt-0 default del
+// Card no aplica porque el primer child ahora es div, no img).
 //
 // Usamos <img> HTML simple en lugar de Next Image para evitar la
 // whitelist de remotePatterns en next.config.ts (covers vienen de
@@ -120,7 +121,7 @@ export function CourseCard({
 }: CourseCardProps) {
   if (summary === null) {
     return (
-      <Card className="flex flex-col overflow-hidden">
+      <Card className="flex flex-col overflow-hidden pt-0">
         <CoverImage course={course} />
         <CardHeader className="flex-1">
           <CardTitle>{course.title}</CardTitle>
@@ -144,7 +145,7 @@ export function CourseCard({
   const isStarted = progress.percentage > 0;
 
   return (
-    <Card className="flex flex-col overflow-hidden">
+    <Card className="flex flex-col overflow-hidden pt-0">
       <CoverImage course={course} />
       <CardHeader className="flex-1">
         <div className="flex items-start justify-between gap-3">

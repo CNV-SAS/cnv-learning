@@ -48,7 +48,10 @@ interface UpdateCourseParams {
   description: string | null;
   coverUrl: string | null;
   isPublished: boolean;
-  passingGrade: number;
+  // Smoke E2E post-ISSUE-3 decision: passing_grade es INMUTABLE
+  // despues del create. El service NO acepta este param para que el
+  // contrato sea explicito a nivel de tipos. Ver update-course.ts +
+  // update-course.action.ts para la decision completa.
 }
 
 interface DeleteCourseParams {
@@ -173,7 +176,10 @@ export const courseMetaService = {
       description: params.description,
       cover_url: params.coverUrl,
       is_published: params.isPublished,
-      passing_grade: params.passingGrade,
+      // passing_grade NO se updatea: smoke E2E post-ISSUE-3 decision.
+      // Preservamos el valor actual del course para que el progreso
+      // ya calculado de alumnos enrolled siga coherente.
+      passing_grade: Number(course.passing_grade),
     });
 
     // Snapshot de cambios para audit. Solo registramos los campos que
@@ -203,12 +209,8 @@ export const courseMetaService = {
         next: updated.is_published,
       };
     }
-    if (Number(course.passing_grade) !== Number(updated.passing_grade)) {
-      changes.passing_grade = {
-        previous: Number(course.passing_grade),
-        next: Number(updated.passing_grade),
-      };
-    }
+    // passing_grade ya no se updatea (inmutable post-create); el diff
+    // entre course y updated queda en 0 por construccion.
 
     // Si no cambio nada, no auditamos (idempotencia).
     if (Object.keys(changes).length > 0) {

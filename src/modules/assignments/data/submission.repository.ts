@@ -310,16 +310,23 @@ export const submissionRepository = {
     }
     if (!data || data.length === 0) return [];
 
+    // PostgREST detecta el unique constraint gradings_submission_id_key
+    // (UNIQUE en gradings.submission_id) y colapsa el embed a un objeto
+    // unico en lugar de array. Aceptamos ambas formas con Array.isArray
+    // para que el query no quede acoplado a la heuristica de PostgREST
+    // (puede cambiar con versiones / config). final_grade y max_score
+    // llegan como string (PostgREST serializa numeric como string);
+    // forzamos Number() defensivo.
+    type GradingEmbed = { final_grade: number | string };
     type Row = {
       assignment_id: string;
       attempt_number: number;
       status: string;
-      gradings: Array<{ final_grade: number }> | null;
-      assignments: { max_score: number };
+      gradings: GradingEmbed | GradingEmbed[] | null;
+      assignments: { max_score: number | string };
     };
     const rows = data as unknown as Row[];
 
-    // Filter al latest attempt per assignment.
     const latestByAssignment = new Map<string, Row>();
     for (const row of rows) {
       const existing = latestByAssignment.get(row.assignment_id);
@@ -331,11 +338,13 @@ export const submissionRepository = {
     const passed: string[] = [];
     for (const [assignmentId, row] of latestByAssignment) {
       if (row.status !== "graded") continue;
-      const grading = row.gradings?.[0];
+      const grading = Array.isArray(row.gradings)
+        ? row.gradings[0]
+        : row.gradings;
       if (!grading) continue;
       const threshold =
         (passingGradePercent / 100) * Number(row.assignments.max_score);
-      if (grading.final_grade >= threshold) {
+      if (Number(grading.final_grade) >= threshold) {
         passed.push(assignmentId);
       }
     }
@@ -367,12 +376,16 @@ export const submissionRepository = {
     }
     if (!data || data.length === 0) return [];
 
+    // Mismo issue del embed object-vs-array que en
+    // listPassedRequiredAssignmentIds (ver comentario alli). Defensivo
+    // con Array.isArray.
+    type GradingEmbed = { final_grade: number | string; graded_at: string };
     type Row = {
       assignment_id: string;
       attempt_number: number;
       status: string;
-      gradings: Array<{ final_grade: number; graded_at: string }> | null;
-      assignments: { max_score: number };
+      gradings: GradingEmbed | GradingEmbed[] | null;
+      assignments: { max_score: number | string };
     };
     const rows = data as unknown as Row[];
 
@@ -387,11 +400,13 @@ export const submissionRepository = {
     const events: Array<{ assignment_id: string; graded_at: string }> = [];
     for (const [assignmentId, row] of latestByAssignment) {
       if (row.status !== "graded") continue;
-      const grading = row.gradings?.[0];
+      const grading = Array.isArray(row.gradings)
+        ? row.gradings[0]
+        : row.gradings;
       if (!grading) continue;
       const threshold =
         (passingGradePercent / 100) * Number(row.assignments.max_score);
-      if (grading.final_grade >= threshold) {
+      if (Number(grading.final_grade) >= threshold) {
         events.push({
           assignment_id: assignmentId,
           graded_at: grading.graded_at,

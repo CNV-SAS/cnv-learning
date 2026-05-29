@@ -57,7 +57,9 @@ export async function updateCourseAction(
         description: parsed.data.description ?? null,
         coverUrl: parsed.data.coverUrl ?? null,
         isPublished: parsed.data.isPublished,
-        passingGrade: parsed.data.passingGrade,
+        // passingGrade omitido a proposito: smoke E2E post-ISSUE-3
+        // decision = inmutable despues del create. El service lo
+        // ignora aunque viniera en el payload.
       });
       if (!result.ok) return err(toActionError(result.error));
 

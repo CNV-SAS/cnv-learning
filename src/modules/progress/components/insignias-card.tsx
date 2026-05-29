@@ -54,18 +54,6 @@ function BadgeRow({ entry }: { entry: StudentBadgeEntry }) {
   );
 }
 
-// Smoke E2E post-ISSUE-3 VISUAL 3: el grid se adapta al numero de
-// badges conseguidos para evitar layouts desbalanceados (3 badges en
-// grid-cols-2 dejaba 2+1). Regla por sub-grupo (ranks / achievements):
-//   - 1-2 badges: grid-cols-2.
-//   - 3 badges: grid-cols-3.
-//   - 4+ badges: grid-cols-2 sm:grid-cols-4 (responsive).
-function gridColsFor(count: number): string {
-  if (count >= 4) return "grid grid-cols-2 sm:grid-cols-4";
-  if (count === 3) return "grid grid-cols-3";
-  return "grid grid-cols-2";
-}
-
 export function InsigniasCard({ entries }: InsigniasCardProps) {
   // CORRECCION 9: filtrar showInDashboard Y earned. Las no conseguidas
   // viven en /certificates (ExpandedBadgesCard), no en el dashboard.
@@ -75,8 +63,6 @@ export function InsigniasCard({ entries }: InsigniasCardProps) {
   const ranks = visible.filter((e) => e.badge.kind === "rank");
   const achievements = visible.filter((e) => e.badge.kind === "achievement");
   const hasNone = ranks.length === 0 && achievements.length === 0;
-  const ranksGridCls = gridColsFor(ranks.length);
-  const achievementsGridCls = gridColsFor(achievements.length);
 
   return (
     <Card>
@@ -93,20 +79,18 @@ export function InsigniasCard({ entries }: InsigniasCardProps) {
           </p>
         ) : (
           <>
-            {/* Smoke E2E post-ISSUE-3 VISUAL 3: ranksGridCls /
-                achievementsGridCls calculan el numero de columnas
-                segun el conteo conseguido para mantener una sola fila
-                cuando los badges caben. justify-items-center centra
-                la card cuando la celda es mas ancha que la badge
-                (w-28 fixed). */}
+            {/* Smoke E2E post-ISSUE-3 VISUAL 1 v2: flex flex-wrap
+                gap-3 justify-start es mas predecible que grid para
+                cantidades variables. Cada badge tiene ancho fijo
+                (w-28), asi que flex-wrap los acomoda de izquierda a
+                derecha respetando el orden: Junior -> Senior ->
+                Master -> Graduado -> Profesional Conectado. */}
             {ranks.length > 0 && (
               <div className="space-y-2">
                 <p className="text-xs text-muted-foreground">
                   Diplomado de Medicina Bioeléctrica y ANI BIS-E
                 </p>
-                <div
-                  className={`${ranksGridCls} justify-items-center gap-3`}
-                >
+                <div className="flex flex-wrap justify-start gap-3">
                   {ranks.map((entry) => (
                     <BadgeRow key={entry.badge.id} entry={entry} />
                   ))}
@@ -117,9 +101,7 @@ export function InsigniasCard({ entries }: InsigniasCardProps) {
               <div className="space-y-2">
                 {/* Logros CNV no llevan subtitulo: son transversales
                     al ecosistema y no requieren aclarar scope. */}
-                <div
-                  className={`${achievementsGridCls} justify-items-center gap-3`}
-                >
+                <div className="flex flex-wrap justify-start gap-3">
                   {achievements.map((entry) => (
                     <BadgeRow key={entry.badge.id} entry={entry} />
                   ))}

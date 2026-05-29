@@ -45,9 +45,11 @@ export function EditCourseDialog({ course }: EditCourseDialogProps) {
   const [description, setDescription] = useState(course.description ?? "");
   const [coverUrl, setCoverUrl] = useState(course.cover_url ?? "");
   const [isPublished, setIsPublished] = useState(course.is_published);
-  const [passingGrade, setPassingGrade] = useState(
-    Number(course.passing_grade ?? 70),
-  );
+  // Smoke E2E post-ISSUE-3 decision: passing_grade es INMUTABLE
+  // post-create. Lo mostramos read-only para informar al editor pero
+  // no se envia al action (el schema lo marca optional + el service
+  // lo ignora).
+  const passingGradeReadonly = Number(course.passing_grade ?? 70);
   const [isPending, startTransition] = useTransition();
 
   // Reset state al abrir (por si el curso cambio en el server entre
@@ -60,7 +62,8 @@ export function EditCourseDialog({ course }: EditCourseDialogProps) {
       setDescription(course.description ?? "");
       setCoverUrl(course.cover_url ?? "");
       setIsPublished(course.is_published);
-      setPassingGrade(Number(course.passing_grade ?? 70));
+      // passingGrade no se setea: es readonly y siempre refleja el
+      // valor actual del course (ver passingGradeReadonly).
     }
     setOpen(next);
   }
@@ -75,7 +78,7 @@ export function EditCourseDialog({ course }: EditCourseDialogProps) {
         description: description.trim() === "" ? null : description.trim(),
         coverUrl: coverUrl.trim() === "" ? null : coverUrl.trim(),
         isPublished,
-        passingGrade,
+        // passingGrade NO se envia: inmutable post-create.
       });
       if (!result.ok) {
         toast.error(result.error.message);
@@ -190,20 +193,16 @@ export function EditCourseDialog({ course }: EditCourseDialogProps) {
             <Input
               id={`edit-course-passing-grade-${course.id}`}
               type="number"
-              min={0}
-              max={100}
-              step={0.1}
-              value={passingGrade}
-              onChange={(e) =>
-                setPassingGrade(Number(e.target.value))
-              }
-              required
-              disabled={isPending}
+              value={passingGradeReadonly}
+              readOnly
+              disabled
+              title="La nota mínima no puede modificarse una vez creado el curso."
+              className="cursor-not-allowed bg-muted text-muted-foreground"
             />
             <p className="text-xs text-muted-foreground">
-              Si la nota final de una tarea obligatoria está debajo de
-              este umbral, no cuenta para el progreso. 0 = cualquier
-              nota aprueba. Aplica a todo el curso.
+              La nota mínima no puede modificarse una vez creado el
+              curso. Si necesitas cambiarla, contacta soporte para
+              evaluar el impacto sobre el progreso ya calculado.
             </p>
           </div>
           <DialogFooter>

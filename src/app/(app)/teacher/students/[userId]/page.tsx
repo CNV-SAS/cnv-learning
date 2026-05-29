@@ -216,7 +216,21 @@ export default async function TeacherStudentDetailPage({
                   return (
                     <tr key={assignment.id}>
                       <td className="px-4 py-3 align-top">
-                        {assignment.title}
+                        {/* Smoke E2E post-ISSUE-3: la celda Tarea
+                            linkea al grader del latest submission
+                            para que el docente vea el historial sin
+                            tener que esperar a que el alumno reenvie.
+                            Si nunca entrego, queda como texto plano. */}
+                        {submission ? (
+                          <Link
+                            href={`/teacher/grader/${submission.id}`}
+                            className="text-emerald-700 hover:text-emerald-900 hover:underline"
+                          >
+                            {assignment.title}
+                          </Link>
+                        ) : (
+                          assignment.title
+                        )}
                       </td>
                       <td className="px-4 py-3 align-top text-muted-foreground">
                         {ASSIGNMENT_TYPE_LABEL[assignment.type] ??

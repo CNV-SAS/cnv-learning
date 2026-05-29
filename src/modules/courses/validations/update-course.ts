@@ -49,14 +49,16 @@ export const updateCourseSchema = z.object({
       return t === "" ? null : t;
     }),
   isPublished: z.boolean(),
-  // Bloque post-23 ISSUE 3: nota minima de aprobacion (% del max_score).
-  // Cambiar este valor afecta retroactivamente que tareas cuentan para
-  // el progreso de alumnos enrolled (el progressService recalcula en
-  // cada visita).
+  // Smoke E2E post-ISSUE-3 decision: passing_grade es INMUTABLE despues
+  // del create. Cambiar el threshold retroactivamente confunde a alumnos
+  // que ya tienen progreso calculado con el valor original. El field
+  // sigue en el schema como opcional para tolerar payloads viejos que
+  // todavia lo envian, pero el service lo IGNORA en updateCourse.
   passingGrade: z
     .number()
     .min(0, "La nota mínima debe ser >= 0")
-    .max(100, "La nota mínima debe ser <= 100"),
+    .max(100, "La nota mínima debe ser <= 100")
+    .optional(),
 });
 
 export type UpdateCourseInput = z.infer<typeof updateCourseSchema>;
