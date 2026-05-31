@@ -20,6 +20,8 @@ import {
   canEditCourseMeta,
 } from "@/modules/courses/policies";
 import { auditRepository } from "@/modules/audit/data";
+import { courseStorageCleanupService } from "./course-storage-cleanup.service";
+import { logger } from "@/core/logger/logger";
 import {
   AppError,
   AuthorizationError,
@@ -230,17 +232,22 @@ export const courseMetaService = {
     return ok(updated);
   },
 
-  // Hard delete del curso (Bloque 23 smoke #2). Solo admin.
+  // Hard delete del curso (Bloque 23 smoke #2 + round 3 storage
+  // cleanup). Solo admin.
   //
   // Flow:
   //   1. canDeleteCourse policy (admin only).
   //   2. Lookup pre-delete: 404 si no existe.
   //   3. Confirmacion textual: confirmTitle (trimmed) === course.title.
-  //   4. Count enrollments activos para audit + transparencia.
-  //   5. Audit ANTES del delete con snapshot completo del course +
-  //      conteo de enrollments (los detalles textuales se pierden con
-  //      el CASCADE, audit log es la unica traza recuperable).
-  //   6. courseRepository.delete() -> CASCADE limpia modules, lessons,
+  //   4. Count enrollments activos.
+  //   5. Smoke E2E round 3 Diagnostico B: collectCourseStoragePaths +
+  //      deleteCourseStorage ANTES del CASCADE. Best-effort: si falla
+  //      un bucket el resto sigue (Promise.allSettled). El resultado
+  //      se persiste en audit metadata para forensics.
+  //   6. Audit ANTES del DB delete con snapshot completo + counts de
+  //      storage cleanup (los detalles textuales se pierden con el
+  //      CASCADE, audit log es la unica traza recuperable).
+  //   7. courseRepository.delete() -> CASCADE limpia modules, lessons,
   //      attachments, assignments, quiz_questions, quiz_options,
   //      submissions, gradings, ai_grading_suggestions, enrollments,
   //      forums, forum_threads, forum_replies, announcements,
@@ -286,6 +293,36 @@ export const courseMetaService = {
     const activeEnrollmentCount =
       await courseRepository.countActiveEnrollments(params.courseId);
 
+    // Storage cleanup ANTES del CASCADE (Diagnostico B). Fault-
+    // tolerant: si la coleccion o el delete fallan, igual seguimos
+    // al DB delete (best-effort: huerfanos > delete bloqueado).
+    let storageCleanup: Awaited<
+      ReturnType<typeof courseStorageCleanupService.deleteCourseStorage>
+    > | null = null;
+    let storagePathCount = 0;
+    try {
+      const paths =
+        await courseStorageCleanupService.collectCourseStoragePaths(
+          params.courseId,
+        );
+      storagePathCount =
+        paths.courseResources.length +
+        paths.submissions.length +
+        paths.academicCertificates.length;
+      if (storagePathCount > 0) {
+        storageCleanup =
+          await courseStorageCleanupService.deleteCourseStorage(paths);
+      }
+    } catch (e) {
+      logger.warn(
+        "Course storage cleanup threw (non-blocking, continuing with DB delete)",
+        {
+          courseId: params.courseId,
+          error: e instanceof Error ? e.message : String(e),
+        },
+      );
+    }
+
     await auditRepository.record({
       event: "course.deleted",
       resourceType: "course",
@@ -301,6 +338,19 @@ export const courseMetaService = {
         startsAt: course.starts_at,
         endsAt: course.ends_at,
         activeEnrollmentCount,
+        storageCleanup: storageCleanup ?? {
+          deleted: {
+            courseResources: 0,
+            submissions: 0,
+            academicCertificates: 0,
+          },
+          failed: {
+            courseResources: 0,
+            submissions: 0,
+            academicCertificates: 0,
+          },
+        },
+        storagePathCount,
       },
     });
 
