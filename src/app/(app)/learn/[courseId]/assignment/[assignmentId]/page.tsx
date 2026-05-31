@@ -101,6 +101,24 @@ export default async function AssignmentPage({
     grading: gradingsByAttempt[idx],
   }));
 
+  // Smoke E2E round 3 BUG 1 secundario: resolver el nombre de quien
+  // califico cada intento. Excluimos los auto (graded_by === user.id
+  // del propio submission, caso quiz) porque para esos mostramos
+  // "Calificacion automatica" sin necesidad del map.
+  const graderIds = Array.from(
+    new Set(
+      gradingsByAttempt
+        .filter((g): g is NonNullable<typeof g> => g !== null)
+        .map((g) => g.graded_by)
+        .filter((id): id is string => id !== null && id !== user.id),
+    ),
+  );
+  const graderProfiles =
+    graderIds.length > 0 ? await profileRepository.findByIds(graderIds) : [];
+  const gradersById = new Map(
+    graderProfiles.map((p) => [p.id, p.full_name]),
+  );
+
   const latestAttemptIdx =
     attempts.length === 0
       ? -1
@@ -305,6 +323,7 @@ export default async function AssignmentPage({
           assignmentMaxScore={Number(assignment.max_score)}
           coursePassingGradePercent={passingGradePercent}
           maxAttempts={assignment.max_attempts}
+          gradersById={gradersById}
         />
       )}
     </div>

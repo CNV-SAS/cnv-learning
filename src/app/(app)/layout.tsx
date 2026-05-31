@@ -61,7 +61,14 @@ export default async function AppLayout({
     ) : null;
 
   return (
-    <div className="flex h-screen">
+    // Smoke E2E round 3 BUG 3: usamos fixed inset-0 (en lugar de
+    // h-screen) para sacar el shell del flujo del body. Body queda
+    // sin children flex y mantiene su min-h-full = 100vh sin posibilidad
+    // de crecer, eliminando el doble scrollbar que aparecia cuando
+    // contenido + paddings residuales empujaban body por encima del
+    // viewport. (auth) y (public) layouts NO usan este wrapper,
+    // mantienen su scroll natural en pages largas (/privacy, /terms).
+    <div className="fixed inset-0 flex">
       <aside className="hidden lg:flex w-72 shrink-0 border-r border-border bg-background">
         <Sidebar items={items} role={user.role} />
       </aside>

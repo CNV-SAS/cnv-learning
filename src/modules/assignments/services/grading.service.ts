@@ -105,13 +105,25 @@ export const gradingService = {
       );
     }
 
-    const grading = await gradingRepository.create({
+    // Smoke E2E round 3 BUG 1: la RLS INSERT de gradings exige
+    // graded_by = auth.uid() AND is_course_teacher(course_id). El
+    // admin no esta en course_teachers asi que el INSERT regular
+    // falla con error de infra y publishGradingAction lo loguea
+    // como "unexpected throw" en Sentry. Para admin usamos service
+    // role (bypass de RLS) justificado por la verificacion server-side
+    // de user.role === 'admin' en canGradeAssignment (policy validada
+    // arriba) + la action invoca getCurrentUser que ya valido sesion.
+    const gradingInput = {
       submission_id: submissionId,
       graded_by: user.id,
       final_grade: finalGrade,
       feedback,
       ai_suggestion_id: aiSuggestionId ?? null,
-    });
+    };
+    const grading =
+      user.role === "admin"
+        ? await gradingRepository.createAsAdmin(gradingInput)
+        : await gradingRepository.create(gradingInput);
 
     // Audit log (regla 8 ARCHITECTURE.md). Fault-tolerant: no
     // bloquea el flow si falla.

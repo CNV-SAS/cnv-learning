@@ -114,6 +114,28 @@ export default async function GraderPage({ params }: GraderPageProps) {
     })),
   ];
 
+  // Smoke E2E round 3 BUG 1 secundario: bulk fetch de profiles de
+  // quienes calificaron cada intento. Excluimos auto (graded_by ===
+  // submission.user_id, caso quiz). RLS de profiles permite a admin
+  // y teacher ver perfiles relevantes; los que no se devuelvan
+  // (eliminados) caen al fallback "(usuario eliminado)" en el card.
+  const graderIds = Array.from(
+    new Set(
+      attemptRows
+        .map((row) => row.grading)
+        .filter((g): g is NonNullable<typeof g> => g !== null)
+        .map((g) => g.graded_by)
+        .filter(
+          (id): id is string => id !== null && id !== submission.user_id,
+        ),
+    ),
+  );
+  const graderProfiles =
+    graderIds.length > 0 ? await profileRepository.findByIds(graderIds) : [];
+  const gradersById = new Map(
+    graderProfiles.map((p) => [p.id, p.full_name]),
+  );
+
   return (
     <div className="mx-auto max-w-3xl space-y-8">
       <div className="space-y-2">
@@ -181,6 +203,7 @@ export default async function GraderPage({ params }: GraderPageProps) {
         assignmentMaxScore={Number(assignment.max_score)}
         coursePassingGradePercent={Number(course.passing_grade)}
         maxAttempts={assignment.max_attempts}
+        gradersById={gradersById}
       />
     </div>
   );

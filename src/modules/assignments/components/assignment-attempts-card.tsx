@@ -39,6 +39,12 @@ interface AssignmentAttemptsCardProps {
   assignmentMaxScore: number;
   coursePassingGradePercent: number;
   maxAttempts: number;
+  // Smoke E2E round 3 BUG 1 secundario: map profile.id -> full_name
+  // para resolver quien califico cada intento. Si el grader fue
+  // eliminado, no aparece en el map y se muestra "(usuario eliminado)".
+  // Si el grading es auto (quiz: graded_by === submission.user_id) se
+  // muestra "Calificacion automatica" sin consultar el map.
+  gradersById?: Map<string, string>;
 }
 
 function formatAttemptDate(iso: string | null): string {
@@ -51,13 +57,16 @@ function formatAttemptDate(iso: string | null): string {
 function AttemptItem({
   row,
   threshold,
+  gradersById,
 }: {
   row: AttemptRow;
   threshold: number;
+  gradersById?: Map<string, string>;
 }) {
   const { submission, grading } = row;
   let badge: React.ReactNode;
   let noteText: string;
+  let gradedByText: string | null = null;
   if (grading === null) {
     badge = (
       <Badge variant="secondary" className="bg-amber-100 text-amber-700">
@@ -80,6 +89,19 @@ function AttemptItem({
       </Badge>
     );
     noteText = `Nota: ${Number(grading.final_grade)}`;
+    // Smoke E2E round 3 BUG 1 secundario: si quiz auto-graded el
+    // graded_by es el propio student; sino es admin/teacher humano.
+    // graded_by puede ser null si el grader fue eliminado (FK SET NULL).
+    if (grading.graded_by === null) {
+      gradedByText = "Calificado por (usuario eliminado)";
+    } else if (grading.graded_by === submission.user_id) {
+      gradedByText = "Calificación automática";
+    } else {
+      const name = gradersById?.get(grading.graded_by);
+      gradedByText = name
+        ? `Calificado por ${name}`
+        : "Calificado por (usuario eliminado)";
+    }
   }
 
   return (
@@ -95,6 +117,9 @@ function AttemptItem({
           {formatAttemptDate(submission.submitted_at)}
         </p>
         <p className="text-xs text-foreground/80">{noteText}</p>
+        {gradedByText && (
+          <p className="text-xs text-muted-foreground">{gradedByText}</p>
+        )}
       </div>
     </li>
   );
@@ -105,6 +130,7 @@ export function AssignmentAttemptsCard({
   assignmentMaxScore,
   coursePassingGradePercent,
   maxAttempts,
+  gradersById,
 }: AssignmentAttemptsCardProps) {
   const threshold = passingThreshold(
     assignmentMaxScore,
@@ -142,6 +168,7 @@ export function AssignmentAttemptsCard({
                   key={row.submission.id}
                   row={row}
                   threshold={threshold}
+                  gradersById={gradersById}
                 />
               ))}
           </ul>

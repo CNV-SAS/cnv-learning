@@ -23,6 +23,17 @@ import { Label } from "@/components/ui/label";
 
 const PER_PAGE = 20;
 
+// Smoke E2E round 3 BUG 2: lista de eventos automáticos del sistema.
+// Para estos, actor_id y actor_email se registran como null (no hay
+// user humano detras). El render NO debe mostrarlos como "(usuario
+// eliminado)" sino como "Sistema (automatico)".
+//
+// Mantener sincronizado con los call sites que pasan actorId/Email
+// null a auditRepository.record (grep "actorId: null").
+const SYSTEM_EVENTS = new Set<string>([
+  "certificate.issued", // emision automatica al cruzar 100%
+]);
+
 function parsePage(value: string | undefined): number {
   if (!value) return 1;
   const parsed = Number.parseInt(value, 10);
@@ -168,11 +179,14 @@ export default async function AdminAuditPage({
             </thead>
             <tbody className="divide-y divide-border">
               {result.rows.map((row) => {
+                const isSystemEvent = SYSTEM_EVENTS.has(row.event);
                 const actorLabel = row.actor_email
                   ? row.actor_email
                   : row.actor_id
                     ? "(actor)"
-                    : "(usuario eliminado)";
+                    : isSystemEvent
+                      ? "Sistema (automático)"
+                      : "(usuario eliminado)";
                 const meta = metadataPreview(row.metadata);
                 return (
                   <tr key={row.id}>
@@ -189,9 +203,15 @@ export default async function AdminAuditPage({
                     </td>
                     <td className="px-4 py-3 align-top text-xs">
                       {row.actor_id === null && !row.actor_email ? (
-                        <span className="italic text-muted-foreground">
-                          (usuario eliminado)
-                        </span>
+                        isSystemEvent ? (
+                          <span className="italic text-muted-foreground">
+                            Sistema (automático)
+                          </span>
+                        ) : (
+                          <span className="italic text-muted-foreground">
+                            (usuario eliminado)
+                          </span>
+                        )
                       ) : (
                         <span className="font-mono text-muted-foreground">
                           {actorLabel}
